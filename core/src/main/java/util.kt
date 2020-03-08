@@ -1,14 +1,3 @@
-/*
-
-fun printType(type: Type) {
-    type.superTree().walkDf { node, depth ->
-        print("    ".repeat(depth))
-        println(node.value.fullName())
-    }
-    println("==================")
-}
-*/
-
 inline fun <T : Any> Boolean.elseNull(onTrue: () -> T): T? = if (this) onTrue() else null
 
 fun <A, B> List<A>.zipIfSameLength(other: List<B>): List<Pair<A, B>>? = (size == other.size).elseNull { zip(other) }
@@ -33,43 +22,22 @@ inline fun <K, V, reified S> Map<K, V>.castIfAllValuesInstance(): Map<K, S>? = m
     }
 }
 
-inline fun <T : Any, reified S> Collection<T>.castIfAllInstance(): List<S>? {
-    val instances = filterIsInstance<S>()
-    return if (instances.size == size) instances else null
+inline fun <T : Any, reified S> Collection<T>.castIfAllInstance(): List<S>? = map {
+    if (it is S) it else return null
 }
 
-/*
-fun printType(type: TType) {
-    type.supers().walkDf { node, depth ->
-        print("    ".repeat(depth))
-        println(node.value.fullName())
-    }
-    println("==================")
-}
-*/
-
-fun printType(type: Type) {
-    val info = when (type) {
-        is Type.NonGenericType.DirectType -> "Direct Type"
-        is Type.NonGenericType.StaticAppliedType -> "Statically Applied Type"
-        is Type.GenericType.TypeTemplate -> "Type template"
-        is Type.GenericType.DynamicAppliedType -> "Dynamically Applied Type"
-    }
-    println("$info ${type.name}")
-
-    type.supersTree.walkDf { node, depth ->
-        print("    ".repeat(depth))
-        println(node.value.fullName)
-    }
-    println("==================")
-}
+typealias NodeVisitor<T> = (node: TreeNode<T>, depth: Int, hasMoreSiblings: Boolean) -> Unit
 
 data class TreeNode<out T>(val value: T, val children: List<TreeNode<T>>) {
 
-    fun walkDf(depth: Int = 0, onNode: (TreeNode<T>, Int) -> Unit) {
-        onNode(this, depth)
-        children.forEach {
-            it.walkDf(depth + 1, onNode)
+    fun walkDf(onNode: NodeVisitor<T>) {
+        walkDfInner(onNode = onNode, depth = 0, hasMoreSiblings = false)
+    }
+
+    private fun walkDfInner(onNode: NodeVisitor<T>, depth: Int, hasMoreSiblings: Boolean) {
+        onNode(this, depth, hasMoreSiblings)
+        children.forEachIndexed { i, node ->
+            node.walkDfInner(onNode, depth + 1, i < children.size - 1)
         }
     }
 

@@ -1,119 +1,114 @@
-/*
-fun main(args: Array<String>) {
-    val obj = Type.DirectType(TypeInfo(artifact = "JCLv8", decPackage = "java.lang", name = "Object"), superTypes = emptyList())
+val objType = directType("Object")
 
-    val collection = Type.GenericType(
-        info = TypeInfo(decPackage = "java.collection", name = "Collection"),
-        typeParams = listOf(
-            TypeParameter(0, "T", emptyList())
-        ),
-        superTypes = listOf(TypeInheritance.ConcreteInheritance(obj))
-    )
+val strType = directType("String", objType)
+val intType = directType("Integer", objType)
+val fooType = directType("Foo", objType)
 
-    val pair = Type.GenericType(
-        info = TypeInfo(decPackage = "java.util", name = "Pair"),
-        typeParams = listOf(
-            TypeParameter(0, "F", emptyList()),
-            TypeParameter(1, "S", emptyList())
-        ),
-        superTypes = listOf(TypeInheritance.ConcreteInheritance(obj))
-    )
+val collectionType = typeTemplate(
+    name = "Collection",
+    typeParams = listOf("E"),
+    superType = listOf(objType)
+)
 
-    val comp = Type.DirectType(TypeInfo(name = "Comp", decPackage = "java.ord"), superTypes = emptyList())
+val supplierType = typeTemplate(
+    name = "Supplier",
+    typeParams = listOf("S"),
+    superType = listOf(objType)
+)
 
-    val map = Type.GenericType(
-        info = TypeInfo(decPackage = "java.collection", name = "Map"),
-        typeParams = listOf(
-            TypeParameter(0, "K", listOf(TypeParamRestriction.LowerBound(comp))),
-            TypeParameter(1, "V", emptyList())
-        ),
-        superTypes = listOf(TypeInheritance.GenericInheritance(collection, paramMap = listOf(
-            TypeParamMapping.ParamSubstitute("V", "V")
-        )))
-    )
-
-    val ord = Type.DirectType(TypeInfo(name = "Ord", decPackage = "java.ord"), superTypes = emptyList())
-
-    val sortedMap = Type.GenericType(
-        info = TypeInfo(decPackage = "java.collection", name = "SortedMap"),
-        typeParams = listOf(
-            TypeParameter(0, "K", listOf(TypeParamRestriction.LowerBound(ord), TypeParamRestriction.LowerBound(comp))),
-            TypeParameter(1, "V", emptyList())
-    ),
-        superTypes = listOf(TypeInheritance.GenericInheritance(map, paramMap = listOf(
-            TypeParamMapping.ParamSubstitute("K", "K"),
-            TypeParamMapping.ParamSubstitute("V", "V")
-        )))
-    )
-
-    val req = Type.DirectType(TypeInfo(name = "Request", decPackage = "java.net"), superTypes = emptyList())
-    val int = Type.DirectType(TypeInfo(name = "Int", decPackage = "java.lang"), superTypes = emptyList())
-
-    val reqMap = Type.GenericType(
-        info = TypeInfo(decPackage = "java.net", name = "ReqMap"),
-        typeParams = listOf(
-            TypeParameter(0, "V", emptyList())
-        ),
-        superTypes = listOf(TypeInheritance.GenericInheritance(sortedMap, paramMap = listOf(
-            TypeParamMapping.TypeSubstitute("K", req),
-            TypeParamMapping.ParamSubstitute("V", "V")
-        )))
-    )
-
-    val ttlMap = Type.DirectType(
-        info = TypeInfo(artifact = "MyArt", decPackage = "com.mktiti", name = "TtlMap"),
-        superTypes = listOf(TypeInheritance.GenericInheritance(reqMap, paramMap = listOf(
-            TypeParamMapping.TypeSubstitute("V", int)
-        )))
-    )
-
-    printType(obj)
-    printType(collection)
-    printType(pair)
-    printType(map)
-    printType(ord)
-    printType(sortedMap)
-    printType(req)
-    printType(int)
-    printType(reqMap)
-    printType(ttlMap)
-
-    /* val runnable = nonGenericType("JCLv8", "java.lang", "Runnable")
-
-    val list = Type(
-        info = TypeInfo("List", decPackage = "java.collection"),
-        typeParams = listOf(
-            TypeParameter(0, "T", emptyList())
+val refType = typeTemplate(
+    name = "Reference",
+    typeParams = listOf("R"),
+    superType = listOf(
+        objType,
+        supplierType.forceDynamicApply(
+            "S" to ApplicationParameter.ParamSubstitution("R")
         )
     )
+)
 
-    val linked = Type(
-        info = TypeInfo("LinkedList", decPackage = "java.collection"),
-        typeParams = listOf(
-            TypeParameter(0, "E", emptyList())
+val pairType = typeTemplate(
+    name = "Pair",
+    typeParams = listOf("F", "S"),
+    superType = listOf(objType)
+)
+
+val listType = Type.GenericType.TypeTemplate(
+    name = "List",
+    typeParams = listOf("T"),
+    superTypes = listOf(
+        SuperType.DynamicSuper(collectionType.forceDynamicApply(
+            mapOf("E" to ApplicationParameter.ParamSubstitution("T"))
+        ))
+    )
+)
+
+fun main() {
+    printType(objType)
+    printType(strType)
+    printType(intType)
+    printType(fooType)
+    printType(pairType)
+    printType(refType)
+    printType(collectionType)
+
+    printType(pairType.forceStaticApply("F" to strType, "S" to fooType))
+    printType(listType)
+    printType(listType.forceApply(mapOf("T" to ApplicationParameter.StaticTypeSubstitution(strType))))
+
+    val appliedList = listType.forceDynamicApply(mapOf("T" to ApplicationParameter.ParamSubstitution("V")))
+    printType(appliedList)
+
+    val listRefType = Type.GenericType.TypeTemplate(
+        name = "ListRef",
+        typeParams = listOf("V"),
+        superTypes = listOf(
+            SuperType.DynamicSuper(refType.forceDynamicApply(
+                mapOf(
+                    "R" to ApplicationParameter.DynamicTypeSubstitution(
+                        listType.forceDynamicApply(mapOf("T" to ApplicationParameter.ParamSubstitution("V")))
+                    )
+                ))),
+            SuperType.DynamicSuper(listType.forceDynamicApply(mapOf("T" to ApplicationParameter.ParamSubstitution("V"))))
         )
     )
+    printType(listRefType)
 
-    val serviceList = Type(
-        info = TypeInfo("ServiceList", decPackage = "com.mktiti", artifact = "MyArt"),
-        typeParams = listOf(
-            TypeParameter(id = 0, sign = "S", restrictions = listOf(
-                TypeParamRestriction.LowerBound(bound = runnable)
-            ))
+    val mapType = Type.GenericType.TypeTemplate(
+        name = "Map",
+        typeParams = listOf("K", "V"),
+        superTypes = listOf(
+            SuperType.DynamicSuper(
+                collectionType.forceDynamicApply(mapOf("E" to ApplicationParameter.DynamicTypeSubstitution(
+                    pairType.forceDynamicApply(mapOf(
+                        "F" to ApplicationParameter.ParamSubstitution("K"),
+                        "S" to ApplicationParameter.ParamSubstitution("V")
+                    ))
+                )))
+            )
         )
     )
-     */
+    printType(mapType)
 
-    // println(obj)
+    val reqMapType = Type.GenericType.TypeTemplate(
+        name = "ReqMap",
+        typeParams = listOf("V"),
+        superTypes = listOf(
+            SuperType.DynamicSuper(
+                mapType.forceDynamicApply(mapOf(
+                    "K" to ApplicationParameter.StaticTypeSubstitution(
+                        Type.NonGenericType.DirectType("Request", listOf(SuperType.StaticSuper(objType)))
+                    ),
+                    "V" to ApplicationParameter.ParamSubstitution("V")
+                ))
+            )
+        )
+    )
+    printType(reqMapType)
 
-
-
-    /*
-    println(list)
-    println(linked)
-    println(runnable)
-    println(serviceList)
-     */
-
+    val ttlMapType = directType(
+        "TtlMap",
+        reqMapType.forceStaticApply("V" to intType)
+    )
+    printType(ttlMapType)
 }
- */

@@ -61,7 +61,8 @@ sealed class Type {
         ) : NonGenericType(baseType.name, superTypes) {
 
             override val typeParamString = baseType.typeParams.genericString {
-                typeArgs[it]?.fullName ?: throw TypeException("Non fully applied SAT (missing ${baseType.fullName}->$it)")
+                val arg = typeArgs[it]?.fullName ?: throw TypeException("Non fully applied SAT (missing ${baseType.fullName}->$it)")
+                "$it = $arg"
             }
 
         }
@@ -131,7 +132,7 @@ sealed class Type {
                 get() = baseType.name
 
             override val typeParamString = baseType.typeParams.genericString { typeParam ->
-                when (val arg = typeArgMap[typeParam]) {
+                "$typeParam = " + when (val arg = typeArgMap[typeParam]) {
                     is ApplicationParameter.ParamSubstitution -> arg.param
                     is ApplicationParameter.DynamicTypeSubstitution -> arg.type.fullName
                     is ApplicationParameter.StaticTypeSubstitution -> arg.type.fullName
@@ -203,11 +204,23 @@ sealed class Type {
             }
         }
 
+        fun staticApply(vararg typeArgs: Pair<String, NonGenericType>): NonGenericType.StaticAppliedType?
+                = staticApply(typeArgs.toMap())
+
         fun forceStaticApply(typeArgs: Map<String, NonGenericType>): NonGenericType.StaticAppliedType
                 = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args to $name")
 
+        fun forceStaticApply(vararg typeArgs: Pair<String, NonGenericType>): NonGenericType.StaticAppliedType
+                = forceStaticApply(typeArgs.toMap())
+
+        fun dynamicApply(vararg typeArgs: Pair<String, ApplicationParameter>): DynamicAppliedType?
+                = dynamicApply(typeArgs.toMap())
+
         fun forceDynamicApply(typeArgs: Map<String, ApplicationParameter>): DynamicAppliedType
                 = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args to $name")
+
+        fun forceDynamicApply(vararg typeArgs: Pair<String, ApplicationParameter>): DynamicAppliedType
+                = forceDynamicApply(typeArgs.toMap())
 
         fun forceApply(typeArgs: Map<String, ApplicationParameter>): Type
                 = apply(typeArgs) ?: throw TypeApplicationException("Failed to apply type args to $name")
@@ -219,115 +232,11 @@ sealed class Type {
 fun directType(name: String, vararg superType: Type.NonGenericType)
         = Type.NonGenericType.DirectType(name, superType.map { SuperType.StaticSuper(it) })
 
-fun typeTemplate(name: String, typeParams: List<String>, vararg superType: Type.NonGenericType)
-        = Type.GenericType.TypeTemplate(name, typeParams, superType.map { SuperType.StaticSuper(it) })
-
-val objType = directType("Object")
-
-val strType = directType("String", objType)
-val intType = directType("Integer", objType)
-val fooType = directType("Foo", objType)
-
-val collectionType = typeTemplate(
-    "Collection",
-    listOf("E"),
-    objType
+fun typeTemplate(name: String, typeParams: List<String>, superType: List<Type>) = Type.GenericType.TypeTemplate(
+    name, typeParams, superType.map {
+        when (it) {
+            is Type.NonGenericType -> SuperType.StaticSuper(it)
+            is Type.GenericType -> SuperType.DynamicSuper(it)
+        }
+    }
 )
-
-val refType = typeTemplate(
-    "Reference",
-    listOf("R"),
-    objType
-)
-
-val pairType = Type.GenericType.TypeTemplate(
-    name = "Pair",
-    typeParams = listOf("F", "S"),
-    superTypes = listOf(SuperType.StaticSuper(objType))
-)
-
-val listType = Type.GenericType.TypeTemplate(
-    name = "List",
-    typeParams = listOf("T"),
-    superTypes = listOf(
-        SuperType.DynamicSuper(collectionType.dynamicApply(
-            mapOf("E" to ApplicationParameter.ParamSubstitution("T"))
-        )!!)
-    )
-)
-
-fun main() {
-    printType(objType)
-    printType(strType)
-    printType(intType)
-    printType(fooType)
-    printType(pairType)
-    printType(refType)
-    printType(collectionType)
-
-    printType(pairType.staticApply(mapOf("F" to strType, "S" to fooType))!!)
-    printType(listType)
-    printType(listType.apply(mapOf("T" to ApplicationParameter.StaticTypeSubstitution(strType)))!!)
-
-    val appliedList = listType.dynamicApply(mapOf("T" to ApplicationParameter.ParamSubstitution("V")))!!
-    printType(appliedList)
-
-    val listRefType = Type.GenericType.TypeTemplate(
-        name = "ListRef",
-        typeParams = listOf("V"),
-        superTypes = listOf(
-            SuperType.DynamicSuper(refType.dynamicApply(
-                mapOf(
-                    "R" to ApplicationParameter.DynamicTypeSubstitution(
-                        listType.dynamicApply(mapOf("T" to ApplicationParameter.ParamSubstitution("V")))!!
-                    )
-                ))!!),
-            SuperType.DynamicSuper(listType.dynamicApply(mapOf("T" to ApplicationParameter.ParamSubstitution("V")))!!)
-        )
-    )
-    printType(listRefType)
-
-    val mapType = Type.GenericType.TypeTemplate(
-        name = "Map",
-        typeParams = listOf("K", "V"),
-        superTypes = listOf(
-            SuperType.DynamicSuper(
-                collectionType.dynamicApply(mapOf("E" to ApplicationParameter.DynamicTypeSubstitution(
-                    pairType.dynamicApply(mapOf(
-                        "F" to ApplicationParameter.ParamSubstitution("K"),
-                        "S" to ApplicationParameter.ParamSubstitution("V")
-                    ))!!
-                )))!!
-            )
-        )
-    )
-    printType(mapType)
-
-    val reqMapType = Type.GenericType.TypeTemplate(
-        name = "ReqMap",
-        typeParams = listOf("V"),
-        superTypes = listOf(
-            SuperType.DynamicSuper(
-                mapType.dynamicApply(mapOf(
-                    "K" to ApplicationParameter.StaticTypeSubstitution(
-                        Type.NonGenericType.DirectType("Request", listOf(SuperType.StaticSuper(objType)))
-                    ),
-                    "V" to ApplicationParameter.ParamSubstitution("V")
-                ))!!
-            )
-        )
-    )
-    printType(reqMapType)
-
-    val ttlMapType = Type.NonGenericType.DirectType(
-        name = "TtlMap",
-        superTypes = listOf(
-            SuperType.StaticSuper(
-                reqMapType.staticApply(mapOf(
-                    "V" to intType
-                ))!!
-            )
-        )
-    )
-    printType(ttlMapType)
-}

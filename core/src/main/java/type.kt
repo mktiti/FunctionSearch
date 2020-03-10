@@ -1,10 +1,16 @@
 sealed class ApplicationParameter {
 
-    class ParamSubstitution(val param: String) : ApplicationParameter()
+    class ParamSubstitution(val param: Int) : ApplicationParameter() {
+        override fun toString() = "<#$param>"
+    }
 
-    class DynamicTypeSubstitution(val type: Type.GenericType.DynamicAppliedType) : ApplicationParameter()
+    class DynamicTypeSubstitution(val type: Type.GenericType.DynamicAppliedType) : ApplicationParameter() {
+        override fun toString() = type.fullName
+    }
 
-    class StaticTypeSubstitution(val type: Type.NonGenericType) : ApplicationParameter()
+    class StaticTypeSubstitution(val type: Type.NonGenericType) : ApplicationParameter() {
+        override fun toString() = type.fullName
+    }
 
 }
 
@@ -56,14 +62,11 @@ sealed class Type {
 
         class StaticAppliedType(
             val baseType: GenericType.TypeTemplate,
-            val typeArgs: Map<String, NonGenericType>,
+            val typeArgs: List<NonGenericType>,
             superTypes: List<SuperType.StaticSuper>
         ) : NonGenericType(baseType.name, superTypes) {
 
-            override val typeParamString = baseType.typeParams.genericString {
-                val arg = typeArgs[it]?.fullName ?: throw TypeException("Non fully applied SAT (missing ${baseType.fullName}->$it)")
-                "$it = $arg"
-            }
+            override val typeParamString = baseType.typeParams.zip(typeArgs).genericString { (param, arg) -> "$param = ${arg.fullName}" }
 
         }
 
@@ -82,71 +85,68 @@ sealed class Type {
             override val typeParamString: String
                 get() = typeParams.genericString { it }
 
-            override fun staticApply(typeArgs: Map<String, NonGenericType>): NonGenericType.StaticAppliedType? {
-                if (!typeArgs.keys.containsAll(typeParams)) {
+            private fun <A : Any, S : SuperType> applyBase(
+                typeArgs: List<A>,
+                staticMap: (SuperType.StaticSuper) -> S,
+                superApplier: (SuperType.DynamicSuper) -> S?
+            ): List<S>? {
+                if (typeParams.size != typeArgs.size) {
                     return null
                 }
 
-                val appliedSupers = superTypes.map { superType ->
+                return superTypes.map { superType ->
                     when (superType) {
-                        is SuperType.StaticSuper -> superType
-                        is SuperType.DynamicSuper -> SuperType.StaticSuper(superType.type.staticApply(typeArgs) ?: return null)
+                        is SuperType.StaticSuper -> staticMap(superType)
+                        is SuperType.DynamicSuper -> superApplier(superType) ?: return null
                     }
                 }
+            }
 
+            override fun staticApply(typeArgs: List<NonGenericType>): NonGenericType.StaticAppliedType? {
                 return NonGenericType.StaticAppliedType(
                     baseType = this,
                     typeArgs = typeArgs,
-                    superTypes = appliedSupers
+                    superTypes = applyBase(typeArgs, ::identity) {
+                        it.type.staticApply(typeArgs)?.let(SuperType::StaticSuper)
+                    } ?: return null
                 )
             }
 
-            override fun dynamicApply(typeArgs: Map<String, ApplicationParameter>): DynamicAppliedType? {
-                if (!typeArgs.keys.containsAll(typeParams)) {
-                    return null
-                }
-
-                val appliedSupers = superTypes.map { superType ->
-                    when (superType) {
-                        is SuperType.StaticSuper -> superType
-                        is SuperType.DynamicSuper -> SuperType.DynamicSuper(superType.type.dynamicApply(typeArgs) ?: return null)
-                    }
-                }
-
+            override fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType? {
                 return DynamicAppliedType(
                     baseType = this,
-                    typeArgMap = typeArgs,
-                    superTypes = appliedSupers
+                    typeArgMapping = typeArgs,
+                    superTypes = applyBase(typeArgs, ::identity) {
+                        it.type.dynamicApply(typeArgs)?.let(SuperType::DynamicSuper)
+                    } ?: return null
                 )
             }
-
         }
 
         class DynamicAppliedType(
             val baseType: TypeTemplate,
-            val typeArgMap: Map<String, ApplicationParameter>,
+            val typeArgMapping: List<ApplicationParameter>,
             superTypes: List<SuperType>
         ) : GenericType(superTypes) {
 
             override val name: String
                 get() = baseType.name
 
-            override val typeParamString = baseType.typeParams.genericString { typeParam ->
-                "$typeParam = " + when (val arg = typeArgMap[typeParam]) {
-                    is ApplicationParameter.ParamSubstitution -> arg.param
+            override val typeParamString = baseType.typeParams.zip(typeArgMapping).genericString { (param, arg) ->
+                "$param = " + when (arg) {
+                    is ApplicationParameter.ParamSubstitution -> "#${arg.param}"
                     is ApplicationParameter.DynamicTypeSubstitution -> arg.type.fullName
                     is ApplicationParameter.StaticTypeSubstitution -> arg.type.fullName
-                    else -> throw TypeException("Unmatched type argument $typeParam in ${baseType.fullName}")
                 }
             }
 
-            override fun staticApply(typeArgs: Map<String, NonGenericType>): NonGenericType.StaticAppliedType? {
-                val staticArgs = typeArgMap.mapValues { (_, dynArg) ->
-                    when (dynArg) {
-                        is ApplicationParameter.ParamSubstitution -> typeArgs[dynArg.param] ?: return null
-                        is ApplicationParameter.DynamicTypeSubstitution -> dynArg.type.staticApply(typeArgs) ?: return null
-                        is ApplicationParameter.StaticTypeSubstitution -> dynArg.type
-                    }
+            override fun staticApply(typeArgs: List<NonGenericType>): NonGenericType.StaticAppliedType? {
+               val mappedArgs: List<NonGenericType> = typeArgMapping.map { argMapping ->
+                   when (argMapping) {
+                       is ApplicationParameter.ParamSubstitution -> typeArgs.getOrNull(argMapping.param) ?: return null
+                       is ApplicationParameter.DynamicTypeSubstitution -> argMapping.type.staticApply(typeArgs) ?: return null
+                       is ApplicationParameter.StaticTypeSubstitution -> argMapping.type
+                   }
                 }
 
                 val appliedSupers = superTypes.map { superType ->
@@ -158,19 +158,19 @@ sealed class Type {
 
                 return NonGenericType.StaticAppliedType(
                     baseType = baseType,
-                    typeArgs = staticArgs,
+                    typeArgs = mappedArgs,
                     superTypes = appliedSupers
                 )
             }
 
-            override fun dynamicApply(typeArgs: Map<String, ApplicationParameter>): DynamicAppliedType? {
-                val appliedArgMap = typeArgMap.mapValues { (_, dynArg) ->
-                    when (dynArg) {
-                        is ApplicationParameter.ParamSubstitution -> typeArgs[dynArg.param] ?: return null
-                        is ApplicationParameter.StaticTypeSubstitution -> dynArg
+            override fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType? {
+                val mappedArgs: List<ApplicationParameter> = typeArgMapping.map { argMapping ->
+                    when (argMapping) {
+                        is ApplicationParameter.ParamSubstitution -> typeArgs.getOrNull(argMapping.param) ?: return null
                         is ApplicationParameter.DynamicTypeSubstitution -> {
-                            ApplicationParameter.DynamicTypeSubstitution(dynArg.type.dynamicApply(typeArgs) ?: return null)
+                            ApplicationParameter.DynamicTypeSubstitution(argMapping.type.dynamicApply(typeArgs) ?: return null)
                         }
+                        is ApplicationParameter.StaticTypeSubstitution -> argMapping
                     }
                 }
 
@@ -183,47 +183,47 @@ sealed class Type {
 
                 return DynamicAppliedType(
                     baseType = baseType,
-                    typeArgMap = appliedArgMap,
+                    typeArgMapping = mappedArgs,
                     superTypes = appliedSupers
                 )
             }
 
         }
 
-        abstract fun staticApply(typeArgs: Map<String, NonGenericType>): NonGenericType.StaticAppliedType?
+        abstract fun staticApply(typeArgs: List<NonGenericType>): NonGenericType.StaticAppliedType?
 
-        abstract fun dynamicApply(typeArgs: Map<String, ApplicationParameter>): DynamicAppliedType?
+        abstract fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType?
 
-        fun apply(typeArgs: Map<String, ApplicationParameter>): Type? {
-            val nonGenericArgs: Map<String, ApplicationParameter.StaticTypeSubstitution>? = typeArgs.castIfAllValuesInstance()
+        fun apply(typeArgs: List<ApplicationParameter>): Type? {
+            val nonGenericArgs: List<ApplicationParameter.StaticTypeSubstitution>? = typeArgs.castIfAllInstance()
             
             return if (nonGenericArgs == null) {
                 dynamicApply(typeArgs)
             } else {
-                staticApply(nonGenericArgs.mapValues { it.value.type })
+                staticApply(nonGenericArgs.map { it.type })
             }
         }
 
-        fun staticApply(vararg typeArgs: Pair<String, NonGenericType>): NonGenericType.StaticAppliedType?
-                = staticApply(typeArgs.toMap())
+        fun staticApply(vararg typeArgs: NonGenericType): NonGenericType.StaticAppliedType? = staticApply(typeArgs.toList())
 
-        fun forceStaticApply(typeArgs: Map<String, NonGenericType>): NonGenericType.StaticAppliedType
-                = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args to $name")
+        fun forceStaticApply(typeArgs: List<NonGenericType>): NonGenericType.StaticAppliedType
+                = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args $typeArgs to $name")
 
-        fun forceStaticApply(vararg typeArgs: Pair<String, NonGenericType>): NonGenericType.StaticAppliedType
-                = forceStaticApply(typeArgs.toMap())
+        fun forceStaticApply(vararg typeArgs: NonGenericType): NonGenericType.StaticAppliedType
+                = forceStaticApply(typeArgs.toList())
 
-        fun dynamicApply(vararg typeArgs: Pair<String, ApplicationParameter>): DynamicAppliedType?
-                = dynamicApply(typeArgs.toMap())
+        fun dynamicApply(vararg typeArgs: ApplicationParameter): DynamicAppliedType? = dynamicApply(typeArgs.toList())
 
-        fun forceDynamicApply(typeArgs: Map<String, ApplicationParameter>): DynamicAppliedType
-                = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args to $name")
+        fun forceDynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType
+                = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args $typeArgs to $name")
 
-        fun forceDynamicApply(vararg typeArgs: Pair<String, ApplicationParameter>): DynamicAppliedType
-                = forceDynamicApply(typeArgs.toMap())
+        fun forceDynamicApply(vararg typeArgs: ApplicationParameter): DynamicAppliedType
+                = forceDynamicApply(typeArgs.toList())
 
-        fun forceApply(typeArgs: Map<String, ApplicationParameter>): Type
+        fun forceApply(typeArgs: List<ApplicationParameter>): Type
                 = apply(typeArgs) ?: throw TypeApplicationException("Failed to apply type args to $name")
+
+        fun forceApply(vararg typeArgs: ApplicationParameter): Type = forceApply(typeArgs.toList())
 
     }
 
@@ -232,8 +232,8 @@ sealed class Type {
 fun directType(name: String, vararg superType: Type.NonGenericType)
         = Type.NonGenericType.DirectType(name, superType.map { SuperType.StaticSuper(it) })
 
-fun typeTemplate(name: String, typeParams: List<String>, superType: List<Type>) = Type.GenericType.TypeTemplate(
-    name, typeParams, superType.map {
+fun typeTemplate(name: String, typeParams: List<String>, superTypes: List<Type>) = Type.GenericType.TypeTemplate(
+    name, typeParams, superTypes.map {
         when (it) {
             is Type.NonGenericType -> SuperType.StaticSuper(it)
             is Type.GenericType -> SuperType.DynamicSuper(it)

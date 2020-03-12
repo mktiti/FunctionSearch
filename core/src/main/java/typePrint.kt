@@ -13,7 +13,7 @@ fun printType(type: Type) {
         is Type.GenericType.TypeTemplate -> "Type template"
         is Type.GenericType.DynamicAppliedType -> "Dynamically Applied Type"
     }
-    println("$info ${type.name}")
+    println("$info ${type.info}")
 
     val siblingDepths: MutableSet<Int> = sortedSetOf()
     type.supersTree.walkDf { node, depth, hasMore ->

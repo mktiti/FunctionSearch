@@ -5,19 +5,19 @@ val intType = directType("Integer", objType)
 val fooType = directType("Foo", objType)
 
 val collectionType = typeTemplate(
-    name = "Collection",
+    fullName = "Collection",
     typeParams = listOf("E"),
     superTypes = listOf(objType)
 )
 
 val supplierType = typeTemplate(
-    name = "Supplier",
+    fullName = "Supplier",
     typeParams = listOf("S"),
     superTypes = listOf(objType)
 )
 
 val refType = typeTemplate(
-    name = "Reference",
+    fullName = "Reference",
     typeParams = listOf("R"),
     superTypes = listOf(
         objType,
@@ -26,13 +26,13 @@ val refType = typeTemplate(
 )
 
 val pairType = typeTemplate(
-    name = "Pair",
+    fullName = "Pair",
     typeParams = listOf("F", "S"),
     superTypes = listOf(objType)
 )
 
 val listType = typeTemplate(
-    name = "List",
+    fullName = "List",
     typeParams = listOf("T"),
     superTypes = listOf(
         collectionType.forceDynamicApply(ApplicationParameter.ParamSubstitution(0))
@@ -56,7 +56,7 @@ fun main() {
     printType(appliedList)
 
     val listRefType = typeTemplate(
-        name = "ListRef",
+        fullName = "ListRef",
         typeParams = listOf("V"),
         superTypes = listOf(
             refType.forceDynamicApply(
@@ -70,7 +70,7 @@ fun main() {
     printType(listRefType)
 
     val mapType = typeTemplate(
-        name = "Map",
+        fullName = "Map",
         typeParams = listOf("K", "V"),
         superTypes = listOf(
             collectionType.forceDynamicApply(
@@ -86,7 +86,7 @@ fun main() {
     printType(mapType)
 
     val reqMapType = typeTemplate(
-        name = "ReqMap",
+        fullName = "ReqMap",
         typeParams = listOf("V"),
         superTypes = listOf(
             mapType.forceDynamicApply(
@@ -106,7 +106,7 @@ fun main() {
     printType(ttlMapType)
 
     val fooType = typeTemplate(
-        name = "Foo",
+        fullName = "Foo",
         typeParams = listOf("A", "B", "C"),
         superTypes = listOf(objType)
     )
@@ -121,7 +121,7 @@ fun main() {
     )
 
     val barType = typeTemplate(
-        name = "Bar",
+        fullName = "Bar",
         typeParams = listOf("X", "Y"),
         superTypes = listOf(barSuperFoo)
     )
@@ -131,7 +131,7 @@ fun main() {
     printType(appliedBar)
 
     val bazType = typeTemplate(
-        name = "Baz",
+        fullName = "Baz",
         typeParams = listOf("K", "V"),
         superTypes = listOf(barType.forceDynamicApply(ApplicationParameter.ParamSubstitution(1), ApplicationParameter.ParamSubstitution(0)))
     )

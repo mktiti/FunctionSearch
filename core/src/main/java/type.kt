@@ -30,13 +30,13 @@ sealed class SuperType {
 
 sealed class Type {
 
-    abstract val name: String
+    abstract val info: TypeInfo
     abstract val superTypes: List<SuperType>
 
     abstract val typeParamString: String
     val fullName by lazy {
         buildString {
-            append(name)
+            append(info)
             append(typeParamString)
         }
     }
@@ -46,14 +46,14 @@ sealed class Type {
     }
 
     sealed class NonGenericType(
-        override val name: String,
+        override val info: TypeInfo,
         override val superTypes: List<SuperType.StaticSuper>
     ) : Type() {
 
         class DirectType(
-            name: String,
+            info: TypeInfo,
             superTypes: List<SuperType.StaticSuper>
-        ) : NonGenericType(name, superTypes) {
+        ) : NonGenericType(info, superTypes) {
 
             override val typeParamString: String
                 get() = ""
@@ -64,7 +64,7 @@ sealed class Type {
             val baseType: GenericType.TypeTemplate,
             val typeArgs: List<NonGenericType>,
             superTypes: List<SuperType.StaticSuper>
-        ) : NonGenericType(baseType.name, superTypes) {
+        ) : NonGenericType(baseType.info, superTypes) {
 
             override val typeParamString = baseType.typeParams.zip(typeArgs).genericString { (param, arg) -> "$param = ${arg.fullName}" }
 
@@ -77,7 +77,7 @@ sealed class Type {
     ) : Type() {
 
         class TypeTemplate(
-            override val name: String,
+            override val info: TypeInfo,
             val typeParams: List<String>,
             superTypes: List<SuperType>
         ) : GenericType(superTypes) {
@@ -129,8 +129,8 @@ sealed class Type {
             superTypes: List<SuperType>
         ) : GenericType(superTypes) {
 
-            override val name: String
-                get() = baseType.name
+            override val info: TypeInfo
+                get() = baseType.info
 
             override val typeParamString = baseType.typeParams.zip(typeArgMapping).genericString { (param, arg) ->
                 "$param = " + when (arg) {
@@ -207,7 +207,7 @@ sealed class Type {
         fun staticApply(vararg typeArgs: NonGenericType): NonGenericType.StaticAppliedType? = staticApply(typeArgs.toList())
 
         fun forceStaticApply(typeArgs: List<NonGenericType>): NonGenericType.StaticAppliedType
-                = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args $typeArgs to $name")
+                = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args $typeArgs to $info")
 
         fun forceStaticApply(vararg typeArgs: NonGenericType): NonGenericType.StaticAppliedType
                 = forceStaticApply(typeArgs.toList())
@@ -215,13 +215,13 @@ sealed class Type {
         fun dynamicApply(vararg typeArgs: ApplicationParameter): DynamicAppliedType? = dynamicApply(typeArgs.toList())
 
         fun forceDynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType
-                = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args $typeArgs to $name")
+                = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args $typeArgs to $info")
 
         fun forceDynamicApply(vararg typeArgs: ApplicationParameter): DynamicAppliedType
                 = forceDynamicApply(typeArgs.toList())
 
         fun forceApply(typeArgs: List<ApplicationParameter>): Type
-                = apply(typeArgs) ?: throw TypeApplicationException("Failed to apply type args to $name")
+                = apply(typeArgs) ?: throw TypeApplicationException("Failed to apply type args to $info")
 
         fun forceApply(vararg typeArgs: ApplicationParameter): Type = forceApply(typeArgs.toList())
 
@@ -229,11 +229,11 @@ sealed class Type {
 
 }
 
-fun directType(name: String, vararg superType: Type.NonGenericType)
-        = Type.NonGenericType.DirectType(name, superType.map { SuperType.StaticSuper(it) })
+fun directType(fullName: String, vararg superType: Type.NonGenericType)
+        = Type.NonGenericType.DirectType(info(fullName), superType.map { SuperType.StaticSuper(it) })
 
-fun typeTemplate(name: String, typeParams: List<String>, superTypes: List<Type>) = Type.GenericType.TypeTemplate(
-    name, typeParams, superTypes.map {
+fun typeTemplate(fullName: String, typeParams: List<String>, superTypes: List<Type>) = Type.GenericType.TypeTemplate(
+    info(fullName), typeParams, superTypes.map {
         when (it) {
             is Type.NonGenericType -> SuperType.StaticSuper(it)
             is Type.GenericType -> SuperType.DynamicSuper(it)

@@ -5,7 +5,7 @@ inline fun <T : Any> Boolean.elseNull(onTrue: () -> T): T? = if (this) onTrue() 
 
 fun <A, B> List<A>.zipIfSameLength(other: List<B>): List<Pair<A, B>>? = (size == other.size).elseNull { zip(other) }
 
-fun <T : Any> Collection<T>.genericString(mapper: (T) -> String) =
+fun <T : Any> Collection<T>.genericString(mapper: (T) -> String = Any::toString) =
     joinToString(prefix = "<", separator = ", ", postfix = ">", transform = mapper)
 
 fun <T : Any> List<T?>.liftNull(): List<T>? {

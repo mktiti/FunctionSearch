@@ -1,3 +1,6 @@
+import Type.DynamicAppliedType
+import Type.NonGenericType.DirectType
+import Type.NonGenericType.StaticAppliedType
 
 private object TypePrintConst {
     const val pre = "  ├──"
@@ -6,15 +9,22 @@ private object TypePrintConst {
     const val preSibling = "  │  "
 }
 
+fun printTypeTemplate(template: TypeTemplate) {
+    println("${template.info} Type Template")
+    printSemiType(template)
+}
+
 fun printType(type: Type) {
     val info = when (type) {
-        is Type.NonGenericType.DirectType -> "Direct Type"
-        is Type.NonGenericType.StaticAppliedType -> "Statically Applied Type"
-        is Type.GenericType.TypeTemplate -> "Type template"
-        is Type.GenericType.DynamicAppliedType -> "Dynamically Applied Type"
+        is DirectType -> "Direct Type"
+        is StaticAppliedType -> "Statically Applied Type"
+        is DynamicAppliedType -> "Dynamically Applied Type"
     }
     println("$info ${type.info}")
+    printSemiType(type)
+}
 
+fun printSemiType(type: SemiType) {
     val siblingDepths: MutableSet<Int> = sortedSetOf()
     type.supersTree.walkDf { node, depth, hasMore ->
         for (d in (0 until depth - 1)) {

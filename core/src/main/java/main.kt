@@ -1,27 +1,29 @@
 import ApplicationParameter.*
 
-val objType = directType("Object")
+val defaultRepo: MutableTypeRepo = SetTypeRepo()
 
-val charSeqType = directType("CharSequence", objType)
-val strType = directType("String", charSeqType)
-val intType = directType("Integer", objType)
-val fooType = directType("Foo", objType)
+val objType = defaultRepo.createDirect("Object")
 
-val int64Type = directType("Int64", intType)
+val charSeqType = defaultRepo.createDirect("CharSequence", objType)
+val strType = defaultRepo.createDirect("String", charSeqType)
+val intType = defaultRepo.createDirect("Integer", objType)
+val fooType = defaultRepo.createDirect("Foo", objType)
 
-val collectionType = typeTemplate(
+val int64Type = defaultRepo.createDirect("Int64", intType)
+
+val collectionType = defaultRepo.createTemplate(
     fullName = "Collection",
     typeParams = listOf(TypeParameter("E")),
     superTypes = listOf(objType)
 )
 
-val supplierType = typeTemplate(
+val supplierType = defaultRepo.createTemplate(
     fullName = "Supplier",
     typeParams = listOf(TypeParameter("S")),
     superTypes = listOf(objType)
 )
 
-val refType = typeTemplate(
+val refType = defaultRepo.createTemplate(
     fullName = "Reference",
     typeParams = listOf(TypeParameter("R")),
     superTypes = listOf(
@@ -30,17 +32,25 @@ val refType = typeTemplate(
     )
 )
 
-val pairType = typeTemplate(
+val pairType = defaultRepo.createTemplate(
     fullName = "Pair",
     typeParams = listOf(TypeParameter("F"), TypeParameter("S")),
     superTypes = listOf(objType)
 )
 
-val listType = typeTemplate(
+val listType = defaultRepo.createTemplate(
     fullName = "List",
     typeParams = listOf(TypeParameter("T")),
     superTypes = listOf(
         collectionType.forceDynamicApply(ParamSubstitution(0))
+    )
+)
+
+val linkedListType = defaultRepo.createTemplate(
+    fullName = "LinkedList",
+    typeParams = listOf(TypeParameter("E")),
+    superTypes = listOf(
+        listType.forceDynamicApply(ParamSubstitution(0))
     )
 )
 
@@ -49,18 +59,20 @@ fun main() {
     printType(strType)
     printType(intType)
     printType(fooType)
-    printType(pairType)
-    printType(refType)
-    printType(collectionType)
+    printTypeTemplate(pairType)
+    printTypeTemplate(refType)
+    printTypeTemplate(collectionType)
 
     printType(pairType.forceStaticApply(strType, fooType))
-    printType(listType)
+    printTypeTemplate(listType)
     printType(listType.forceStaticApply(strType))
 
     val appliedList = listType.forceDynamicApply(ParamSubstitution(0))
     printType(appliedList)
 
-    val listRefType = typeTemplate(
+    printTypeTemplate(linkedListType)
+
+    val listRefType = defaultRepo.createTemplate(
         fullName = "ListRef",
         typeParams = listOf(TypeParameter("V")),
         superTypes = listOf(
@@ -72,9 +84,9 @@ fun main() {
             listType.forceDynamicApply(ParamSubstitution(0))
         )
     )
-    printType(listRefType)
+    printTypeTemplate(listRefType)
 
-    val mapType = typeTemplate(
+    val mapType = defaultRepo.createTemplate(
         fullName = "Map",
         typeParams = listOf(TypeParameter("K"), TypeParameter("V")),
         superTypes = listOf(
@@ -88,34 +100,34 @@ fun main() {
             )
         )
     )
-    printType(mapType)
+    printTypeTemplate(mapType)
 
-    val reqMapType = typeTemplate(
+    val reqMapType = defaultRepo.createTemplate(
         fullName = "ReqMap",
         typeParams = listOf(TypeParameter("V")),
         superTypes = listOf(
             mapType.forceDynamicApply(
                 StaticTypeSubstitution(
-                        directType("Request", objType)
+                        defaultRepo.createDirect("Request", objType)
                 ),
                 ParamSubstitution(0)
             )
         )
     )
-    printType(reqMapType)
+    printTypeTemplate(reqMapType)
 
-    val ttlMapType = directType(
+    val ttlMapType = defaultRepo.createDirect(
         "TtlMap",
         reqMapType.forceStaticApply(intType)
     )
     printType(ttlMapType)
 
-    val fooType = typeTemplate(
+    val fooType = defaultRepo.createTemplate(
         fullName = "Foo",
         typeParams = listOf(TypeParameter("A"), TypeParameter("B"), TypeParameter("C")),
         superTypes = listOf(objType)
     )
-    printType(fooType)
+    printTypeTemplate(fooType)
 
     val barSuperFoo = fooType.forceDynamicApply(
         ParamSubstitution(0),
@@ -125,31 +137,31 @@ fun main() {
         ParamSubstitution(1)
     )
 
-    val barType = typeTemplate(
+    val barType = defaultRepo.createTemplate(
         fullName = "Bar",
         typeParams = listOf(TypeParameter("X"), TypeParameter("Y")),
         superTypes = listOf(barSuperFoo)
     )
-    printType(barType)
+    printTypeTemplate(barType)
 
     val appliedBar = barType.forceStaticApply(strType, intType)
     printType(appliedBar)
 
-    val bazType = typeTemplate(
+    val bazType = defaultRepo.createTemplate(
         fullName = "Baz",
-        typeParams = listOf(TypeParameter("K"), TypeParameter("V", upperBounds = listOf(objType))),
+        typeParams = listOf(TypeParameter("K"), TypeParameter("V", bounds = TypeBounds(upperBounds = setOf(objType)))),
         superTypes = listOf(barType.forceDynamicApply(ParamSubstitution(1), ParamSubstitution(0)))
     )
-    printType(bazType)
+    printTypeTemplate(bazType)
 
     printType(bazType.forceStaticApply(intType, objType))
 
-    val funType = typeTemplate(
+    val funType = defaultRepo.createTemplate(
         fullName = "Function",
         typeParams = listOf(TypeParameter("I"), TypeParameter("O")),
         superTypes = listOf(objType)
     )
-    printType(funType)
+    printTypeTemplate(funType)
 
     val maxFun = Function(
         info = FunctionInfo("max", "Math"),
@@ -159,19 +171,6 @@ fun main() {
         )
     )
     println(maxFun)
-
-    val mapFun = Function(
-        info = FunctionInfo("map", "List"),
-        signature = TypeSignature.GenericSignature(
-            typeParameters = listOf(TypeParameter("T"), TypeParameter("R")),
-            inputParameters = listOf(
-                "list" to listType.forceDynamicApply(ParamSubstitution(0)),
-                "mapper" to funType.forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1))
-            ),
-            output = listType.forceDynamicApply(ParamSubstitution(1))
-        )
-    )
-    println(mapFun)
 
     val lengthFun = Function(
         info = FunctionInfo("length", "String"),
@@ -185,4 +184,28 @@ fun main() {
     val lenQuery = directQuery(listOf(strType), intType)
     println("Query: ${lenQuery.fullString}")
     println("Fit: " + fitsQuery(lenQuery, lengthFun))
+
+    println("===============")
+    val mapFun = Function(
+        info = FunctionInfo("map", "List"),
+        signature = TypeSignature.GenericSignature(
+            typeParameters = listOf(TypeParameter("T"), TypeParameter("R")),
+            inputParameters = listOf(
+                "list" to listType.forceDynamicApply(ParamSubstitution(0)),
+                "mapper" to funType.forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1))
+            ),
+            output = listType.forceDynamicApply(ParamSubstitution(1))
+        )
+    )
+    val appliedMapQuery = directQuery(
+        inputParameters = listOf(
+            linkedListType.forceStaticApply(strType),
+            funType.forceStaticApply(strType, intType)
+        ),
+        output = listType.forceStaticApply(intType)
+    )
+
+    println(mapFun)
+    println("Query: ${appliedMapQuery.fullString}")
+    println("Fit: " + fitsQuery(appliedMapQuery, mapFun))
 }

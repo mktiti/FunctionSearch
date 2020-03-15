@@ -4,18 +4,15 @@ data class TypeInfo(
     val artifact: String = "JCLv8"
 ) {
 
+    val fullName: String = if (packageName.isNotBlank()) "$packageName.$name" else name
+
     override fun toString() = buildString {
         if (artifact.isNotBlank() && !artifact.startsWith("JCLv")) {
             append(artifact)
             append(": ")
         }
 
-        if (packageName.isNotBlank()) {
-            append(packageName)
-            append(".")
-        }
-
-        append(name)
+        append(fullName)
     }
 }
 

@@ -1,8 +1,6 @@
+import ApplicationParameter.*
 import InheritanceLogic.*
-import Type.GenericType
-import Type.GenericType.DynamicAppliedType
-import Type.GenericType.TypeTemplate
-import Type.NonGenericType
+import Type.DynamicAppliedType
 import Type.NonGenericType.DirectType
 import Type.NonGenericType.StaticAppliedType
 
@@ -10,99 +8,120 @@ enum class InheritanceLogic {
     INVARIANCE, COVARIANCE, CONTRAVARIANCE
 }
 
-sealed class ContextParam
-
-class TypeContext(
-    val typeParams: List<ContextParam>
-)
-
 sealed class SignatureContext(
-    val context: TypeContext,
+    val context: List<TypeParameter>,
     val params: List<Type>
 ) {
     class FunctionContext(
-        context: TypeContext,
+        context: List<TypeParameter>,
         params: List<Type>
     ) : SignatureContext(context, params)
 
     class QueryContext(
-        context: TypeContext,
+        context: List<TypeParameter>,
         params: List<Type>
     ) : SignatureContext(context, params)
 }
 
-sealed class ContextualParameter {
+data class ContextualParameter<out T : Type>(
+    val context: List<TypeParameter>,
+    val param: T
+)
+
+/*
+sealed class ContextualParameter(
+    val context: TypeContext
+) {
 
     abstract val type: Type
 
+
     class ConcreteParam(
+        context: TypeContext,
         override val type: NonGenericType
-    ) : ContextualParameter()
+    ) : ContextualParameter(context)
 
     class DynamicParam(
+        context: TypeContext,
         override val type: DynamicAppliedType,
         val params: TypeParameter
-    ) : ContextualParameter()
-
+    ) : ContextualParameter(context)
 }
+ */
 
 data class FitResult(
-    val newQueryContext: ContextualParameter,
-    val newFunctionContext: ContextualParameter
+    val newQueryContext: ContextualParameter<Type>,
+    val newFunctionContext: ContextualParameter<Type>
 )
 
-fun canBeSubstituted(argType: Type, substitution: Type, variance: InheritanceLogic): Boolean {
-    if (argType is GenericType) {
-        TODO("Generic Type substitution")
-    }
-
-    return if (argType.info == substitution.info) {
-        when (argType) {
-            is DirectType -> true
-            is StaticAppliedType -> {
-                when (substitution) {
-                    is StaticAppliedType -> {
-                        argType.typeArgs.zipIfSameLength(substitution.typeArgs)?.all { (atp, stp) ->
-                            canBeSubstituted(atp, stp, INVARIANCE)
-                        } ?: false
-                    }
-                    is DynamicAppliedType -> TODO()
-                    is DirectType -> false
-                    is TypeTemplate -> false
-                }
-            }
-            is GenericType -> TODO() // Smart casting bug
+fun subStatic(argCtx: List<TypeParameter>, argParam: StaticAppliedType, subCtx: ContextualParameter<Type>, variance: InheritanceLogic): Boolean {
+    return when (subCtx.param) {
+        is StaticAppliedType -> {
+            argParam.typeArgs.zipIfSameLength(subCtx.param.typeArgs)?.all { (atp, stp) ->
+                canBeSubstituted(ContextualParameter(argCtx, atp), subCtx.copy(param = stp), INVARIANCE)
+            } ?: false
         }
+        is DynamicAppliedType -> TODO()
+        is DirectType -> false
+    }
+}
+
+fun subDynamic(argCtx: List<TypeParameter>, argParam: DynamicAppliedType, subCtx: ContextualParameter<Type>, variance: InheritanceLogic): Boolean {
+    return when (subCtx.param) {
+        is StaticAppliedType -> {
+            argParam.typeArgMapping.zipIfSameLength(subCtx.param.typeArgs)?.all { (argPar, subPar) ->
+                when (argPar) {
+                    is ParamSubstitution -> argCtx.getOrNull(argPar.param)?.bounds?.contains(argParam) ?: false
+                    is DynamicTypeSubstitution -> TODO()
+                    is StaticTypeSubstitution -> canBeSubstituted(ContextualParameter(argCtx, argPar.type), subCtx.copy(param = subPar), INVARIANCE)
+                }
+            } ?: false
+        }
+        is DynamicAppliedType -> TODO("DAT function parameter (${argParam.fullName}), DAT query parameter (${subCtx.param.fullName}) mapping")
+        is DirectType -> false
+    }
+}
+
+fun subSameBase(argCtx: ContextualParameter<Type>, subCtx: ContextualParameter<Type>, variance: InheritanceLogic): Boolean {
+    return when (argCtx.param) {
+        is DirectType -> true
+        is StaticAppliedType -> subStatic(argCtx.context, argCtx.param, subCtx, variance)
+        is DynamicAppliedType -> subDynamic(argCtx.context, argCtx.param, subCtx, variance)
+    }
+}
+
+fun canBeSubstituted(argCtx: ContextualParameter<Type>, subCtx: ContextualParameter<Type>, variance: InheritanceLogic): Boolean {
+    return if (argCtx.param.info == subCtx.param.info) {
+        subSameBase(argCtx, subCtx, INVARIANCE)
     } else {
         when (variance) {
             INVARIANCE -> false
             COVARIANCE -> {
-                substitution.superTypes.any { superType ->
-                    canBeSubstituted(argType, superType.type, variance)
+                subCtx.param.superTypes.any { superType ->
+                    canBeSubstituted(argCtx, subCtx.copy(param = superType.type), variance)
                 }
             }
             CONTRAVARIANCE -> {
                 // TODO - probably wrong ?
-                argType.superTypes.any { superType ->
-                    canBeSubstituted(superType.type, substitution, variance)
+                argCtx.param.superTypes.any { superType ->
+                    canBeSubstituted(argCtx.copy(param = superType.type), subCtx, variance)
                 }
-                // TODO("Contravariance substitution fitting")
             }
         }
     }
 }
 
 fun fitsQuery(query: TypeSignature, function: Function): TypeSignature? {
-    val queryContext: MutableList<TypeParameter> = query.typeParameters.toMutableList()
-    val functionContext: MutableList<TypeParameter> = function.signature.typeParameters.toMutableList()
+    val funPars: MutableList<TypeParameter> = function.signature.typeParameters.toMutableList()
+    val queryPars: MutableList<TypeParameter> = query.typeParameters.toMutableList()
 
-    val result = function.signature.inputParameters.zipIfSameLength(query.inputParameters)?.forEach { (funPar, queryPar) ->
-        if (!canBeSubstituted(funPar.second, queryPar.second, COVARIANCE)) {
+    function.signature.inputParameters.zipIfSameLength(query.inputParameters)?.forEach { (funPar, queryPar) ->
+        if (!canBeSubstituted(ContextualParameter(funPars, funPar.second), ContextualParameter(queryPars, queryPar.second), COVARIANCE)) {
             return null
         }
     } ?: return null
 
-    if (!canBeSubstituted(function.signature.output, query.output, CONTRAVARIANCE)) {
+    if (!canBeSubstituted(ContextualParameter(funPars, function.signature.output), ContextualParameter(queryPars, query.output), CONTRAVARIANCE)) {
         return null
     }
 

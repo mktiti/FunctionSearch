@@ -48,3 +48,15 @@ fun printSemiType(type: SemiType) {
     }
     println("==================")
 }
+
+fun printFit(function: Function, query: TypeSignature) {
+    println("==================")
+    println("Function: $function")
+    println("Query: $query")
+    val result = when (val fitResult = fitsQuery(query, function)) {
+        null -> "Failed to match function with query"
+        else -> fitResult.toString()
+    }
+    println(result)
+    println("==================")
+}

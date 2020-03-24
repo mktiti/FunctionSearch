@@ -7,6 +7,20 @@ data class TypeBounds(
     val upperBounds: Set<Type> = emptySet()  // extends
 ) {
 
+    private companion object {
+        fun Set<Type>.applyAll(params: List<ApplicationParameter>): Set<Type> = map { bound ->
+            when (bound) {
+                is Type.NonGenericType -> bound
+                is DynamicAppliedType -> bound.forceApply(params)
+            }
+        }.toSet()
+    }
+
+    fun apply(params: List<ApplicationParameter>) = TypeBounds(
+        lowerBounds = lowerBounds.applyAll(params),
+        upperBounds = upperBounds.applyAll(params)
+    )
+
     private fun fitsLowerBound(lowerBound: Type, type: Type): Boolean = when (lowerBound) {
         is DirectType -> TODO()
         is StaticAppliedType -> TODO()
@@ -32,10 +46,14 @@ data class TypeBounds(
 
 }
 
-class TypeParameter(
+data class TypeParameter(
     val sign: String,
     val bounds: TypeBounds = TypeBounds()
 ) {
+
+    fun apply(params: List<ApplicationParameter>): TypeParameter = copy(
+        bounds = bounds.apply(params)
+    )
 
     override fun toString() = buildString {
         append(sign)

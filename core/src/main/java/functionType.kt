@@ -1,6 +1,6 @@
+import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 import Type.NonGenericType
 import TypeSignature.DirectSignature
-import TypeSignature.GenericSignature
 
 data class FunctionInfo(
     val name: String,
@@ -10,17 +10,17 @@ data class FunctionInfo(
 sealed class TypeSignature {
 
     abstract val typeParameters: List<TypeParameter>
-    abstract val inputParameters: List<Pair<String, Type>>
-    abstract val output: Type
+    abstract val inputParameters: List<Pair<String, ApplicationParameter>>
+    abstract val output: ApplicationParameter
 
     val typeString by lazy {
         buildString {
             val inputsString =
                 inputParameters.joinToString(prefix = "(", separator = ", ", postfix = ") -> ") { (name, type) ->
-                    "$name: ${type.fullName}"
+                    if (name.startsWith("$")) type.toString() else "$name: $type"
                 }
             append(inputsString)
-            append(output.fullName)
+            append(output)
         }
     }
 
@@ -40,9 +40,17 @@ sealed class TypeSignature {
     }
 
     class DirectSignature(
-        override val inputParameters: List<Pair<String, NonGenericType>>,
-        override val output: NonGenericType
+        override val inputParameters: List<Pair<String, StaticTypeSubstitution>>,
+        override val output: StaticTypeSubstitution
     ) : TypeSignature() {
+
+        constructor(
+            inputParameters: List<Pair<String, NonGenericType>>,
+            output: NonGenericType
+        ) : this(
+            inputParameters = inputParameters.map { (name, type) -> name to StaticTypeSubstitution(type) },
+            output = StaticTypeSubstitution(output)
+        )
 
         override val typeParameters: List<TypeParameter>
             get() = emptyList()
@@ -51,8 +59,8 @@ sealed class TypeSignature {
 
     class GenericSignature(
         override val typeParameters: List<TypeParameter>,
-        override val inputParameters: List<Pair<String, Type>>,
-        override val output: Type
+        override val inputParameters: List<Pair<String, ApplicationParameter>>,
+        override val output: ApplicationParameter
     ) : TypeSignature()
 
     override fun toString() = fullString
@@ -64,19 +72,13 @@ class Function(
     val signature: TypeSignature
 ) {
 
-    override fun toString() = "fun ${signature.genericString} ${info.fileName}::${info.name} ${signature.typeString}"
+    override fun toString() = "fun ${signature.genericString} ${info.fileName}::${info.name}${signature.typeString}"
 
 }
 
-private fun <T : Type> List<T>.queryParams(): List<Pair<String, T>> = mapIndexed { i, p -> "\$$i" to p }
+private fun <T : Type> List<T>.namelessParams(): List<Pair<String, T>> = mapIndexed { i, p -> "\$$i" to p }
 
 fun directQuery(
     inputParameters: List<NonGenericType>,
     output: NonGenericType
-) = DirectSignature(inputParameters.queryParams(), output)
-
-fun genericQuery(
-    typeParameters: List<TypeParameter>,
-    inputParameters: List<Type>,
-    output: Type
-) = GenericSignature(typeParameters, inputParameters.queryParams(), output)
+) = DirectSignature(inputParameters.namelessParams(), output)

@@ -1,4 +1,7 @@
-import ApplicationParameter.*
+import ApplicationParameter.ParamSubstitution
+import ApplicationParameter.TypeSubstitution
+import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
+import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 import SuperType.DynamicSuper
 import SuperType.StaticSuper
 import Type.DynamicAppliedType
@@ -11,12 +14,23 @@ sealed class ApplicationParameter {
         override fun toString() = "<#$param>"
     }
 
-    class DynamicTypeSubstitution(val type: DynamicAppliedType) : ApplicationParameter() {
-        override fun toString() = type.fullName
-    }
+    sealed class TypeSubstitution<T : Type>(
+        val type: T
+    ) : ApplicationParameter() {
 
-    class StaticTypeSubstitution(val type: NonGenericType) : ApplicationParameter() {
+        companion object {
+            fun wrap(type: Type): TypeSubstitution<*> = when (type) {
+                is NonGenericType -> StaticTypeSubstitution(type)
+                is DynamicAppliedType -> DynamicTypeSubstitution(type)
+            }
+        }
+
+        class DynamicTypeSubstitution(type: DynamicAppliedType) : TypeSubstitution<DynamicAppliedType>(type)
+
+        class StaticTypeSubstitution(type: NonGenericType) : TypeSubstitution<NonGenericType>(type)
+
         override fun toString() = type.fullName
+
     }
 
 }
@@ -77,10 +91,15 @@ sealed class Type : SemiType {
         override val superTypes: List<StaticSuper>
     ) : Type() {
 
+        abstract val typeArgs: List<NonGenericType>
+
         class DirectType(
             info: TypeInfo,
             superTypes: List<StaticSuper>
         ) : NonGenericType(info, superTypes) {
+
+            override val typeArgs: List<NonGenericType>
+                get() = emptyList()
 
             override val typeParamString: String
                 get() = ""
@@ -89,11 +108,11 @@ sealed class Type : SemiType {
 
         class StaticAppliedType(
             val baseType: TypeTemplate,
-            val typeArgs: List<NonGenericType>,
+            override val typeArgs: List<NonGenericType>,
             superTypes: List<StaticSuper>
         ) : NonGenericType(baseType.info, superTypes) {
 
-            override val typeParamString = baseType.typeParams.zip(typeArgs).genericString { (param, arg) -> "${param.sign} = ${arg.fullName}" }
+            override val typeParamString = baseType.typeParams.zip(typeArgs).genericString { (_, arg) -> arg.fullName }
 
         }
 
@@ -108,11 +127,10 @@ sealed class Type : SemiType {
         override val info: TypeInfo
             get() = baseType.info
 
-        override val typeParamString = baseType.typeParams.zip(typeArgMapping).genericString { (param, arg) ->
-            "${param.sign} = " + when (arg) {
+        override val typeParamString = baseType.typeParams.zip(typeArgMapping).genericString { (_, arg) ->
+            when (arg) {
                 is ParamSubstitution -> "#${arg.param}"
-                is DynamicTypeSubstitution -> arg.type.fullName
-                is StaticTypeSubstitution -> arg.type.fullName
+                is TypeSubstitution<*> -> arg.type.fullName
             }
         }
 

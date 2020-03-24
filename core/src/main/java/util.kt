@@ -45,3 +45,18 @@ data class TreeNode<out T>(val value: T, val children: List<TreeNode<T>>) {
     }
 
 }
+
+fun <T> List<T>.updatedCopy(pos: Int, newVal: T): List<T> = toMutableList().apply {
+    set(pos, newVal)
+}
+
+inline fun <T> doWhile(code: () -> T?): T {
+    while (true) {
+        when (val result = code()) {
+            null -> {}
+            else -> return result
+        }
+    }
+}
+
+fun <T> nList(value: T, size: Int): List<T> = MutableList(size) { value }

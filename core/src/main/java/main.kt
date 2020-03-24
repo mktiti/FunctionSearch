@@ -1,4 +1,6 @@
-import ApplicationParameter.*
+import ApplicationParameter.ParamSubstitution
+import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
+import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 
 val defaultRepo: MutableTypeRepo = SetTypeRepo()
 
@@ -7,7 +9,7 @@ val objType = defaultRepo.createDirect("Object")
 val charSeqType = defaultRepo.createDirect("CharSequence", objType)
 val strType = defaultRepo.createDirect("String", charSeqType)
 val intType = defaultRepo.createDirect("Integer", objType)
-val fooType = defaultRepo.createDirect("Foo", objType)
+val fozType = defaultRepo.createDirect("Foo", objType)
 
 val int64Type = defaultRepo.createDirect("Int64", intType)
 
@@ -58,12 +60,12 @@ fun main() {
     printType(objType)
     printType(strType)
     printType(intType)
-    printType(fooType)
+    printType(fozType)
     printTypeTemplate(pairType)
     printTypeTemplate(refType)
     printTypeTemplate(collectionType)
 
-    printType(pairType.forceStaticApply(strType, fooType))
+    printType(pairType.forceStaticApply(strType, fozType))
     printTypeTemplate(listType)
     printType(listType.forceStaticApply(strType))
 
@@ -108,7 +110,7 @@ fun main() {
         superTypes = listOf(
             mapType.forceDynamicApply(
                 StaticTypeSubstitution(
-                        defaultRepo.createDirect("Request", objType)
+                    defaultRepo.createDirect("Request", objType)
                 ),
                 ParamSubstitution(0)
             )
@@ -181,20 +183,17 @@ fun main() {
     )
     println(lengthFun)
 
-    val lenQuery = directQuery(listOf(strType), intType)
-    println("Query: ${lenQuery.fullString}")
-    println("Fit: " + fitsQuery(lenQuery, lengthFun))
+    printFit(lengthFun, directQuery(listOf(strType), intType))
 
-    println("===============")
     val mapFun = Function(
         info = FunctionInfo("map", "List"),
         signature = TypeSignature.GenericSignature(
             typeParameters = listOf(TypeParameter("T"), TypeParameter("R")),
             inputParameters = listOf(
-                "list" to listType.forceDynamicApply(ParamSubstitution(0)),
-                "mapper" to funType.forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1))
+                "list" to DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0))),
+                "mapper" to DynamicTypeSubstitution(funType.forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1)))
             ),
-            output = listType.forceDynamicApply(ParamSubstitution(1))
+            output = DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(1)))
         )
     )
     val appliedMapQuery = directQuery(
@@ -204,8 +203,14 @@ fun main() {
         ),
         output = listType.forceStaticApply(intType)
     )
+    printFit(mapFun, appliedMapQuery)
 
-    println(mapFun)
-    println("Query: ${appliedMapQuery.fullString}")
-    println("Fit: " + fitsQuery(appliedMapQuery, mapFun))
+    val wrongMapQuery = directQuery(
+        inputParameters = listOf(
+            linkedListType.forceStaticApply(strType),
+            funType.forceStaticApply(fozType, intType)
+        ),
+        output = listType.forceStaticApply(intType)
+    )
+    printFit(mapFun, wrongMapQuery)
 }

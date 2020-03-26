@@ -49,7 +49,7 @@ fun printSemiType(type: SemiType) {
     println("==================")
 }
 
-fun printFit(function: Function, query: TypeSignature) {
+fun printFit(function: FunctionObj, query: TypeSignature) {
     println("==================")
     println("Function: $function")
     println("Query: $query")

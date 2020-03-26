@@ -2,7 +2,18 @@ import ApplicationParameter.ParamSubstitution
 import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
 import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 
-val defaultRepo: MutableTypeRepo = SetTypeRepo()
+val defaultRepo: MutableTypeRepo = SetTypeRepo(
+    rootInfo = TypeInfo(
+        name = "Object",
+        packageName = "",
+        artifact = "JCLv8"
+    ),
+    funTypeInfo = TypeInfo(
+        name = "Function",
+        packageName = "",
+        artifact = "JCLv8"
+    )
+)
 
 val objType = defaultRepo.createDirect("Object")
 
@@ -158,14 +169,16 @@ fun main() {
 
     printType(bazType.forceStaticApply(intType, objType))
 
+    /*
     val funType = defaultRepo.createTemplate(
         fullName = "Function",
         typeParams = listOf(TypeParameter("I"), TypeParameter("O")),
         superTypes = listOf(objType)
     )
     printTypeTemplate(funType)
+     */
 
-    val maxFun = Function(
+    val maxFun = FunctionObj(
         info = FunctionInfo("max", "Math"),
         signature = TypeSignature.DirectSignature(
             inputParameters = listOf("a" to intType, "b" to intType),
@@ -174,7 +187,7 @@ fun main() {
     )
     println(maxFun)
 
-    val lengthFun = Function(
+    val lengthFun = FunctionObj(
         info = FunctionInfo("length", "String"),
         signature = TypeSignature.DirectSignature(
             inputParameters = listOf("string" to charSeqType),
@@ -185,13 +198,13 @@ fun main() {
 
     printFit(lengthFun, directQuery(listOf(strType), intType))
 
-    val mapFun = Function(
+    val mapFun = FunctionObj(
         info = FunctionInfo("map", "List"),
         signature = TypeSignature.GenericSignature(
             typeParameters = listOf(TypeParameter("T"), TypeParameter("R")),
             inputParameters = listOf(
                 "list" to DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0))),
-                "mapper" to DynamicTypeSubstitution(funType.forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1)))
+                "mapper" to DynamicTypeSubstitution(defaultRepo.functionType(1).forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1)))
             ),
             output = DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(1)))
         )
@@ -199,7 +212,7 @@ fun main() {
     val appliedMapQuery = directQuery(
         inputParameters = listOf(
             linkedListType.forceStaticApply(strType),
-            funType.forceStaticApply(strType, intType)
+            defaultRepo.functionType(1).forceStaticApply(strType, intType)
         ),
         output = listType.forceStaticApply(intType)
     )
@@ -208,7 +221,7 @@ fun main() {
     val wrongMapQuery = directQuery(
         inputParameters = listOf(
             linkedListType.forceStaticApply(strType),
-            funType.forceStaticApply(fozType, intType)
+            defaultRepo.functionType(1).forceStaticApply(fozType, intType)
         ),
         output = listType.forceStaticApply(intType)
     )

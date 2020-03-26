@@ -67,7 +67,7 @@ sealed class TypeSignature {
 
 }
 
-class Function(
+class FunctionObj(
     val info: FunctionInfo,
     val signature: TypeSignature
 ) {

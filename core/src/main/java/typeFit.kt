@@ -500,7 +500,7 @@ data class MatchingContext(
             )
         }?.asSequence()!!
 
-    constructor(query: TypeSignature, function: Function) : this(
+    constructor(query: TypeSignature, function: FunctionObj) : this(
         funCtx = SignatureContext.fromTypeSignature(function.signature),
         queryCtx = SignatureContext.fromTypeSignature(query),
         varianceCtx = nList(COVARIANCE, query.inputParameters.size) + CONTRAVARIANCE
@@ -520,7 +520,7 @@ data class MatchingContext(
 
 }
 
-fun fitsQuery(query: TypeSignature, function: Function): MatchingContext? {
+fun fitsQuery(query: TypeSignature, function: FunctionObj): MatchingContext? {
     /*
     data class Pairing<T>(
         val funVal: T,

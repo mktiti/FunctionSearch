@@ -14,174 +14,11 @@ enum class InheritanceLogic {
     INVARIANCE, COVARIANCE, CONTRAVARIANCE
 }
 
-/*
-data class ContextualParameter<out A : ApplicationParameter>(
-    val context: List<TypeParameter>,
-    val param: A
-)
- */
-
-/*
-sealed class ContextualParameter(
-    val context: TypeContext
-) {
-
-    abstract val type: Type
-
-
-    class ConcreteParam(
-        context: TypeContext,
-        override val type: NonGenericType
-    ) : ContextualParameter(context)
-
-    class DynamicParam(
-        context: TypeContext,
-        override val type: DynamicAppliedType,
-        val params: TypeParameter
-    ) : ContextualParameter(context)
-}
- */
-
 data class FitContext(
     val argCtx: List<TypeParameter>,
     val subCtx: List<TypeParameter>
 )
-/*
-typealias FitResult = Map<Int, Type.NonGenericType>
 
-private val emptyContext = FitContext(emptyList(), emptyList())
-
-fun subSatArgs(funArg: StaticAppliedType, queryArg: StaticAppliedType): Boolean {
-    return funArg.typeArgs.zipIfSameLength(queryArg.typeArgs)?.all { (atp, stp) ->
-        canBeSubstituted(emptyContext, wrap(atp), wrap(stp), INVARIANCE) != null
-    } ?: false
-}
-
-fun subStaticParam(
-    context: FitContext,
-    argPar: StaticAppliedType,
-    subPar: TypeSubstitution<*>,
-    variance: InheritanceLogic
-): Boolean {
-    return when (subPar) {
-        is StaticTypeSubstitution -> {
-            when (subPar.type) {
-                is DirectType -> false
-                is StaticAppliedType -> subSatArgs(argPar, subPar.type)
-            }
-        }
-        is DynamicTypeSubstitution -> TODO()
-    }
-}
-
-fun subDatMappingWithSat(
-    context: FitContext,
-    argParam: ApplicationParameter,
-    subArg: Type.NonGenericType
-): FitResult? {
-    return when (argParam) {
-        is ParamSubstitution -> {
-            val referencedParam: TypeParameter = context.argCtx.getOrNull(argParam.param) ?: return null
-
-            if (referencedParam.bounds.contains(subArg)) {
-                context.copy(argCtx = context.argCtx.updatedCopy(argParam.param, subArg))
-            } else {
-                null
-            }
-
-            // referencedParam.bounds.contains(argPar)
-        }
-        is DynamicTypeSubstitution -> TODO()
-        is StaticTypeSubstitution -> {
-            canBeSubstituted(context.argCtx, argParArg, context.subCtx, wrap(subParArg), INVARIANCE)
-        }
-    }
-}
-
-fun subDynamicParam(
-    context: FitContext,
-    argPar: DynamicAppliedType,
-    subPar: TypeSubstitution<*>,
-    variance: InheritanceLogic
-): FitContext? {
-    fun Boolean?.sameCtx(): FitContext? = if (this == true) context else null
-
-    return when (subPar) {
-        is StaticTypeSubstitution -> {
-            when (subPar.type) {
-                is DirectType -> null
-                is StaticAppliedType -> {
-
-
-                    argPar.typeArgMapping.zipIfSameLength(subPar.type.typeArgs)?.all { (argParArg, subParArg) ->
-                        when (argParArg) {
-                            is ParamSubstitution -> context.argCtx.getOrNull(argParArg.param)?.bounds?.contains(argPar)?.sameCtx()
-                            is DynamicTypeSubstitution -> TODO()
-                            is StaticTypeSubstitution -> canBeSubstituted(context.argCtx, argParArg, context.subCtx, wrap(subParArg), INVARIANCE)
-                        }
-                    } ?: null
-
-                    null
-                }
-            }
-        }
-        is DynamicTypeSubstitution -> TODO("DAT function parameter (${argPar.fullName}), DAT query parameter ($subPar) mapping")
-    }
-}
-
-fun subSameBase(
-    context: FitContext,
-    argPar: TypeSubstitution<*>,
-    subPar: TypeSubstitution<*>,
-    variance: InheritanceLogic
-): FitResult? {
-    return when (argPar) {
-        is StaticTypeSubstitution -> {
-            when (argPar.type) {
-                is DirectType -> null
-                is StaticAppliedType -> if (subStaticParam(context, argPar.type, subPar, variance)) context else null
-            }
-        }
-        is DynamicTypeSubstitution -> subDynamicParam(context, argPar.type, subPar, variance)
-    }
-}
-
-fun canBeSubstituted(
-    context: FitContext,
-    argPar: ApplicationParameter,
-    subPar: ApplicationParameter,
-    variance: InheritanceLogic
-): FitResult? {
-    return when (argPar) {
-        is ParamSubstitution -> TODO("Top level function param substitution")
-        is TypeSubstitution<*> -> {
-            when (subPar) {
-                is ParamSubstitution -> TODO("Top level substitute param substitution")
-                is TypeSubstitution<*> -> {
-                    if (argPar.type.info == subPar.type.info) {
-                        subSameBase(context, argPar, subPar, INVARIANCE)
-                    } else {
-                        when (variance) {
-                            INVARIANCE -> null
-                            COVARIANCE -> {
-                                subPar.type.superTypes.asSequence().mapNotNull { superType ->
-                                    canBeSubstituted(context, argPar, wrap(superType.type), variance)
-                                }.firstOrNull()
-                            }
-                            CONTRAVARIANCE -> {
-                                // TODO - probably wrong ?
-                                argPar.type.superTypes.asSequence().mapNotNull { superType ->
-                                    canBeSubstituted(context, wrap(superType.type), subPar, variance)
-                                }.firstOrNull()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-*/
 sealed class SubResult {
     object Failure : SubResult()
 
@@ -227,6 +64,19 @@ fun subStaticWithStatic(
     }
 }
 
+fun subTypeSubsWithStatic(
+    ctx: List<TypeParameter>,
+    arg: ParamSubstitution,
+    type: Type.NonGenericType
+): SubResult {
+    val referenced = ctx.getOrNull(arg.param) ?: return Failure
+    return if (referenced.fits(type)) {
+        FunTypeArgUpdate(arg.param, type)
+    } else {
+        Failure
+    }
+}
+
 fun subDynamicWithStatic(
     argCtx: List<TypeParameter>,
     argPar: DynamicAppliedType,
@@ -243,7 +93,7 @@ fun subDynamicWithStatic(
 
         zipped.asSequence().map { (argPar, subPar) ->
             when (argPar) {
-                is ParamSubstitution -> FunTypeArgUpdate(argPar.param, subPar)
+                is ParamSubstitution -> subTypeSubsWithStatic(argCtx, argPar, subPar)
                 is DynamicTypeSubstitution -> TODO()
                 is StaticTypeSubstitution -> {
                     subStaticWithStatic(argPar.type, subPar, INVARIANCE).asResult()
@@ -327,7 +177,7 @@ fun subAnyWithAny(
             when (subPar) {
                 is ParamSubstitution -> TODO()
                 is DynamicTypeSubstitution -> TODO()
-                is StaticTypeSubstitution -> FunTypeArgUpdate(argPar.param, subPar.type)
+                is StaticTypeSubstitution -> subTypeSubsWithStatic(context.argCtx, argPar, subPar.type)
             }
         }
         is DynamicTypeSubstitution -> {
@@ -348,71 +198,6 @@ fun subAnyWithAny(
         }
     }
 }
-/*
-sealed class TypeParamUpdate {
-
-    data class Updated(val type: Type.NonGenericType) : TypeParamUpdate()
-
-    data class Kept(val param: TypeParameter) : TypeParamUpdate()
-
-}
-
-fun contextToParams(context: List<TypeParameter>): List<ApplicationParameter> {
-    return context.mapIndexed { i, _ -> ParamSubstitution(i) }
-}
-
-fun contextUpdateToParams(context: List<TypeParamUpdate>): List<ApplicationParameter> {
-    return context.map { param ->
-        when (param) {
-            is Updated -> StaticTypeSubstitution(param.type)
-            is Kept -> TODO()
-        }
-    }
-}
-
-fun updateContext(oldCtx: List<TypeParameter>, change: FitResult): Pair<List<TypeParamUpdate>, List<ApplicationParameter>> {
-    return oldCtx.foldIndexed(ArrayList<TypeParamUpdate>(oldCtx.size) to ArrayList(oldCtx.size)) { i, data, param ->
-        data.also { (prevParams, aps) ->
-            when (val newVal = change[i]) {
-                null -> {
-                    aps += ParamSubstitution(prevParams.size)
-                    prevParams += Kept(param.apply(aps))
-                }
-                else -> {
-                    aps += StaticTypeSubstitution(newVal)
-                    prevParams += Updated(newVal)
-                }
-            }
-        }
-    }
-}
-
-fun trimUpdated(updated: List<TypeParamUpdate>): List<TypeParameter> = updated.mapNotNull {
-    when (it) {
-        is Updated -> null
-        is Kept -> it.param
-    }
-}
- */
-/*
-fun updateParam(param: ApplicationParameter, oldCtx: List<TypeParameter>, newCtx: List<TypeParameter>, change: FitResult): ApplicationParameter {
-    return when (param) {
-        is ParamSubstitution -> {
-            when (val newParam = change[param.param]) {
-                null -> ParamSubstitution(param.param - change.keys.count { it < param.param })
-                else -> StaticTypeSubstitution(newParam)
-            }
-        }
-        is DynamicTypeSubstitution -> {
-            when (val applied = param.type.forceApply(emptyList())) {
-                is Type.NonGenericType -> StaticTypeSubstitution(applied)
-                is DynamicAppliedType -> DynamicTypeSubstitution(applied)
-            }
-        }
-        is StaticTypeSubstitution -> param
-    }
-}
- */
 
 sealed class FullResult {
     object Failure : FullResult()
@@ -514,44 +299,12 @@ data class MatchingContext(
     }
 
     override fun toString(): String {
-
         return "Type signature match: ${if (funCtx.typeParams.isNotEmpty()) "" else funCtx.typeParams.genericString()} (${funCtx.parameters.dropLast(1).joinToString()}) -> ${funCtx.parameters.last()}"
     }
 
 }
 
 fun fitsQuery(query: TypeSignature, function: FunctionObj): MatchingContext? {
-    /*
-    data class Pairing<T>(
-        val funVal: T,
-        val queryVal: T
-    )
-
-    data class ParamPair(
-        val params: Pairing<ApplicationParameter>,
-        val variance: InheritanceLogic
-    ) {
-        constructor(
-            funPar: ApplicationParameter,
-            queryPar: ApplicationParameter,
-            variance: InheritanceLogic
-        ) : this(Pairing(funPar, queryPar), variance)
-    }
-     */
-    /*
-    val funTypePars = function.signature.typeParameters
-    val queryTypePars = query.typeParameters
-
-    val inParamPairs = function.signature.inputParameters.zipIfSameLength(query.inputParameters) ?: return null
-    val inputPairings = inParamPairs.map { (ap, sp) ->
-        ParamPair(ap.second, sp.second, COVARIANCE)
-    }
-    val outputPairing = ParamPair(function.signature.output, query.output, CONTRAVARIANCE)
-
-    val allPairings: List<ParamPair> = ArrayList(inputPairings + outputPairing)
-
-     */
-
     return transformContext(MatchingContext(query, function)) { matchingCtx ->
         val update = matchingCtx.pairings.mapNotNull { (funArg, queryArg, variance) ->
             subAnyWithAny(matchingCtx.context, funArg, queryArg, variance)
@@ -563,68 +316,4 @@ fun fitsQuery(query: TypeSignature, function: FunctionObj): MatchingContext? {
             is TypeArgUpdate -> FullResult.Continue(update)
         }
     }
-
-    /*
-    var matchingContext = MatchingContext(query, function)
-    val result: FullResult = doWhile {
-        val updated = matchingContext.pairings.mapNotNull { (funArg, queryArg, variance) ->
-            subAnyWithAny(matchingContext.context, funArg, queryArg, variance)
-        }.filter { it !is ConstraintsKept }.firstOrNull() ?: ConstraintsKept
-
-        when (updated) {
-            Failure -> FullResult.Failure
-            ConstraintsKept -> FullResult.Success(matchingContext)
-            is TypeArgUpdate -> {
-                matchingContext = matchingContext.apply(updated)
-                null
-            }
-        }
-    }
-
-    return matchingContext
-     */
-/*
-    var workPairs: List<ParamPair> = ArrayList(inputPairings + outputPairing)
-    var context = FitContext(funTypePars, queryTypePars)
-    workPairs.forEach { (params, variance) ->
-        val (funPar, queryPar) = params
-        val fitRes: FitResult = canBeSubstituted(context, funPar, queryPar, variance) ?: return null
-
-        val (updated, aps) = updateContext(context.argCtx, fitRes)
-
-        workPairs = workPairs.map { data ->
-            val (updateParams, updateVariance) = data
-            val (updateFunPar, updateQueryPar) = updateParams
-
-            val updatedFunPar: ApplicationParameter = when (updateFunPar) {
-                is ParamSubstitution -> {
-                    val referenced = updateFunPar.param
-                    when (val newParam = fitRes[referenced]) {
-                        null -> ParamSubstitution(referenced - fitRes.keys.count { it < referenced })
-                        else -> StaticTypeSubstitution(newParam)
-                    }
-                }
-                is DynamicTypeSubstitution -> {
-                    when (val applied = updateFunPar.type.forceApply(emptyList())) {
-                        is Type.NonGenericType -> StaticTypeSubstitution(applied)
-                        is DynamicAppliedType -> DynamicTypeSubstitution(applied)
-                    }
-                }
-                is StaticTypeSubstitution -> updateFunPar
-            }
-
-            data.copy(params = params.copy(funVal = updatedFunPar))
-        }
-
-        context = context.copy(argCtx = trimUpdated(updated))
-    }
-
-    val result = workPairs.map { it.params.queryVal }
-
-    return TypeSignature.GenericSignature(
-        typeParameters = context.argCtx,
-        inputParameters = query.inputParameters.map { it.first }.zip(result),
-        output = result.last()
-    )
- */
 }

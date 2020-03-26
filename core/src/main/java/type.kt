@@ -7,6 +7,7 @@ import SuperType.StaticSuper
 import Type.DynamicAppliedType
 import Type.NonGenericType
 import Type.NonGenericType.StaticAppliedType
+import java.util.*
 
 sealed class ApplicationParameter {
 
@@ -64,6 +65,13 @@ interface SemiType {
     val supersTree: TreeNode<SemiType>
         get() = TreeNode(this, superTypes.map { it.type.supersTree })
 
+
+    fun anySuper(predicate: (Type) -> Boolean): Boolean = superTypes.asSequence().any { s ->
+        s.type.let {
+            predicate(it) || it.anySuper(predicate)
+        }
+    }
+
 }
 
 interface Applicable {
@@ -115,6 +123,14 @@ sealed class Type : SemiType {
             override val typeParamString = baseType.typeParams.zip(typeArgs).genericString { (_, arg) -> arg.fullName }
 
         }
+
+        fun anyNgSuper(predicate: (NonGenericType) -> Boolean): Boolean = superTypes.asSequence().any { s ->
+            s.type.let {
+                predicate(it) || it.anyNgSuper(predicate)
+            }
+        }
+
+        fun anyNgSuperInclusive(predicate: (NonGenericType) -> Boolean): Boolean = predicate(this) || anyNgSuper(predicate)
 
     }
 
@@ -183,6 +199,12 @@ sealed class Type : SemiType {
         }
 
     }
+
+    open fun anySuperInclusive(predicate: (Type) -> Boolean): Boolean = predicate(this) || anySuper(predicate)
+
+    override fun equals(other: Any?) = (other as? Type)?.info == info
+
+    override fun hashCode(): Int = Objects.hashCode(info)
 
 }
 

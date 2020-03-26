@@ -6,11 +6,16 @@ import Type.NonGenericType.DirectType
 
 interface TypeRepo {
 
+    val rootType: DirectType
+    val defaultTypeBounds: TypeBounds
+
     operator fun get(name: String): DirectType?
 
     fun template(name: String): TypeTemplate?
 
     fun functionType(paramCount: Int): TypeTemplate
+
+    fun typeParam(sign: String, bounds: TypeBounds = defaultTypeBounds): TypeParameter = TypeParameter(sign, bounds)
 
 }
 
@@ -62,7 +67,11 @@ class SetTypeRepo(
     private val funTypeInfo: TypeInfo
 ) : MutableTypeRepo {
 
-    val rootType = DirectType(rootInfo, emptyList())
+    override val rootType = DirectType(rootInfo, emptyList())
+    override val defaultTypeBounds = TypeBounds(
+        lowerBounds = emptySet(),
+        upperBounds = setOf(rootType)
+    )
 
     private val types: MutableMap<String, DirectType> = HashMap()
     private val templates: MutableMap<String, TypeTemplate> = HashMap()
@@ -77,7 +86,7 @@ class SetTypeRepo(
     private fun createFunType(paramCount: Int): TypeTemplate {
         return TypeTemplate(
             info = funTypeInfo.copy(name = funTypeInfo.name + paramCount),
-            typeParams = (0 .. paramCount).map { TypeParameter(('A' + it).toString()) },
+            typeParams = (0 .. paramCount).map { typeParam(('A' + it).toString()) },
             superTypes = rootSuper
         )
     }

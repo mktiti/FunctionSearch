@@ -82,7 +82,7 @@ fun parseQuery(query: String, typeRepo: TypeRepo): TypeSignature {
 
     val parseTree: QueryContext = parser.query()
 
-    val typeParams = QueryTypeParameterSelector.visit(parseTree).map { TypeParameter(it) }
+    val typeParams = QueryTypeParameterSelector.visit(parseTree).map { typeRepo.typeParam(it) }
 
     return buildFunSignature(parseTree.funSignature(), typeParams, typeRepo)
 }
@@ -91,7 +91,7 @@ fun main() {
     val mapFun = FunctionObj(
         info = FunctionInfo("map", "List"),
         signature = TypeSignature.GenericSignature(
-            typeParameters = listOf(TypeParameter("T"), TypeParameter("R")),
+            typeParameters = listOf(defaultRepo.typeParam("T"), defaultRepo.typeParam("R")),
             inputParameters = listOf(
                 "list" to ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution(
                     listType.forceDynamicApply(

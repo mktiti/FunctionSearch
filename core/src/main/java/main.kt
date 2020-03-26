@@ -9,7 +9,7 @@ val defaultRepo: MutableTypeRepo = SetTypeRepo(
         artifact = "JCLv8"
     ),
     funTypeInfo = TypeInfo(
-        name = "Function",
+        name = "\$Fn",
         packageName = "",
         artifact = "JCLv8"
     )
@@ -26,19 +26,19 @@ val int64Type = defaultRepo.createDirect("Int64", intType)
 
 val collectionType = defaultRepo.createTemplate(
     fullName = "Collection",
-    typeParams = listOf(TypeParameter("E")),
+    typeParams = listOf(defaultRepo.typeParam("E")),
     superTypes = listOf(objType)
 )
 
 val supplierType = defaultRepo.createTemplate(
     fullName = "Supplier",
-    typeParams = listOf(TypeParameter("S")),
+    typeParams = listOf(defaultRepo.typeParam("S")),
     superTypes = listOf(objType)
 )
 
 val refType = defaultRepo.createTemplate(
     fullName = "Reference",
-    typeParams = listOf(TypeParameter("R")),
+    typeParams = listOf(defaultRepo.typeParam("R")),
     superTypes = listOf(
         objType,
         supplierType.forceDynamicApply(ParamSubstitution(0))
@@ -47,13 +47,13 @@ val refType = defaultRepo.createTemplate(
 
 val pairType = defaultRepo.createTemplate(
     fullName = "Pair",
-    typeParams = listOf(TypeParameter("F"), TypeParameter("S")),
+    typeParams = listOf(defaultRepo.typeParam("F"), defaultRepo.typeParam("S")),
     superTypes = listOf(objType)
 )
 
 val listType = defaultRepo.createTemplate(
     fullName = "List",
-    typeParams = listOf(TypeParameter("T")),
+    typeParams = listOf(defaultRepo.typeParam("T")),
     superTypes = listOf(
         collectionType.forceDynamicApply(ParamSubstitution(0))
     )
@@ -61,7 +61,7 @@ val listType = defaultRepo.createTemplate(
 
 val linkedListType = defaultRepo.createTemplate(
     fullName = "LinkedList",
-    typeParams = listOf(TypeParameter("E")),
+    typeParams = listOf(defaultRepo.typeParam("E")),
     superTypes = listOf(
         listType.forceDynamicApply(ParamSubstitution(0))
     )
@@ -87,7 +87,7 @@ fun main() {
 
     val listRefType = defaultRepo.createTemplate(
         fullName = "ListRef",
-        typeParams = listOf(TypeParameter("V")),
+        typeParams = listOf(defaultRepo.typeParam("V")),
         superTypes = listOf(
             refType.forceDynamicApply(
                 DynamicTypeSubstitution(
@@ -101,7 +101,7 @@ fun main() {
 
     val mapType = defaultRepo.createTemplate(
         fullName = "Map",
-        typeParams = listOf(TypeParameter("K"), TypeParameter("V")),
+        typeParams = listOf(defaultRepo.typeParam("K"), defaultRepo.typeParam("V")),
         superTypes = listOf(
             collectionType.forceDynamicApply(
                 DynamicTypeSubstitution(
@@ -117,7 +117,7 @@ fun main() {
 
     val reqMapType = defaultRepo.createTemplate(
         fullName = "ReqMap",
-        typeParams = listOf(TypeParameter("V")),
+        typeParams = listOf(defaultRepo.typeParam("V")),
         superTypes = listOf(
             mapType.forceDynamicApply(
                 StaticTypeSubstitution(
@@ -137,7 +137,7 @@ fun main() {
 
     val fooType = defaultRepo.createTemplate(
         fullName = "Foo",
-        typeParams = listOf(TypeParameter("A"), TypeParameter("B"), TypeParameter("C")),
+        typeParams = listOf(defaultRepo.typeParam("A"), defaultRepo.typeParam("B"), defaultRepo.typeParam("C")),
         superTypes = listOf(objType)
     )
     printTypeTemplate(fooType)
@@ -152,7 +152,7 @@ fun main() {
 
     val barType = defaultRepo.createTemplate(
         fullName = "Bar",
-        typeParams = listOf(TypeParameter("X"), TypeParameter("Y")),
+        typeParams = listOf(defaultRepo.typeParam("X"), defaultRepo.typeParam("Y")),
         superTypes = listOf(barSuperFoo)
     )
     printTypeTemplate(barType)
@@ -162,7 +162,7 @@ fun main() {
 
     val bazType = defaultRepo.createTemplate(
         fullName = "Baz",
-        typeParams = listOf(TypeParameter("K"), TypeParameter("V", bounds = TypeBounds(upperBounds = setOf(objType)))),
+        typeParams = listOf(defaultRepo.typeParam("K"), defaultRepo.typeParam("V")),
         superTypes = listOf(barType.forceDynamicApply(ParamSubstitution(1), ParamSubstitution(0)))
     )
     printTypeTemplate(bazType)
@@ -172,7 +172,7 @@ fun main() {
     /*
     val funType = defaultRepo.createTemplate(
         fullName = "Function",
-        typeParams = listOf(TypeParameter("I"), TypeParameter("O")),
+        typeParams = listOf(defaultRepo.typeParam("I"), defaultRepo.typeParam("O")),
         superTypes = listOf(objType)
     )
     printTypeTemplate(funType)
@@ -201,7 +201,7 @@ fun main() {
     val mapFun = FunctionObj(
         info = FunctionInfo("map", "List"),
         signature = TypeSignature.GenericSignature(
-            typeParameters = listOf(TypeParameter("T"), TypeParameter("R")),
+            typeParameters = listOf(defaultRepo.typeParam("T", defaultRepo.defaultTypeBounds), defaultRepo.typeParam("R", defaultRepo.defaultTypeBounds)),
             inputParameters = listOf(
                 "list" to DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0))),
                 "mapper" to DynamicTypeSubstitution(defaultRepo.functionType(1).forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1)))

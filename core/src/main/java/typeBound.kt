@@ -1,10 +1,8 @@
 import Type.DynamicAppliedType
-import Type.NonGenericType.DirectType
-import Type.NonGenericType.StaticAppliedType
 
 data class TypeBounds(
-    val lowerBounds: Set<Type> = emptySet(), // super
-    val upperBounds: Set<Type> = emptySet()  // extends
+    val lowerBounds: Set<Type>, // super
+    val upperBounds: Set<Type>  // extends
 ) {
 
     private companion object {
@@ -22,16 +20,13 @@ data class TypeBounds(
     )
 
     private fun fitsLowerBound(lowerBound: Type, type: Type): Boolean = when (lowerBound) {
-        is DirectType -> TODO()
-        is StaticAppliedType -> TODO()
+        is Type.NonGenericType -> lowerBound.anyNgSuperInclusive { type == it }
         is DynamicAppliedType -> TODO()
     }
 
-    private fun fitsUpperBound(lowerBound: Type, type: Type): Boolean {
-
-
-
-        return false
+    private fun fitsUpperBound(upperBound: Type, type: Type): Boolean =  when (type) {
+        is Type.NonGenericType -> type.anyNgSuperInclusive { it == upperBound }
+        is DynamicAppliedType -> TODO()
     }
 
     operator fun contains(type: Type): Boolean =
@@ -48,12 +43,14 @@ data class TypeBounds(
 
 data class TypeParameter(
     val sign: String,
-    val bounds: TypeBounds = TypeBounds()
+    val bounds: TypeBounds
 ) {
 
     fun apply(params: List<ApplicationParameter>): TypeParameter = copy(
         bounds = bounds.apply(params)
     )
+
+    fun fits(type: Type) = bounds.contains(type)
 
     override fun toString() = buildString {
         append(sign)

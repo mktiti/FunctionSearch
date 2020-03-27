@@ -1,6 +1,5 @@
 import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 import Type.NonGenericType
-import TypeSignature.DirectSignature
 
 data class FunctionInfo(
     val name: String,
@@ -75,10 +74,3 @@ class FunctionObj(
     override fun toString() = "fun ${signature.genericString} ${info.fileName}::${info.name}${signature.typeString}"
 
 }
-
-private fun <T : Type> List<T>.namelessParams(): List<Pair<String, T>> = mapIndexed { i, p -> "\$$i" to p }
-
-fun directQuery(
-    inputParameters: List<NonGenericType>,
-    output: NonGenericType
-) = DirectSignature(inputParameters.namelessParams(), output)

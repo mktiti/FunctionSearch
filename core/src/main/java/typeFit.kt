@@ -3,197 +3,141 @@ import ApplicationParameter.TypeSubstitution.Companion.wrap
 import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
 import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 import InheritanceLogic.*
-import SubResult.Failure
-import SubResult.Success.ConstraintsKept
-import SubResult.Success.TypeArgUpdate
-import SubResult.Success.TypeArgUpdate.FunTypeArgUpdate
-import SubResult.Success.TypeArgUpdate.QueryTypeArgUpdate
+import SubResult.*
+import SubResult.Continue.ConstraintsKept
+import SubResult.Continue.Skip
 import Type.DynamicAppliedType
+import TypeBoundFit.*
 
 enum class InheritanceLogic {
     INVARIANCE, COVARIANCE, CONTRAVARIANCE
 }
 
-data class FitContext(
-    val argCtx: List<TypeParameter>,
-    val subCtx: List<TypeParameter>
-)
+typealias FunContext = List<TypeParameter>
 
 sealed class SubResult {
     object Failure : SubResult()
 
-    sealed class Success : SubResult() {
+    sealed class Continue : SubResult() {
+        object ConstraintsKept : Continue()
 
-        object ConstraintsKept : Success()
-
-        sealed class TypeArgUpdate(val arg: Int, val type: Type.NonGenericType) : Success() {
-
-            class FunTypeArgUpdate(arg: Int, type: Type.NonGenericType) : TypeArgUpdate(arg, type)
-
-            class QueryTypeArgUpdate(arg: Int, type: Type.NonGenericType) : TypeArgUpdate(arg, type)
-
-        }
-
+        object Skip : Continue()
     }
+
+    data class TypeArgUpdate(val arg: Int, val type: Type.NonGenericType) : SubResult()
 }
 
-fun subStaticWithStatic(
+fun subStatic(
     argPar: Type.NonGenericType,
     subPar: Type.NonGenericType,
     variance: InheritanceLogic
 ): Boolean {
     return if (argPar.info == subPar.info) {
         argPar.typeArgs.zipIfSameLength(subPar.typeArgs)?.all { (argPar, subPar) ->
-            subStaticWithStatic(argPar, subPar, INVARIANCE)
+            subStatic(argPar, subPar, INVARIANCE)
         } ?: false
     } else {
         when (variance) {
             INVARIANCE -> false
             COVARIANCE -> {
                 subPar.superTypes.asSequence().mapNotNull { superType ->
-                    subStaticWithStatic(argPar, superType.type, variance)
+                    subStatic(argPar, superType.type, variance)
                 }.any()
             }
             CONTRAVARIANCE -> {
                 // TODO - probably wrong ?
                 argPar.superTypes.asSequence().map { superType ->
-                    subStaticWithStatic(superType.type, subPar, variance)
+                    subStatic(superType.type, subPar, variance)
                 }.any()
             }
         }
     }
 }
 
-fun subTypeSubsWithStatic(
+fun subParamSub(
     ctx: List<TypeParameter>,
     arg: ParamSubstitution,
     type: Type.NonGenericType
 ): SubResult {
     val referenced = ctx.getOrNull(arg.param) ?: return Failure
-    return if (referenced.fits(type)) {
-        FunTypeArgUpdate(arg.param, type)
-    } else {
-        Failure
+    return when (referenced.fits(ctx, type)) {
+        FIT -> TypeArgUpdate(arg.param, type)
+        YET_UNCERTAIN -> Skip
+        UNFIT -> Failure
     }
 }
 
-fun subDynamicWithStatic(
+fun subDynamic(
     argCtx: List<TypeParameter>,
     argPar: DynamicAppliedType,
     subPar: Type.NonGenericType,
     variance: InheritanceLogic
 ): SubResult {
-    fun Boolean.asResult() = if (this) ConstraintsKept else Failure
+    fun Boolean.asResult(): SubResult = if (this) ConstraintsKept else Failure
 
-    fun Sequence<SubResult>.realResult(): SubResult
-        = filter { it is Failure || it is TypeArgUpdate }.firstOrNull() ?: ConstraintsKept
+    fun Sequence<SubResult>.realResult(default: SubResult): SubResult = lazyReduce(MatchRoll(status = default)) { status, res ->
+        when (res) {
+            ConstraintsKept -> status to false
+            Skip -> status.copy(skippedAny = true) to false
+            else -> MatchRoll(status = res) to true
+        }
+    }.status
 
     return if (argPar.info == subPar.info) {
         val zipped = argPar.typeArgMapping.zipIfSameLength(subPar.typeArgs) ?: return Failure
 
         zipped.asSequence().map { (argPar, subPar) ->
             when (argPar) {
-                is ParamSubstitution -> subTypeSubsWithStatic(argCtx, argPar, subPar)
-                is DynamicTypeSubstitution -> TODO()
+                is ParamSubstitution -> {
+                    subParamSub(argCtx, argPar, subPar)
+                }
+                is DynamicTypeSubstitution -> {
+                    subDynamic(argCtx, argPar.type, subPar, INVARIANCE)
+                }
                 is StaticTypeSubstitution -> {
-                    subStaticWithStatic(argPar.type, subPar, INVARIANCE).asResult()
+                    subStatic(argPar.type, subPar, INVARIANCE).asResult()
                 }
             }
-        }.realResult()
+        }.realResult(ConstraintsKept)
     } else {
         when (variance) {
             INVARIANCE -> Failure
             COVARIANCE -> {
                 subPar.superTypes.asSequence().map { superType ->
-                    subDynamicWithStatic(argCtx, argPar, superType.type, variance)
-                }.realResult()
+                    subDynamic(argCtx, argPar, superType.type, variance)
+                }.realResult(Failure)
             }
             CONTRAVARIANCE -> {
                 // TODO - probably wrong ?
                 argPar.superTypes.asSequence().map { superType ->
                     when (val stt = superType.type) {
-                        is Type.NonGenericType -> subStaticWithStatic(stt, subPar, variance).asResult()
-                        is DynamicAppliedType -> subDynamicWithStatic(argCtx, stt, subPar, variance)
+                        is Type.NonGenericType -> subStatic(stt, subPar, variance).asResult()
+                        is DynamicAppliedType -> subDynamic(argCtx, stt, subPar, variance)
                     }
-                }.realResult()
+                }.realResult(Failure)
             }
         }
     }
 }
 
-// TODO refactor with above
-fun subStaticWithDynamic(
-    argPar: Type.NonGenericType,
-    subCtx: List<TypeParameter>,
-    subPar: DynamicAppliedType,
-    variance: InheritanceLogic
-): SubResult {
-    fun Boolean.asResult() = if (this) ConstraintsKept else Failure
-
-    fun Sequence<SubResult>.realResult(): SubResult
-            = filter { it is Failure || it is TypeArgUpdate }.firstOrNull() ?: ConstraintsKept
-
-    return if (argPar.info == subPar.info) {
-        val zipped = argPar.typeArgs.zipIfSameLength(subPar.typeArgMapping) ?: return Failure
-
-        zipped.asSequence().map { (argPar, subPar) ->
-            when (subPar) {
-                is ParamSubstitution -> QueryTypeArgUpdate(subPar.param, argPar)
-                is DynamicTypeSubstitution -> TODO()
-                is StaticTypeSubstitution -> {
-                    subStaticWithStatic(argPar, subPar.type, INVARIANCE).asResult()
-                }
-            }
-        }.realResult()
-    } else {
-        when (variance) {
-            INVARIANCE -> Failure
-            COVARIANCE -> {
-                argPar.superTypes.asSequence().map { superType ->
-                    subStaticWithDynamic(superType.type, subCtx, subPar, variance)
-                }.realResult()
-            }
-            CONTRAVARIANCE -> {
-                // TODO - probably wrong ?
-                subPar.superTypes.asSequence().map { superType ->
-                    when (val stt = superType.type) {
-                        is Type.NonGenericType -> subStaticWithStatic(argPar, stt, variance).asResult()
-                        is DynamicAppliedType -> subStaticWithDynamic(argPar, subCtx, stt, variance)
-                    }
-                }.realResult()
-            }
-        }
-    }
-}
-
-fun subAnyWithAny(
-    context: FitContext,
+fun subAny(
+    context: FunContext,
     argPar: ApplicationParameter,
-    subPar: ApplicationParameter,
+    subType: Type.NonGenericType,
     variance: InheritanceLogic
 ): SubResult {
     return when (argPar) {
         is ParamSubstitution -> {
-            when (subPar) {
-                is ParamSubstitution -> TODO()
-                is DynamicTypeSubstitution -> TODO()
-                is StaticTypeSubstitution -> subTypeSubsWithStatic(context.argCtx, argPar, subPar.type)
-            }
+            subParamSub(context, argPar, subType)
         }
         is DynamicTypeSubstitution -> {
-            when (subPar) {
-                is ParamSubstitution -> TODO()
-                is DynamicTypeSubstitution -> TODO()
-                is StaticTypeSubstitution -> subDynamicWithStatic(context.argCtx, argPar.type, subPar.type, COVARIANCE)
-            }
+            subDynamic(context, argPar.type, subType, variance)
         }
         is StaticTypeSubstitution -> {
-            when (subPar) {
-                is ParamSubstitution -> QueryTypeArgUpdate(subPar.param, argPar.type)
-                is DynamicTypeSubstitution -> subStaticWithDynamic(argPar.type, context.subCtx, subPar.type, COVARIANCE)
-                is StaticTypeSubstitution -> {
-                    if (subStaticWithStatic(argPar.type, subPar.type, variance)) ConstraintsKept else Failure
-                }
+            if (subStatic(argPar.type, subType, variance)) {
+                ConstraintsKept
+            } else {
+                Failure
             }
         }
     }
@@ -204,19 +148,22 @@ sealed class FullResult {
 
     object Success : FullResult()
 
-    data class Continue(val update: TypeArgUpdate) : FullResult()
+    data class Update(val update: TypeArgUpdate) : FullResult()
 }
 
 tailrec fun transformContext(initial: MatchingContext, code: (context: MatchingContext) -> FullResult): MatchingContext? {
     return when (val midResult = code(initial)) {
         is FullResult.Failure -> null
         is FullResult.Success -> initial
-        is FullResult.Continue -> transformContext(initial.apply(midResult.update), code)
+        is FullResult.Update -> {
+            val appliedType = initial.transform(midResult.update) ?: return null
+            transformContext(appliedType, code)
+        }
     }
 }
 
 data class SignatureContext(
-    val typeParams: List<TypeParameter>,
+    val typeParams: FunContext,
     val parameters: List<ApplicationParameter>
 ) {
 
@@ -229,17 +176,15 @@ data class SignatureContext(
         }
     }
 
-    fun apply(update: TypeArgUpdate): SignatureContext {
-        val updatedTypeParams = typeParams.filterIndexed { i, _ -> i != update.arg }
-        val applyTypeParams: List<ApplicationParameter> = typeParams.mapIndexed { i, typePar ->
-            when {
-                i < update.arg -> ParamSubstitution(i)
-                i == update.arg -> StaticTypeSubstitution(update.type)
-                else -> {
-                    // TODO update type arg
-                    ParamSubstitution(i - 1)
-                }
-            }
+    fun apply(update: TypeArgUpdate): SignatureContext? {
+        val unchangedTypeParams = typeParams.take(update.arg)
+        val prefixRefs = (0 until update.arg).map(ApplicationParameter::ParamSubstitution)
+
+        val init: Pair<List<TypeParameter>, List<ApplicationParameter>> = unchangedTypeParams to (prefixRefs + StaticTypeSubstitution(update.type))
+
+        val (newTps, newApplyArgs) = typeParams.drop(update.arg + 1).fold(init) { (acc, applyArgs), typeParam ->
+            val applied = typeParam.apply(applyArgs) ?: return null
+            (acc + applied) to (applyArgs + ParamSubstitution(acc.size))
         }
         val updatedParams = parameters.map { param ->
             when (param) {
@@ -250,34 +195,29 @@ data class SignatureContext(
                         else -> ParamSubstitution(param.param - 1)
                     }
                 }
-                is DynamicTypeSubstitution -> wrap(param.type.forceApply(applyTypeParams))
+                is DynamicTypeSubstitution -> wrap(param.type.forceApply(newApplyArgs))
                 is StaticTypeSubstitution -> param
             }
         }
 
-        return SignatureContext(updatedTypeParams, updatedParams)
+        return SignatureContext(newTps, updatedParams)
     }
 }
 
 data class ParamPair(
     val funParam: ApplicationParameter,
-    val queryParam: ApplicationParameter,
+    val queryParam: Type.NonGenericType,
     val variance: InheritanceLogic
 )
 
 data class MatchingContext(
     val funCtx: SignatureContext,
-    val queryCtx: SignatureContext,
+    val query: QueryType,
     val varianceCtx: List<InheritanceLogic>
 ) {
 
-    val context = FitContext(
-        argCtx = funCtx.typeParams,
-        subCtx = queryCtx.typeParams
-    )
-
     val pairings: Sequence<ParamPair>
-        get() = funCtx.parameters.zipIfSameLength(queryCtx.parameters)?.zipIfSameLength(varianceCtx)?.map { (params, variance) ->
+        get() = funCtx.parameters.zipIfSameLength(query.allParams)?.zipIfSameLength(varianceCtx)?.map { (params, variance) ->
             ParamPair(
                 funParam = params.first,
                 queryParam = params.second,
@@ -285,17 +225,14 @@ data class MatchingContext(
             )
         }?.asSequence()!!
 
-    constructor(query: TypeSignature, function: FunctionObj) : this(
+    constructor(query: QueryType, function: FunctionObj) : this(
         funCtx = SignatureContext.fromTypeSignature(function.signature),
-        queryCtx = SignatureContext.fromTypeSignature(query),
+        query = query,
         varianceCtx = nList(COVARIANCE, query.inputParameters.size) + CONTRAVARIANCE
     )
 
-    fun apply(update: TypeArgUpdate): MatchingContext {
-        return when (update) {
-            is FunTypeArgUpdate -> copy(funCtx = funCtx.apply(update))
-            is QueryTypeArgUpdate -> copy(queryCtx = queryCtx.apply(update))
-        }
+    fun transform(update: TypeArgUpdate): MatchingContext? {
+        return copy(funCtx = funCtx.apply(update) ?: return null)
     }
 
     override fun toString(): String {
@@ -304,16 +241,40 @@ data class MatchingContext(
 
 }
 
-fun fitsQuery(query: TypeSignature, function: FunctionObj): MatchingContext? {
-    return transformContext(MatchingContext(query, function)) { matchingCtx ->
-        val update = matchingCtx.pairings.mapNotNull { (funArg, queryArg, variance) ->
-            subAnyWithAny(matchingCtx.context, funArg, queryArg, variance)
-        }.filter { it !is ConstraintsKept }.firstOrNull() ?: ConstraintsKept
+data class MatchRoll(
+    val skippedAny: Boolean = false,
+    val status: SubResult = ConstraintsKept
+)
 
-        when (update) {
+// TODO - rework performance
+fun fitsOrderedQuery(query: QueryType, function: FunctionObj): MatchingContext? {
+    return transformContext(MatchingContext(query, function)) { matchingCtx ->
+        val update = matchingCtx.pairings.map { (funArg, queryArg, variance) ->
+            subAny(matchingCtx.funCtx.typeParams, funArg, queryArg, variance)
+        }.lazyReduce(MatchRoll()) { status, subRes ->
+            when (subRes) {
+                ConstraintsKept -> status to false
+                Skip -> status.copy(skippedAny = true) to true
+                else -> status.copy(status = subRes) to true
+            }
+        }
+
+        when (val stat = update.status) {
             Failure -> FullResult.Failure
-            ConstraintsKept -> FullResult.Success
-            is TypeArgUpdate -> FullResult.Continue(update)
+            is TypeArgUpdate -> FullResult.Update(stat)
+            is Continue-> {
+                if (update.skippedAny) {
+                    FullResult.Failure
+                } else {
+                    FullResult.Success
+                }
+            }
         }
     }
+}
+
+fun fitsQuery(query: QueryType, function: FunctionObj): MatchingContext? {
+    return query.inputParameters.allPermutations().asSequence().mapNotNull { inputsOrdered ->
+        fitsOrderedQuery(query.copy(inputParameters = inputsOrdered), function)
+    }.firstOrNull()
 }

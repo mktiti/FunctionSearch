@@ -1,37 +1,73 @@
+import ApplicationParameter.ParamSubstitution
+import ApplicationParameter.TypeSubstitution
+import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
+import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 import Type.DynamicAppliedType
+import Type.NonGenericType
+import TypeBoundFit.Companion.fromBool
+import TypeBoundFit.FIT
+import TypeBoundFit.YET_UNCERTAIN
+
+enum class TypeBoundFit {
+    FIT, UNFIT, YET_UNCERTAIN;
+
+    companion object {
+        fun fromBool(value: Boolean) = if (value) FIT else UNFIT
+    }
+}
 
 data class TypeBounds(
-    val lowerBounds: Set<Type>, // super
-    val upperBounds: Set<Type>  // extends
+    val lowerBounds: Set<ApplicationParameter>, // super
+    val upperBounds: Set<ApplicationParameter>  // extends
 ) {
 
     private companion object {
-        fun Set<Type>.applyAll(params: List<ApplicationParameter>): Set<Type> = map { bound ->
+        fun Set<ApplicationParameter>.applyAll(params: List<ApplicationParameter>): Set<ApplicationParameter>? = map { bound ->
             when (bound) {
-                is Type.NonGenericType -> bound
-                is DynamicAppliedType -> bound.forceApply(params)
+                is ParamSubstitution -> {
+                    params.getOrNull(bound.param) ?: return null
+                }
+                is StaticTypeSubstitution -> bound
+                is DynamicTypeSubstitution -> TypeSubstitution.wrap(bound.type.forceApply(params))
             }
         }.toSet()
     }
 
-    fun apply(params: List<ApplicationParameter>) = TypeBounds(
-        lowerBounds = lowerBounds.applyAll(params),
-        upperBounds = upperBounds.applyAll(params)
-    )
+    fun apply(params: List<ApplicationParameter>): TypeBounds? {
+        return TypeBounds(
+            lowerBounds = lowerBounds.applyAll(params) ?: return null,
+            upperBounds = upperBounds.applyAll(params) ?: return null
+        )
+    }
 
-    private fun fitsLowerBound(lowerBound: Type, type: Type): Boolean = when (lowerBound) {
-        is Type.NonGenericType -> lowerBound.anyNgSuperInclusive { type == it }
+    private fun fitsLowerNgBound(lowerBound: NonGenericType, type: Type): Boolean
+        = lowerBound.anyNgSuperInclusive { type == it }
+
+    private fun fitsLowerBound(typeParCtx: List<TypeParameter>, lowerBound: ApplicationParameter, type: Type): TypeBoundFit {
+        return when (lowerBound) {
+            is ParamSubstitution -> YET_UNCERTAIN
+            is DynamicTypeSubstitution -> TODO()
+            is StaticTypeSubstitution -> fromBool(fitsLowerNgBound(lowerBound.type, type))
+        }
+    }
+
+    private fun fitsUpperNgBound(upperBound: NonGenericType, type: Type): Boolean = when (type) {
+        is NonGenericType -> type.anyNgSuperInclusive { it == upperBound }
         is DynamicAppliedType -> TODO()
     }
 
-    private fun fitsUpperBound(upperBound: Type, type: Type): Boolean =  when (type) {
-        is Type.NonGenericType -> type.anyNgSuperInclusive { it == upperBound }
-        is DynamicAppliedType -> TODO()
+    private fun fitsUpperBound(typeParCtx: List<TypeParameter>, upperBound: ApplicationParameter, type: Type): TypeBoundFit {
+        return when (upperBound) {
+            is ParamSubstitution -> YET_UNCERTAIN
+            is DynamicTypeSubstitution -> TODO()
+            is StaticTypeSubstitution -> fromBool(fitsUpperNgBound(upperBound.type, type))
+        }
     }
 
-    operator fun contains(type: Type): Boolean =
-        lowerBounds.all { fitsLowerBound(it, type) } &&
-        upperBounds.all { fitsUpperBound(it, type) }
+    fun fits(typeParCtx: List<TypeParameter>, type: Type): TypeBoundFit =
+        (lowerBounds.asSequence().map { fitsLowerBound(typeParCtx, it, type) } +
+         upperBounds.asSequence().map { fitsUpperBound(typeParCtx, it, type) })
+        .filter { it != FIT }.firstOrNull() ?: FIT
 
     // TODO primitive version
     operator fun plus(other: TypeBounds) = TypeBounds(
@@ -41,29 +77,12 @@ data class TypeBounds(
 
 }
 
-data class TypeParameter(
-    val sign: String,
-    val bounds: TypeBounds
-) {
+fun lowerBounds(vararg bounds: ApplicationParameter): TypeBounds = TypeBounds(
+    upperBounds = emptySet(),
+    lowerBounds = bounds.toSet()
+)
 
-    fun apply(params: List<ApplicationParameter>): TypeParameter = copy(
-        bounds = bounds.apply(params)
-    )
-
-    fun fits(type: Type) = bounds.contains(type)
-
-    override fun toString() = buildString {
-        append(sign)
-        with(bounds) {
-            if (upperBounds.isNotEmpty()) {
-                val upperString = upperBounds.joinToString(prefix = " extends ", separator = " & ") { it.fullName }
-                append(upperString)
-            }
-            if (lowerBounds.isNotEmpty()) {
-                lowerBounds.joinToString(prefix = " super ", separator = " & ") { it.fullName }
-                append(lowerBounds)
-            }
-        }
-    }
-
-}
+fun upperBounds(vararg bounds: ApplicationParameter): TypeBounds = TypeBounds(
+    upperBounds = bounds.toSet(),
+    lowerBounds = emptySet()
+)

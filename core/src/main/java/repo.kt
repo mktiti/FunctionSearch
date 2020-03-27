@@ -1,3 +1,4 @@
+import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
 import SuperType.DynamicSuper
 import SuperType.StaticSuper
 import Type.DynamicAppliedType
@@ -70,7 +71,7 @@ class SetTypeRepo(
     override val rootType = DirectType(rootInfo, emptyList())
     override val defaultTypeBounds = TypeBounds(
         lowerBounds = emptySet(),
-        upperBounds = setOf(rootType)
+        upperBounds = setOf(StaticTypeSubstitution(rootType))
     )
 
     private val types: MutableMap<String, DirectType> = HashMap()

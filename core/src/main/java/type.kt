@@ -11,7 +11,11 @@ import java.util.*
 
 sealed class ApplicationParameter {
 
+    abstract val referencedTypeParams: Set<Int>
+
     class ParamSubstitution(val param: Int) : ApplicationParameter() {
+        override val referencedTypeParams = setOf(param)
+
         override fun toString() = "<#$param>"
     }
 
@@ -25,6 +29,9 @@ sealed class ApplicationParameter {
                 is DynamicAppliedType -> DynamicTypeSubstitution(type)
             }
         }
+
+        override val referencedTypeParams: Set<Int>
+            get() = type.referencedTypeParams
 
         class DynamicTypeSubstitution(type: DynamicAppliedType) : TypeSubstitution<DynamicAppliedType>(type)
 
@@ -94,12 +101,17 @@ interface Applicable {
 
 sealed class Type : SemiType {
 
+    abstract val referencedTypeParams: Set<Int>
+
     sealed class NonGenericType(
         override val info: TypeInfo,
         override val superTypes: List<StaticSuper>
     ) : Type() {
 
         abstract val typeArgs: List<NonGenericType>
+
+        override val referencedTypeParams: Set<Int>
+            get() = emptySet()
 
         class DirectType(
             info: TypeInfo,
@@ -149,6 +161,14 @@ sealed class Type : SemiType {
                 is TypeSubstitution<*> -> arg.type.fullName
             }
         }
+
+        override val referencedTypeParams: Set<Int> =
+            typeArgMapping.flatMap { mapping ->
+                when (mapping) {
+                    is ParamSubstitution -> listOf(mapping.param)
+                    is TypeSubstitution<*> -> mapping.type.referencedTypeParams
+                }
+            }.toSet()
 
         override fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType? {
             val mappedArgs: List<NonGenericType> = typeArgMapping.map { argMapping ->
@@ -205,6 +225,8 @@ sealed class Type : SemiType {
     override fun equals(other: Any?) = (other as? Type)?.info == info
 
     override fun hashCode(): Int = Objects.hashCode(info)
+
+    override fun toString() = fullName
 
 }
 

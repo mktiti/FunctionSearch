@@ -1,6 +1,9 @@
 package query
 
-import ApplicationParameter
+import ApplicationParameter.Substitution.ParamSubstitution
+import ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
+import ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
 import FunctionInfo
 import FunctionObj
 import QueryLexer
@@ -8,20 +11,17 @@ import QueryParser
 import QueryParser.*
 import QueryType
 import Type
-import TypeParameter
 import TypeRepo
 import TypeSignature
+import createTestRepo
 import cutLast
-import defaultRepo
 import forceDynamicApply
 import forceStaticApply
-import listType
-import lowerBounds
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import printFit
-import upperBounds
+import printSemiType
 import virtualType
 
 typealias VirtParamTable = Map<String, Type.NonGenericType>
@@ -86,33 +86,42 @@ fun parseQuery(query: String, typeRepo: TypeRepo): QueryType {
 }
 
 fun main() {
+    val repo = createTestRepo()
+
+    println("All Test Types")
+    createTestRepo().allTypes.forEach(::printSemiType)
+
+    println("All Test Type Templates")
+    createTestRepo().allTemplates.forEach(::printSemiType)
+
+    val collection = repo.template("Collection")!!
+    val list = repo.template("List")!!
+
     val mapFun = FunctionObj(
-        info = FunctionInfo("map", "List"),
+        info = FunctionInfo("map", "Collections"),
         signature = TypeSignature.GenericSignature(
-            typeParameters = listOf( // <T, R, ? sup T, ? ext R>
-                defaultRepo.typeParam("T", defaultRepo.defaultTypeBounds),
-                defaultRepo.typeParam("R", defaultRepo.defaultTypeBounds),
-                TypeParameter("\$supT", lowerBounds(ApplicationParameter.ParamSubstitution(0))),
-                TypeParameter("\$extR", upperBounds(ApplicationParameter.ParamSubstitution(1)))
+            typeParameters = listOf( // <T, R>
+                repo.typeParam("T"),
+                repo.typeParam("R")
             ),
-            inputParameters = listOf( // (list: List<T>, mapper: Fn<? sup T, ? ext R>)
-                "list" to ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution(
-                    listType.forceDynamicApply(
-                        ApplicationParameter.ParamSubstitution(0)
+            inputParameters = listOf(
+                "collection" to DynamicTypeSubstitution( // Collection<T>
+                    collection.forceDynamicApply(
+                        ParamSubstitution(0)
                     )
                 ),
-                "mapper" to ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution(
-                    defaultRepo.functionType(1).forceDynamicApply(
-                        ApplicationParameter.ParamSubstitution(2), // ? sup T
-                        ApplicationParameter.ParamSubstitution(3)  // ? ext R
+                "mapper" to DynamicTypeSubstitution(
+                    repo.functionType(1).forceDynamicApply(
+                        LowerBound(ParamSubstitution(0)), // ? super T
+                        UpperBound(ParamSubstitution(1))  // ? extends R
                     )
                 )
             ),
-            output = ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution(
-                listType.forceDynamicApply(
-                    ApplicationParameter.ParamSubstitution(1)
+            output = DynamicTypeSubstitution(
+                list.forceDynamicApply(  // List<R>
+                    ParamSubstitution(1)
                 )
-            ) // -> List<R>
+            )
         )
     )
 
@@ -120,7 +129,7 @@ fun main() {
         val input = readLine() ?: break
         println("Input: $input")
         try {
-            val query = parseQuery(input, defaultRepo)
+            val query = parseQuery(input, repo)
             println("Parsed as: $query")
             printFit(mapFun, query)
         } catch (pce: ParseCancellationException) {

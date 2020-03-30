@@ -1,4 +1,5 @@
-import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
+import ApplicationParameter.Substitution
+import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import Type.NonGenericType
 
 data class FunctionInfo(
@@ -9,8 +10,8 @@ data class FunctionInfo(
 sealed class TypeSignature {
 
     abstract val typeParameters: List<TypeParameter>
-    abstract val inputParameters: List<Pair<String, ApplicationParameter>>
-    abstract val output: ApplicationParameter
+    abstract val inputParameters: List<Pair<String, Substitution>>
+    abstract val output: Substitution
 
     val typeString by lazy {
         buildString {
@@ -58,8 +59,8 @@ sealed class TypeSignature {
 
     class GenericSignature(
         override val typeParameters: List<TypeParameter>,
-        override val inputParameters: List<Pair<String, ApplicationParameter>>,
-        override val output: ApplicationParameter
+        override val inputParameters: List<Pair<String, Substitution>>,
+        override val output: Substitution
     ) : TypeSignature()
 
     override fun toString() = fullString

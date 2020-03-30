@@ -25,7 +25,7 @@ inline fun <K, V, reified S> Map<K, V>.castIfAllValuesInstance(): Map<K, S>? = m
     }
 }
 
-inline fun <T : Any, reified S> Collection<T>.castIfAllInstance(): List<S>? = map {
+inline fun <reified S> Collection<*>.castIfAllInstance(): List<S>? = map {
     if (it is S) it else return null
 }
 

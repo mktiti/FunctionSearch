@@ -1,6 +1,9 @@
-import ApplicationParameter.ParamSubstitution
-import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
-import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
+import ApplicationParameter.Substitution.ParamSubstitution
+import ApplicationParameter.Substitution.SelfSubstitution
+import ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
+import ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
 
 val defaultRepo: MutableTypeRepo = SetTypeRepo(
     rootInfo = TypeInfo(
@@ -192,18 +195,16 @@ fun main() {
     val mapFun = FunctionObj(
         info = FunctionInfo("map", "List"),
         signature = TypeSignature.GenericSignature(
-            typeParameters = listOf( // <T, R, ? sup T, ? ext R>
+            typeParameters = listOf(
                 defaultRepo.typeParam("T", defaultRepo.defaultTypeBounds),
-                defaultRepo.typeParam("R", defaultRepo.defaultTypeBounds),
-                TypeParameter("\$supT", lowerBounds(ParamSubstitution(0))),
-                TypeParameter("\$extR", upperBounds(ParamSubstitution(1)))
+                defaultRepo.typeParam("R", defaultRepo.defaultTypeBounds)
             ),
-            inputParameters = listOf( // (list: List<T>, mapper: Fn<? sup T, ? ext R>)
+            inputParameters = listOf(
                 "list" to DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0))),
                 "mapper" to DynamicTypeSubstitution(
                     defaultRepo.functionType(1).forceDynamicApply(
-                        ParamSubstitution(2), // ? sup T
-                        ParamSubstitution(3)  // ? ext R
+                        LowerBound(ParamSubstitution(0)), // ? sup T
+                        UpperBound(ParamSubstitution(1))  // ? ext R
                     )
                 )
             ),
@@ -236,4 +237,66 @@ fun main() {
         output = listType.forceStaticApply(intType)
     )
     printFit(mapFun, wrongMapQuery)
+
+    val comparable = defaultRepo.createTemplate(
+        fullName = "Comparable",
+        typeParams = listOf(defaultRepo.typeParam("T")),
+        superTypes = listOf(defaultRepo.rootType)
+    )
+    printSemiType(comparable)
+
+    val myStr = defaultRepo.createSelfRefDirect(
+        fullName = "MyComparableStr",
+        superCreators = listOf { self -> comparable.forceStaticApply(self) }
+    )
+    printType(myStr)
+
+    val personType = defaultRepo.createSelfRefDirect(
+        fullName = "Person",
+        superCreators = listOf { self -> comparable.forceStaticApply(self) }
+    )
+    printType(personType)
+
+    val bossType = defaultRepo.createDirect(
+        "Boss",
+        personType
+    )
+    printType(bossType)
+
+    val sortedFun = FunctionObj(
+        info = FunctionInfo(
+            name = "sorted",
+            fileName = ""
+        ),
+        signature = TypeSignature.GenericSignature(
+            typeParameters = listOf(
+                TypeParameter("T", upperBounds(
+                    DynamicTypeSubstitution(comparable.forceDynamicApply(LowerBound(SelfSubstitution)))
+                ))
+            ),
+            inputParameters = listOf(
+                "collection" to DynamicTypeSubstitution(collectionType.forceDynamicApply(ParamSubstitution(0)))
+            ),
+            output = DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)))
+        )
+    )
+
+    val compStrSortQuery = QueryType(
+        inputParameters = listOf(listType.forceStaticApply(myStr)),
+        output = listType.forceStaticApply(myStr)
+    )
+    printFit(sortedFun, compStrSortQuery)
+
+    val personSortQuery = QueryType(
+        inputParameters = listOf(listType.forceStaticApply(personType)),
+        output = listType.forceStaticApply(personType)
+    )
+    printFit(sortedFun, personSortQuery)
+
+
+    val bossSortQuery = QueryType(
+        inputParameters = listOf(listType.forceStaticApply(bossType)),
+        output = listType.forceStaticApply(bossType)
+    )
+    printFit(sortedFun, bossSortQuery)
 }

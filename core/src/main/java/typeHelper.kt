@@ -22,7 +22,7 @@ fun typeTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: 
 fun Applicable.staticApply(vararg typeArgs: NonGenericType): StaticAppliedType? = staticApply(typeArgs.toList())
 
 fun Applicable.forceStaticApply(typeArgs: List<NonGenericType>): StaticAppliedType
-        = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args $typeArgs")
+        = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args $typeArgs to $this")
 
 fun Applicable.forceStaticApply(vararg typeArgs: NonGenericType): StaticAppliedType
         = forceStaticApply(typeArgs.toList())
@@ -30,12 +30,12 @@ fun Applicable.forceStaticApply(vararg typeArgs: NonGenericType): StaticAppliedT
 fun Applicable.dynamicApply(vararg typeArgs: ApplicationParameter): DynamicAppliedType? = dynamicApply(typeArgs.toList())
 
 fun Applicable.forceDynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType
-        = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args $typeArgs")
+        = dynamicApply(typeArgs) ?: throw TypeApplicationException("Failed to dynamically apply type args $typeArgs to $this")
 
 fun Applicable.forceDynamicApply(vararg typeArgs: ApplicationParameter): DynamicAppliedType
         = forceDynamicApply(typeArgs.toList())
 
 fun Applicable.forceApply(typeArgs: List<ApplicationParameter>): Type
-        = apply(typeArgs) ?: throw TypeApplicationException("Failed to apply type args")
+        = apply(typeArgs) ?: throw TypeApplicationException("Failed to apply type args $typeArgs to $this")
 
 fun Applicable.forceApply(vararg typeArgs: ApplicationParameter): Type = forceApply(typeArgs.toList())

@@ -1,10 +1,15 @@
+import java.util.*
+
 data class TypeInfo(
     val name: String,
     val packageName: String = "",
-    val artifact: String = "JCLv8"
+    val artifact: String = "JCLv8",
+    val virtual: Boolean = false
 ) {
 
     val fullName: String = if (packageName.isNotBlank()) "$packageName.$name" else name
+
+
 
     override fun toString() = buildString {
         if (artifact.isNotBlank() && !artifact.startsWith("JCLv")) {
@@ -14,6 +19,16 @@ data class TypeInfo(
 
         append(fullName)
     }
+
+    override fun equals(other: Any?): Boolean = when {
+        other !is TypeInfo -> false
+        other.virtual -> this === other
+        else -> {
+            other.name == name && other.packageName == packageName && other.artifact == artifact
+        }
+    }
+
+    override fun hashCode(): Int = Objects.hash(name, packageName, artifact, virtual)
 }
 
 fun info(fullString: String): TypeInfo {

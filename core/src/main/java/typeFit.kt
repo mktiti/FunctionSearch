@@ -1,7 +1,10 @@
-import ApplicationParameter.ParamSubstitution
-import ApplicationParameter.TypeSubstitution.Companion.wrap
-import ApplicationParameter.TypeSubstitution.DynamicTypeSubstitution
-import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
+import ApplicationParameter.Substitution
+import ApplicationParameter.Substitution.ParamSubstitution
+import ApplicationParameter.Substitution.SelfSubstitution
+import ApplicationParameter.Substitution.TypeSubstitution.Companion.wrap
+import ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import ApplicationParameter.Wildcard
 import InheritanceLogic.*
 import SubResult.*
 import SubResult.Continue.ConstraintsKept
@@ -33,22 +36,21 @@ fun subStatic(
     variance: InheritanceLogic
 ): Boolean {
     return if (argPar.info == subPar.info) {
-        argPar.typeArgs.zipIfSameLength(subPar.typeArgs)?.all { (argPar, subPar) ->
-            subStatic(argPar, subPar, INVARIANCE)
+        argPar.typeArgs.zipIfSameLength(subPar.typeArgs)?.all { (argParPar, subParPar) ->
+            subStatic(argParPar, subParPar, INVARIANCE)
         } ?: false
     } else {
         when (variance) {
             INVARIANCE -> false
             COVARIANCE -> {
-                subPar.superTypes.asSequence().mapNotNull { superType ->
+                subPar.superTypes.asSequence().any { superType ->
                     subStatic(argPar, superType.type, variance)
-                }.any()
+                }
             }
             CONTRAVARIANCE -> {
-                // TODO - probably wrong ?
-                argPar.superTypes.asSequence().map { superType ->
+                argPar.superTypes.asSequence().any { superType ->
                     subStatic(superType.type, subPar, variance)
-                }.any()
+                }
             }
         }
     }
@@ -60,10 +62,11 @@ fun subParamSub(
     type: Type.NonGenericType
 ): SubResult {
     val referenced = ctx.getOrNull(arg.param) ?: return Failure
-    return when (referenced.fits(ctx, type)) {
-        FIT -> TypeArgUpdate(arg.param, type)
-        YET_UNCERTAIN -> Skip
-        UNFIT -> Failure
+    return when (val fitRes = referenced.fits(type)) {
+        Fit -> TypeArgUpdate(arg.param, type)
+        YetUncertain -> Skip
+        is Requires -> fitRes.update
+        Unfit -> Failure
     }
 }
 
@@ -75,31 +78,31 @@ fun subDynamic(
 ): SubResult {
     fun Boolean.asResult(): SubResult = if (this) ConstraintsKept else Failure
 
-    fun Sequence<SubResult>.realResult(default: SubResult): SubResult = lazyReduce(MatchRoll(status = default)) { status, res ->
-        when (res) {
-            ConstraintsKept -> status to false
-            Skip -> status.copy(skippedAny = true) to false
-            else -> MatchRoll(status = res) to true
-        }
-    }.status
-
     return if (argPar.info == subPar.info) {
         val zipped = argPar.typeArgMapping.zipIfSameLength(subPar.typeArgs) ?: return Failure
 
-        zipped.asSequence().map { (argPar, subPar) ->
-            when (argPar) {
-                is ParamSubstitution -> {
-                    subParamSub(argCtx, argPar, subPar)
-                }
-                is DynamicTypeSubstitution -> {
-                    subDynamic(argCtx, argPar.type, subPar, INVARIANCE)
-                }
-                is StaticTypeSubstitution -> {
-                    subStatic(argPar.type, subPar, INVARIANCE).asResult()
-                }
+        fun Sequence<SubResult>.realResult(default: SubResult): SubResult = lazyReduce(default) { status, res ->
+            when (res) {
+                ConstraintsKept -> status to false
+                Skip -> Skip to false
+                else -> res to true
             }
+        }
+
+        zipped.asSequence().map { (argParPar, subParPar) ->
+            subAny(argCtx, argParPar, subParPar, INVARIANCE)
         }.realResult(ConstraintsKept)
     } else {
+
+        fun Sequence<SubResult>.realResult(default: SubResult): SubResult = lazyReduce(default) { _, res ->
+            res to when (res) {
+                Failure -> false
+                ConstraintsKept -> true
+                Skip -> true
+                is TypeArgUpdate -> true
+            }
+        }
+
         when (variance) {
             INVARIANCE -> Failure
             COVARIANCE -> {
@@ -108,7 +111,6 @@ fun subDynamic(
                 }.realResult(Failure)
             }
             CONTRAVARIANCE -> {
-                // TODO - probably wrong ?
                 argPar.superTypes.asSequence().map { superType ->
                     when (val stt = superType.type) {
                         is Type.NonGenericType -> subStatic(stt, subPar, variance).asResult()
@@ -127,6 +129,7 @@ fun subAny(
     variance: InheritanceLogic
 ): SubResult {
     return when (argPar) {
+        is SelfSubstitution -> Failure
         is ParamSubstitution -> {
             subParamSub(context, argPar, subType)
         }
@@ -136,11 +139,41 @@ fun subAny(
         is StaticTypeSubstitution -> {
             if (subStatic(argPar.type, subType, variance)) {
                 ConstraintsKept
-            } else {
-                Failure
+            } else Failure
+        }
+        is Wildcard.Direct -> ConstraintsKept
+        is Wildcard.BoundedWildcard -> {
+            when (subAny(context, argPar.param, subType, argPar.subVariance)) {
+                Failure -> Failure
+                ConstraintsKept -> ConstraintsKept
+                Skip -> Skip
+                is TypeArgUpdate -> Skip
             }
         }
     }
+}
+
+data class FittingMap(
+    val orderedQuery: QueryType,
+    val funSignature: TypeSignature,
+    val typeParamMapping: List<Pair<TypeParameter, Type.NonGenericType>> = emptyList()
+) {
+
+    operator fun plus(typeParam: Pair<TypeParameter, Type.NonGenericType>): FittingMap = copy(
+        typeParamMapping = typeParamMapping + typeParam
+    )
+
+    override fun toString() = buildString {
+        append("Query fit, where ")
+        append(typeParamMapping.genericString { (param, type) -> "${param.sign} = $type" })
+        val inputPairs = funSignature.inputParameters.zip(orderedQuery.inputParameters)
+        val paramMap = inputPairs.joinToString(prefix = " (", separator = ", ", postfix = ") -> ") { (funIn, queryIn) ->
+            "${funIn.first}: $queryIn"
+        }
+        append(paramMap)
+        append(orderedQuery.output)
+    }
+
 }
 
 sealed class FullResult {
@@ -151,20 +184,22 @@ sealed class FullResult {
     data class Update(val update: TypeArgUpdate) : FullResult()
 }
 
-tailrec fun transformContext(initial: MatchingContext, code: (context: MatchingContext) -> FullResult): MatchingContext? {
-    return when (val midResult = code(initial)) {
+tailrec fun transformContext(startContext: MatchingContext, mapping: FittingMap, code: (context: MatchingContext) -> FullResult): FittingMap? {
+    return when (val result = code(startContext)) {
         is FullResult.Failure -> null
-        is FullResult.Success -> initial
+        is FullResult.Success -> mapping
         is FullResult.Update -> {
-            val appliedType = initial.transform(midResult.update) ?: return null
-            transformContext(appliedType, code)
+            val update = result.update
+            val updatedMapping = mapping + (startContext.funCtx.typeParams[update.arg] to update.type)
+            val updatedContext = startContext.transform(update) ?: return null
+            transformContext(updatedContext, updatedMapping, code)
         }
     }
 }
 
 data class SignatureContext(
     val typeParams: FunContext,
-    val parameters: List<ApplicationParameter>
+    val parameters: List<Substitution>
 ) {
 
     companion object {
@@ -178,9 +213,9 @@ data class SignatureContext(
 
     fun apply(update: TypeArgUpdate): SignatureContext? {
         val unchangedTypeParams = typeParams.take(update.arg)
-        val prefixRefs = (0 until update.arg).map(ApplicationParameter::ParamSubstitution)
+        val prefixRefs = (0 until update.arg).map(Substitution::ParamSubstitution)
 
-        val init: Pair<List<TypeParameter>, List<ApplicationParameter>> = unchangedTypeParams to (prefixRefs + StaticTypeSubstitution(update.type))
+        val init: Pair<List<TypeParameter>, List<Substitution>> = unchangedTypeParams to (prefixRefs + StaticTypeSubstitution(update.type))
 
         val (newTps, newApplyArgs) = typeParams.drop(update.arg + 1).fold(init) { (acc, applyArgs), typeParam ->
             val applied = typeParam.apply(applyArgs) ?: return null
@@ -188,6 +223,7 @@ data class SignatureContext(
         }
         val updatedParams = parameters.map { param ->
             when (param) {
+                is SelfSubstitution -> return null
                 is ParamSubstitution -> {
                     when {
                         param.param < update.arg -> param
@@ -247,14 +283,14 @@ data class MatchRoll(
 )
 
 // TODO - rework performance
-fun fitsOrderedQuery(query: QueryType, function: FunctionObj): MatchingContext? {
-    return transformContext(MatchingContext(query, function)) { matchingCtx ->
+fun fitsOrderedQuery(query: QueryType, function: FunctionObj): FittingMap? {
+    return transformContext(MatchingContext(query, function), FittingMap(query, function.signature)) { matchingCtx ->
         val update = matchingCtx.pairings.map { (funArg, queryArg, variance) ->
             subAny(matchingCtx.funCtx.typeParams, funArg, queryArg, variance)
         }.lazyReduce(MatchRoll()) { status, subRes ->
             when (subRes) {
                 ConstraintsKept -> status to false
-                Skip -> status.copy(skippedAny = true) to true
+                Skip -> status.copy(skippedAny = true) to false
                 else -> status.copy(status = subRes) to true
             }
         }
@@ -273,7 +309,7 @@ fun fitsOrderedQuery(query: QueryType, function: FunctionObj): MatchingContext? 
     }
 }
 
-fun fitsQuery(query: QueryType, function: FunctionObj): MatchingContext? {
+fun fitsQuery(query: QueryType, function: FunctionObj): FittingMap? {
     return query.inputParameters.allPermutations().asSequence().mapNotNull { inputsOrdered ->
         fitsOrderedQuery(query.copy(inputParameters = inputsOrdered), function)
     }.firstOrNull()

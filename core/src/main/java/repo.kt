@@ -1,4 +1,4 @@
-import ApplicationParameter.TypeSubstitution.StaticTypeSubstitution
+import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import SuperType.DynamicSuper
 import SuperType.StaticSuper
 import Type.DynamicAppliedType
@@ -9,6 +9,9 @@ interface TypeRepo {
 
     val rootType: DirectType
     val defaultTypeBounds: TypeBounds
+
+    val allTypes: Collection<Type>
+    val allTemplates: Collection<TypeTemplate>
 
     operator fun get(name: String): DirectType?
 
@@ -26,7 +29,38 @@ interface MutableTypeRepo : TypeRepo {
 
     operator fun plusAssign(template: TypeTemplate)
 
-    // TODO
+    fun createSelfRefDirect(fullName: String, superCreators: List<(self: DirectType) -> NonGenericType>): DirectType {
+        val supers: MutableList<StaticSuper> = ArrayList(superCreators.size)
+
+        return DirectType(info(fullName), supers).also { self ->
+            this += self
+
+            supers += superCreators.map { creator ->
+                StaticSuper(creator(self))
+            }
+        }
+    }
+
+    fun createSelfRefTemplate(fullName: String, typeParams: List<TypeParameter>, superCreators: List<(self: TypeTemplate) -> Type>): TypeTemplate {
+        val supers: MutableList<SuperType> = ArrayList(superCreators.size)
+
+        return TypeTemplate(
+            info = info(fullName),
+            typeParams = typeParams,
+            superTypes = supers
+        ).also { self ->
+            this += self
+
+            supers += superCreators.map { creator ->
+                when (val created = creator(self)) {
+                    is NonGenericType -> StaticSuper(created)
+                    is DynamicAppliedType -> DynamicSuper(created)
+                }
+            }
+        }
+    }
+
+    // TODO - save referenced properly or not at all
     fun createDirect(fullName: String, vararg superTypes: NonGenericType): DirectType {
         superTypes.forEach { superType ->
             when (superType) {
@@ -39,7 +73,7 @@ interface MutableTypeRepo : TypeRepo {
         }
     }
 
-    // TODO
+    // TODO - save referenced properly or not at all
     fun createTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: List<Type>): TypeTemplate {
         superTypes.forEach { superType ->
             when (superType) {
@@ -70,12 +104,18 @@ class SetTypeRepo(
 
     override val rootType = DirectType(rootInfo, emptyList())
     override val defaultTypeBounds = TypeBounds(
-        lowerBounds = emptySet(),
+        //lowerBounds = emptySet(),
         upperBounds = setOf(StaticTypeSubstitution(rootType))
     )
 
     private val types: MutableMap<String, DirectType> = HashMap()
     private val templates: MutableMap<String, TypeTemplate> = HashMap()
+
+    override val allTypes: Collection<Type>
+        get() = types.map { it.value }
+
+    override val allTemplates: Collection<TypeTemplate>
+        get() = templates.map { it.value }
 
     private val rootSuper = listOf(StaticSuper(rootType))
     private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()

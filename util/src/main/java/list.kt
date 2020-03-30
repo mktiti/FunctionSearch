@@ -1,15 +1,13 @@
-fun <T> List<T>.safeCutHead(): Pair<T, List<T>>? = if (isEmpty()) {
-    null
-} else {
-    first() to drop(1)
+fun <T> Iterable<T>.safeCutHead(): Pair<T, List<T>>? = when (val head = firstOrNull()) {
+    null -> null
+    else -> head to drop(1)
 }
 
 fun <T> List<T>.cutHead(): Pair<T, List<T>> = safeCutHead()!!
 
-fun <T> List<T>.safeCutLast(): Pair<List<T>, T>? = if (isEmpty()) {
-    null
-} else {
-    dropLast(1) to last()
+fun <T> List<T>.safeCutLast(): Pair<List<T>, T>? = when (val last = lastOrNull()) {
+    null -> null
+    else -> dropLast(1) to last
 }
 
 fun <T> List<T>.cutLast(): Pair<List<T>, T> = safeCutLast()!!
@@ -33,15 +31,18 @@ fun <T> Collection<T>.allPermutations(): List<List<T>> {
     return toList().allPermutationsInner()
 }
 
-fun <T, R> Sequence<T>.lazyReduce(initial: R, combine: (R, T) -> Pair<R, Boolean>): R {
-    return if (none()) {
-        initial
+tailrec fun <T, R> List<T>.rollIndexed(initial: R, startIndex: Int = 0, combine: (Int, R, T) -> Pair<R, Boolean>): R {
+    val (head, tail) = safeCutHead() ?: return initial
+    val (combined, shouldStop) = combine(startIndex, initial, head)
+    return if (shouldStop) {
+        combined
     } else {
-        val (new, stop) = combine(initial, first())
-        if (stop) {
-            new
-        } else {
-            drop(1).lazyReduce(new, combine)
-        }
+        tail.rollIndexed(combined, startIndex + 1, combine)
     }
 }
+
+fun <T, R> List<T>.roll(initial: R, combine: (R, T) -> Pair<R, Boolean>): R = rollIndexed(
+        initial = initial,
+        startIndex = 0,
+        combine = { _, acc, elem -> combine(acc, elem) }
+)

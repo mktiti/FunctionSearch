@@ -81,20 +81,17 @@ fun subDynamic(
     return if (argPar.info == subPar.info) {
         val zipped = argPar.typeArgMapping.zipIfSameLength(subPar.typeArgs) ?: return Failure
 
-        fun Sequence<SubResult>.realResult(default: SubResult): SubResult = lazyReduce(default) { status, res ->
+        zipped.map { (argParPar, subParPar) ->
+            subAny(argCtx, argParPar, subParPar, INVARIANCE)
+        }.roll<SubResult, SubResult>(ConstraintsKept) { status, res ->
             when (res) {
                 ConstraintsKept -> status to false
                 Skip -> Skip to false
                 else -> res to true
             }
         }
-
-        zipped.asSequence().map { (argParPar, subParPar) ->
-            subAny(argCtx, argParPar, subParPar, INVARIANCE)
-        }.realResult(ConstraintsKept)
     } else {
-
-        fun Sequence<SubResult>.realResult(default: SubResult): SubResult = lazyReduce(default) { _, res ->
+        fun List<SubResult>.rollResult(): SubResult = roll<SubResult, SubResult>(Failure) { _, res ->
             res to when (res) {
                 Failure -> false
                 ConstraintsKept -> true
@@ -106,17 +103,17 @@ fun subDynamic(
         when (variance) {
             INVARIANCE -> Failure
             COVARIANCE -> {
-                subPar.superTypes.asSequence().map { superType ->
+                subPar.superTypes.asSequence().asIterable().map { superType ->
                     subDynamic(argCtx, argPar, superType.type, variance)
-                }.realResult(Failure)
+                }.rollResult()
             }
             CONTRAVARIANCE -> {
-                argPar.superTypes.asSequence().map { superType ->
+                argPar.superTypes.asSequence().asIterable().map { superType ->
                     when (val stt = superType.type) {
                         is Type.NonGenericType -> subStatic(stt, subPar, variance).asResult()
                         is DynamicAppliedType -> subDynamic(argCtx, stt, subPar, variance)
                     }
-                }.realResult(Failure)
+                }.rollResult()
             }
         }
     }
@@ -181,7 +178,10 @@ sealed class FullResult {
 
     object Success : FullResult()
 
-    data class Update(val update: TypeArgUpdate) : FullResult()
+    data class Update(
+        val fits: Set<Int>,
+        val update: TypeArgUpdate
+    ) : FullResult()
 }
 
 tailrec fun transformContext(startContext: MatchingContext, mapping: FittingMap, code: (context: MatchingContext) -> FullResult): FittingMap? {
@@ -191,7 +191,7 @@ tailrec fun transformContext(startContext: MatchingContext, mapping: FittingMap,
         is FullResult.Update -> {
             val update = result.update
             val updatedMapping = mapping + (startContext.funCtx.typeParams[update.arg] to update.type)
-            val updatedContext = startContext.transform(update) ?: return null
+            val updatedContext = startContext.transform(update, result.fits) ?: return null
             transformContext(updatedContext, updatedMapping, code)
         }
     }
@@ -241,6 +241,7 @@ data class SignatureContext(
 }
 
 data class ParamPair(
+    val index: Int,
     val funParam: ApplicationParameter,
     val queryParam: Type.NonGenericType,
     val variance: InheritanceLogic
@@ -249,17 +250,21 @@ data class ParamPair(
 data class MatchingContext(
     val funCtx: SignatureContext,
     val query: QueryType,
-    val varianceCtx: List<InheritanceLogic>
+    val varianceCtx: List<InheritanceLogic>,
+    val skipPairings: Set<Int> = emptySet()
 ) {
 
-    val pairings: Sequence<ParamPair>
-        get() = funCtx.parameters.zipIfSameLength(query.allParams)?.zipIfSameLength(varianceCtx)?.map { (params, variance) ->
+    val pairings: Iterable<ParamPair> =
+        funCtx.parameters.zipIfSameLength(query.allParams)
+        ?.zipIfSameLength(varianceCtx)
+        ?.mapIndexed { i, (params, variance) ->
             ParamPair(
+                index = i,
                 funParam = params.first,
                 queryParam = params.second,
                 variance = variance
             )
-        }?.asSequence()!!
+        }?.filter { it.index !in skipPairings }!!
 
     constructor(query: QueryType, function: FunctionObj) : this(
         funCtx = SignatureContext.fromTypeSignature(function.signature),
@@ -267,8 +272,11 @@ data class MatchingContext(
         varianceCtx = nList(COVARIANCE, query.inputParameters.size) + CONTRAVARIANCE
     )
 
-    fun transform(update: TypeArgUpdate): MatchingContext? {
-        return copy(funCtx = funCtx.apply(update) ?: return null)
+    fun transform(update: TypeArgUpdate, skippable: Set<Int>): MatchingContext? {
+        return copy(
+            funCtx = funCtx.apply(update) ?: return null,
+            skipPairings = skipPairings + skippable
+        )
     }
 
     override fun toString(): String {
@@ -277,34 +285,34 @@ data class MatchingContext(
 
 }
 
-data class MatchRoll(
-    val skippedAny: Boolean = false,
-    val status: SubResult = ConstraintsKept
-)
-
 // TODO - rework performance
 fun fitsOrderedQuery(query: QueryType, function: FunctionObj): FittingMap? {
+    data class MatchRoll(
+        val status: SubResult = ConstraintsKept,
+        val fitIndices: Set<Int> = emptySet()
+    ) {
+
+        fun skipped() = copy(status = Skip) to false
+
+        fun withFit(index: Int) = copy(fitIndices = fitIndices + index) to false
+
+        fun terminal(status: SubResult) = copy(status = status) to true
+    }
+
     return transformContext(MatchingContext(query, function), FittingMap(query, function.signature)) { matchingCtx ->
-        val update = matchingCtx.pairings.map { (funArg, queryArg, variance) ->
-            subAny(matchingCtx.funCtx.typeParams, funArg, queryArg, variance)
-        }.lazyReduce(MatchRoll()) { status, subRes ->
-            when (subRes) {
-                ConstraintsKept -> status to false
-                Skip -> status.copy(skippedAny = true) to false
-                else -> status.copy(status = subRes) to true
+        val essentialResult = matchingCtx.pairings.toList().roll(MatchRoll()) { statAcc, (index, funArg, queryArg, variance) ->
+            when (val subResult = subAny(matchingCtx.funCtx.typeParams, funArg, queryArg, variance)) {
+                ConstraintsKept -> statAcc.withFit(index)
+                Skip -> statAcc.skipped()
+                else -> statAcc.terminal(subResult)
             }
         }
 
-        when (val stat = update.status) {
+        when (val stat = essentialResult.status) {
             Failure -> FullResult.Failure
-            is TypeArgUpdate -> FullResult.Update(stat)
-            is Continue-> {
-                if (update.skippedAny) {
-                    FullResult.Failure
-                } else {
-                    FullResult.Success
-                }
-            }
+            is TypeArgUpdate -> FullResult.Update(essentialResult.fitIndices, stat)
+            is ConstraintsKept -> FullResult.Success
+            is Skip -> FullResult.Failure
         }
     }
 }

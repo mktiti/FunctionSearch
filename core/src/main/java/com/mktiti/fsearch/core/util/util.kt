@@ -4,7 +4,7 @@ package com.mktiti.fsearch.core.util
 
 fun <T> identity(x: T): T = x
 
-inline fun <T : Any> Boolean.elseNull(onTrue: () -> T): T? = if (this) onTrue() else null
+inline fun <T> Boolean.elseNull(onTrue: () -> T): T? = if (this) onTrue() else null
 
 fun <A, B> List<A>.zipIfSameLength(other: List<B>): List<Pair<A, B>>? = (size == other.size).elseNull { zip(other) }
 

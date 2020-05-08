@@ -3,6 +3,7 @@ package com.mktiti.fsearch.core.repo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.elseNull
 import com.mktiti.fsearch.util.PrefixTree
 
 class RadixTypeRepo(
@@ -17,6 +18,12 @@ class RadixTypeRepo(
     override val defaultTypeBounds = TypeBounds(
             upperBounds = setOf(StaticTypeSubstitution(rootType))
     )
+
+    // TODO think through - maybe cache?
+    private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.name to it }.toMap()
+
+    private val directSimpleIndex = simpleNames(directs)
+    private val templateSimpleIndex = simpleNames(templates)
 
     private val rootSuper = listOf(SuperType.StaticSuper.EagerStatic(rootType))
     private val funTypeInfo = TypeInfo("TestFun", emptyList(), "")
@@ -38,13 +45,18 @@ class RadixTypeRepo(
     override val allTemplates: Collection<TypeTemplate>
         get() = templates.toList()
 
+    private fun <T : Any> bySimple(name: String, allowSimple: Boolean, find: (String) -> T?): T?
+            = (allowSimple && !name.contains(".")).elseNull { find(name) }
+
     // TODO remove?
-    override fun get(name: String) = directs[name.split(".")]
+    override fun get(name: String, allowSimple: Boolean)
+            = directs[name.split(".")] ?: bySimple(name, allowSimple, directSimpleIndex::get)
 
     override fun get(info: MinimalInfo): DirectType? = directs[info]
 
     // TODO remove?
-    override fun template(name: String): TypeTemplate? = templates[name.split(".")]
+    override fun template(name: String, allowSimple: Boolean): TypeTemplate?
+            = templates[name.split(".")] ?: bySimple(name, allowSimple, templateSimpleIndex::get)
 
     override fun template(info: MinimalInfo): TypeTemplate? = templates[info]
 

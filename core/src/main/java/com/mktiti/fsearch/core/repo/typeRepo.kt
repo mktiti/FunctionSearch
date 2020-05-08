@@ -35,11 +35,11 @@ interface TypeRepo {
     val allTypes: Collection<Type>
     val allTemplates: Collection<TypeTemplate>
 
-    operator fun get(name: String): DirectType?
+    operator fun get(name: String, allowSimple: Boolean = false): DirectType?
 
     operator fun get(info: MinimalInfo): DirectType?
 
-    fun template(name: String): TypeTemplate?
+    fun template(name: String, allowSimple: Boolean = false): TypeTemplate?
 
     fun template(info: MinimalInfo): TypeTemplate?
 
@@ -124,11 +124,19 @@ class SetTypeRepo(
         )
     }
 
-    override fun get(name: String): DirectType? = types[name]
+    override fun get(name: String, allowSimple: Boolean): DirectType? = types[name] ?: if (allowSimple && !name.contains(".")) {
+        types.values.find { it.info.name == name }
+    } else {
+        null
+    }
 
     override fun get(info: MinimalInfo): DirectType? = get(info.toString())
 
-    override fun template(name: String): TypeTemplate? = templates[name]
+    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = templates[name] ?: if (allowSimple && !name.contains(".")) {
+        templates.values.find { it.info.name == name }
+    } else {
+        null
+    }
 
     override fun template(info: MinimalInfo): TypeTemplate? = template(info.toString())
 

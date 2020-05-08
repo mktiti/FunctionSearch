@@ -16,7 +16,7 @@ class RadixJavaRepo(
 ) : JavaRepo {
 
     override val objectType = directs[infoRepo.objectType]!!
-    override val voidType = directs[infoRepo.voidType]!!
+    override val voidType = DirectType(infoRepo.voidType.full(artifact), emptyList())
     private val arrayTemplate = TypeTemplate(
             info = infoRepo.arrayType.full(artifact),
             superTypes = listOf(SuperType.StaticSuper.EagerStatic(objectType)),

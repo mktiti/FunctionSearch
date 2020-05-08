@@ -9,15 +9,15 @@ import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.core.type.Type
+import com.mktiti.fsearch.core.util.TypeException
 import com.mktiti.fsearch.core.util.forceStaticApply
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
-import com.mktiti.fsearch.util.cutLast
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 
 typealias VirtParamTable = Map<String, Type.NonGenericType>
 
-fun buildTemplateArg(par: TemplateArgContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
+private fun buildTemplateArg(par: TemplateArgContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
     val name = when (val completeName = par.completeName()) {
         null -> return paramVirtualTypes[par.TEMPLATE_PARAM().text] ?: error("Type param '${par.TEMPLATE_PARAM().text}' expected")
         else -> completeName.fullName().text
@@ -26,20 +26,23 @@ fun buildTemplateArg(par: TemplateArgContext, paramVirtualTypes: VirtParamTable,
     val typeSignature = par.completeName().templateSignature()
 
     return if (typeSignature == null) {
-        PrimitiveType.fromSignatureSafe(name)?.let(javaRepo::primitive) ?: typeRepo[name]!!
+        PrimitiveType.fromNameSafe(name)?.let(javaRepo::primitive)
+                ?: typeRepo.get(name, allowSimple = true)
+                ?: throw TypeException("Simple type $name not found")
     } else {
         val typeArgs = typeSignature.templateArg().map { buildTemplateArg(it, paramVirtualTypes, javaRepo, typeRepo) }
-        typeRepo.template(name)?.forceStaticApply(typeArgs)!!
+        typeRepo.template(name, allowSimple = true)?.forceStaticApply(typeArgs)
+                ?: throw TypeException("Generic type $name not found")
     }
 }
 
-fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
+private fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
     val query = buildFunSignature(funCtx, paramVirtualTypes, javaRepo, typeRepo)
     val funTemplate = typeRepo.functionType(query.inputParameters.size)
     return funTemplate.forceStaticApply(query.allParams)
 }
 
-tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
+private tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
     val nested = par.funArg()
     return when {
         nested.templateArg() != null -> buildTemplateArg(nested.templateArg(), paramVirtualTypes, javaRepo, typeRepo)
@@ -48,14 +51,18 @@ tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTabl
     }
 }
 
-fun buildFunSignature(
+private fun buildFunSignature(
     funSignature: FunSignatureContext,
     paramVirtualTypes: VirtParamTable,
     javaRepo: JavaRepo,
     typeRepo: TypeRepo
 ): QueryType {
-    val (ins, out) = funSignature.wrappedFunArg().map { buildArg(it, paramVirtualTypes, javaRepo, typeRepo) }.cutLast()
-    return QueryType(ins, out)
+    fun WrappedFunArgContext.mapArg() = buildArg(this, paramVirtualTypes, javaRepo, typeRepo)
+
+    val inArgs = (funSignature.inArgs().wrappedFunArg() ?: emptyList()).map { it.mapArg() }
+    val outArg = funSignature.outArg().wrappedFunArg()?.mapArg() ?: javaRepo.voidType
+
+    return QueryType(inArgs, outArg)
 }
 
 fun parseQuery(query: String, javaRepo: JavaRepo, typeRepo: TypeRepo): QueryType {

@@ -10,8 +10,11 @@ completeName    :   fullName templateSignature? ;
 
 funArg  :   templateArg | PAREN_OPEN funSignature PAREN_CLOSE ;
 wrappedFunArg   :   funArg | PAREN_OPEN wrappedFunArg PAREN_CLOSE ;
-funSignature :   wrappedFunArg (ARG_SEP wrappedFunArg)* ARROW wrappedFunArg;
+inArgs  :   wrappedFunArg (ARG_SEP wrappedFunArg)* | EMPTY_ARG  ;
+outArg  :   wrappedFunArg | EMPTY_ARG  ;
+funSignature :  inArgs ARROW outArg;
 
+EMPTY_ARG  : PAREN_OPEN PAREN_CLOSE ;
 PAREN_OPEN  : '(' ;
 PAREN_CLOSE  : ')' ;
 ARROW   : ('->' | '=>') ;

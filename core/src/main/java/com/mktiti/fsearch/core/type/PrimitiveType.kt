@@ -13,15 +13,12 @@ enum class PrimitiveType(val javaName: String, val signature: Char) {
     DOUBLE("double", 'D');
 
     companion object {
-        @Suppress("MemberVisibilityCanBePrivate")
-        fun fromSignatureSafe(sign: Char) = values().find { it.signature == sign }
+        fun fromNameSafe(name: String) = values().find { it.javaName == name }
 
         @Suppress("MemberVisibilityCanBePrivate")
-        fun fromSignature(sign: Char) = fromSignatureSafe(sign)!!
+        fun fromSignature(sign: Char) = values().find { it.signature == sign }!!
 
         fun fromSignature(sign: String) = fromSignature(sign.first())
-
-        fun fromSignatureSafe(sign: String) = fromSignatureSafe(sign.first())
     }
 
     override fun toString() = javaName

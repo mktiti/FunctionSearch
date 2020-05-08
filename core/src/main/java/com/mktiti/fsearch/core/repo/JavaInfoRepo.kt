@@ -35,7 +35,7 @@ object MapJavaInfoRepo : JavaInfoRepo {
     }
 
     override val objectType = inLang("Object")
-    override val voidType = inLang("Void")
+    override val voidType = internal("void")
     override val arrayType = internal("Array")
 
     private val primitiveMap = EnumMap.eager(this::primitiveType)

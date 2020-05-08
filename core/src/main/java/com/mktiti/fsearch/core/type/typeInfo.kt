@@ -26,7 +26,7 @@ data class TypeInfo(
         } + name
 
     override fun toString() = buildString {
-        if (artifact.isNotBlank() && !artifact.startsWith("JCLv")) {
+        if (artifact.isNotBlank() && !artifact.startsWith("JCL")) {
             append(artifact)
             append(": ")
         }

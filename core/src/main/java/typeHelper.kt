@@ -1,3 +1,5 @@
+import SuperType.DynamicSuper.EagerDynamic
+import SuperType.StaticSuper.EagerStatic
 import Type.DynamicAppliedType
 import Type.NonGenericType
 import Type.NonGenericType.DirectType
@@ -5,7 +7,7 @@ import Type.NonGenericType.StaticAppliedType
 
 fun directType(fullName: String, vararg superType: NonGenericType) = DirectType(
     info = info(fullName),
-    superTypes = superType.map { SuperType.StaticSuper(it) }
+    superTypes = superType.map { EagerStatic(it) }
 )
 
 fun typeTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: List<Type>) = TypeTemplate(
@@ -13,13 +15,11 @@ fun typeTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: 
     typeParams = typeParams,
     superTypes = superTypes.map {
         when (it) {
-            is NonGenericType -> SuperType.StaticSuper(it)
-            is DynamicAppliedType -> SuperType.DynamicSuper(it)
+            is NonGenericType -> EagerStatic(it)
+            is DynamicAppliedType -> EagerDynamic(it)
         }
     }
 )
-
-fun Applicable.staticApply(vararg typeArgs: NonGenericType): StaticAppliedType? = staticApply(typeArgs.toList())
 
 fun Applicable.forceStaticApply(typeArgs: List<NonGenericType>): StaticAppliedType
         = staticApply(typeArgs) ?: throw TypeApplicationException("Failed to static apply type args $typeArgs to $this")

@@ -4,6 +4,8 @@ import ApplicationParameter.Substitution.SelfSubstitution
 import ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
 import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import ApplicationParameter.Wildcard
+import SuperType.DynamicSuper
+import SuperType.StaticSuper
 import Type.DynamicAppliedType
 import Type.NonGenericType
 import TypeBoundFit.*
@@ -52,8 +54,8 @@ data class TypeBounds(
                 InheritanceLogic.COVARIANCE -> type.superTypes.asSequence().mapNotNull { commonBase(bound, it.type, variance) }.firstOrNull()
                 InheritanceLogic.CONTRAVARIANCE -> bound.superTypes.asSequence().mapNotNull { superType ->
                     when (superType) {
-                        is SuperType.StaticSuper -> null
-                        is SuperType.DynamicSuper -> commonBase(superType.type, type, variance)
+                        is StaticSuper -> null
+                        is DynamicSuper -> commonBase(superType.type, type, variance)
                     }
                 }.firstOrNull()
             }

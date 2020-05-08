@@ -1,13 +1,17 @@
-fun <T> Iterable<T>.safeCutHead(): Pair<T, List<T>>? = when (val head = firstOrNull()) {
-    null -> null
-    else -> head to drop(1)
+fun <T> T.repeat(count: Int): List<T> = (0 until count).map { this }
+
+fun <T> List<T>.safeCutHead(): Pair<T, List<T>>? = if (isEmpty()) {
+    null
+} else {
+    first() to subList(1, size)
 }
 
 fun <T> List<T>.cutHead(): Pair<T, List<T>> = safeCutHead()!!
 
-fun <T> List<T>.safeCutLast(): Pair<List<T>, T>? = when (val last = lastOrNull()) {
-    null -> null
-    else -> dropLast(1) to last
+fun <T> List<T>.safeCutLast(): Pair<List<T>, T>? = if (isEmpty()) {
+    null
+} else {
+    subList(0, size - 1) to last()
 }
 
 fun <T> List<T>.cutLast(): Pair<List<T>, T> = safeCutLast()!!

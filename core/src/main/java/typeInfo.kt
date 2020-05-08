@@ -1,15 +1,26 @@
 import java.util.*
 
+typealias PackageName = List<String>
+
 data class TypeInfo(
-    val name: String,
-    val packageName: String = "",
-    val artifact: String = "JCLv8",
-    val virtual: Boolean = false
+        val name: String,
+        val packageName: PackageName = emptyList(),
+        val artifact: String = "JCLv8",
+        val virtual: Boolean = false
 ) {
 
-    val fullName: String = if (packageName.isNotBlank()) "$packageName.$name" else name
+    companion object {
+        val uniqueVirtual = TypeInfo("_", emptyList(), "", true)
 
+        val anyWildcard = TypeInfo("?", emptyList(), "", true)
+    }
 
+    val fullName
+        get() = if (packageName.isNotEmpty()) {
+            packageName.joinToString(prefix = "", separator = ".", postfix = ".")
+        } else {
+            ""
+        } + name
 
     override fun toString() = buildString {
         if (artifact.isNotBlank() && !artifact.startsWith("JCLv")) {
@@ -22,7 +33,9 @@ data class TypeInfo(
 
     override fun equals(other: Any?): Boolean = when {
         other !is TypeInfo -> false
-        other.virtual -> this === other
+        this === anyWildcard -> true
+        other === anyWildcard -> true
+        virtual -> this === other && this !== uniqueVirtual
         else -> {
             other.name == name && other.packageName == packageName && other.artifact == artifact
         }
@@ -52,7 +65,7 @@ fun info(fullString: String): TypeInfo {
 
     val packageParts = outerFullName.split('.')
     val className = packageParts.last() + innerParts
-    val packageName = packageParts.dropLast(1).joinToString(separator = ".")
+    val packageName = packageParts.dropLast(1)
 
     if (className.isBlank()) {
         throw TypeInfoParseException(fullString, "Class name is empty")

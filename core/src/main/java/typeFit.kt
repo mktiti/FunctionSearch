@@ -6,9 +6,10 @@ import ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitutio
 import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import ApplicationParameter.Wildcard
 import InheritanceLogic.*
-import SubResult.*
 import SubResult.Continue.ConstraintsKept
 import SubResult.Continue.Skip
+import SubResult.Failure
+import SubResult.TypeArgUpdate
 import Type.DynamicAppliedType
 import TypeBoundFit.*
 
@@ -136,7 +137,9 @@ fun subAny(
         is StaticTypeSubstitution -> {
             if (subStatic(argPar.type, subType, variance)) {
                 ConstraintsKept
-            } else Failure
+            } else {
+                Failure
+            }
         }
         is Wildcard.Direct -> ConstraintsKept
         is Wildcard.BoundedWildcard -> {
@@ -318,6 +321,10 @@ fun fitsOrderedQuery(query: QueryType, function: FunctionObj): FittingMap? {
 }
 
 fun fitsQuery(query: QueryType, function: FunctionObj): FittingMap? {
+    if (query.inputParameters.size != function.signature.inputParameters.size) {
+        return null
+    }
+
     return query.inputParameters.allPermutations().asSequence().mapNotNull { inputsOrdered ->
         fitsOrderedQuery(query.copy(inputParameters = inputsOrdered), function)
     }.firstOrNull()

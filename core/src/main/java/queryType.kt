@@ -20,9 +20,9 @@ data class QueryType(
 fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(
     info = TypeInfo(
         name = name,
-        packageName = "",
+        packageName = emptyList(),
         artifact = "",
         virtual = true
     ),
-    superTypes = supers.map { StaticSuper(it) }
+    superTypes = supers.map { StaticSuper.EagerStatic(it) }
 )

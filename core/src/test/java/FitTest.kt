@@ -6,6 +6,9 @@ import ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
 import ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import repo.createTestRepo
+import util.printFit
+import util.printSemiType
 import kotlin.test.assertNotNull
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
@@ -250,7 +253,7 @@ class FitTest {
         )
 
         printFit(sort, query)
-        assertNotNull(fitsQuery(query, sort))
+        assertNotNull(fitsOrderedQuery(query, sort))
     }
 
 }

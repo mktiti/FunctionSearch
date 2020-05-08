@@ -4,18 +4,24 @@ import ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitutio
 import ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
 import ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
+import repo.MutableTypeRepo
+import repo.SetTypeRepo
+import util.printFit
+import util.printSemiType
+import util.printType
+import util.printTypeTemplate
 
 val defaultRepo: MutableTypeRepo = SetTypeRepo(
-    rootInfo = TypeInfo(
-        name = "Object",
-        packageName = "",
-        artifact = "JCLv8"
-    ),
-    funTypeInfo = TypeInfo(
-        name = "\$Fn",
-        packageName = "",
-        artifact = "JCLv8"
-    )
+        rootInfo = TypeInfo(
+                name = "Object",
+                packageName = emptyList(),
+                artifact = "JCLv8"
+        ),
+        funTypeInfo = TypeInfo(
+                name = "\$Fn",
+                packageName = emptyList(),
+                artifact = "JCLv8"
+        )
 )
 
 val objType = defaultRepo.createDirect("Object")

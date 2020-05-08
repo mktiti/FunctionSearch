@@ -16,6 +16,11 @@
     <dependencies>
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
             <artifactId>core</artifactId>
         </dependency>
 

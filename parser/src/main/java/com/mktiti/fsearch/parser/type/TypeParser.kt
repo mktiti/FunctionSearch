@@ -25,7 +25,7 @@ sealed class ParsedType(
 
 }
 
-fun parseType(signature: String): ParsedType {
+fun parseType(signature: String, nestTypeParams: List<ImTypeParam>): ParsedType {
     val lexer = SignatureLexer(CharStreams.fromString(signature))
     lexer.removeErrorListeners()
     lexer.addErrorListener(ExceptionErrorListener)
@@ -36,12 +36,11 @@ fun parseType(signature: String): ParsedType {
 
     val signatureCtx = parser.classSignature()
 
-    val typeParams = parseTypeParams(signatureCtx.typeParameters())
+    val typeParams = nestTypeParams + parseTypeParams(signatureCtx.typeParameters())
 
     val parentClass = signatureCtx.superclassSignature().classTypeSignature()
     val interfaces = signatureCtx.superinterfaceSignature().map { it.classTypeSignature() }
-    val supers = (interfaces + parentClass)
-            .map { parseDefinedType(it) }
+    val supers = (interfaces + parentClass).map { parseDefinedType(it) }
 
     return if (typeParams.isEmpty()) {
         ParsedType.Direct(supers)

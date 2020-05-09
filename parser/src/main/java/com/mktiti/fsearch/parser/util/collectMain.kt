@@ -16,20 +16,32 @@ fun main(args: Array<String>) {
         return
     }
 
-    val typeCollector: JarTypeCollector = TwoPhaseCollector(MapJavaInfoRepo)
+    val log = InMemTypeParseLog()
+
+    println("==== Loading JCL ====")
+    val typeCollector: JarTypeCollector = TwoPhaseCollector(MapJavaInfoRepo, log)
     val (javaRepo, jclRepo) = typeCollector.collectJcl("JCL", rtPath)
 
-    println("===============")
-    println("Loaded types:")
-    /*jclRepo.allTypes.forEach {
-        printSemiType(it)
+    println("==== Loading Done ====")
+    println("\tLoaded ${jclRepo.allTypes.size} direct types and ${jclRepo.allTemplates.size} type templates")
+    println("\t${log.allCount} warnings")
+
+    println("\t== Type not found errors (${log.typeNotFounds.size}):")
+    log.typeNotFounds.groupBy { it.used }.forEach { used, users ->
+        println("\t\t$used used by $users")
     }
-     */
 
+    println("\t== Raw type usages (${log.rawUsages.size})")
+    println("\t== Application errors (${log.applicableErrors.size})")
+    log.applicableErrors.forEach { (user, used) ->
+        println("\t\t$used used by $user")
+    }
+
+    println("==== Loading Functions ====")
     val functions = AsmParser(javaRepo, jclRepo).loadFunctions(rtPath)
+    println("==== Loading Done ====")
+    println("\tLoaded ${functions.size} functions")
 
-    println("===============")
-    println("Loaded functions (${functions.size}):")
     /*functions.forEach { function ->
         println(function)
     }

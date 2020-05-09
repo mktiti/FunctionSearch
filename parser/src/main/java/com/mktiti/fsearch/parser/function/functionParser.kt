@@ -41,7 +41,7 @@ private fun parseTypeArg(param: TypeArgumentContext): ImParam {
 }
 
 private fun parseSimpleClass(param: SimpleClassTypeSignatureContext): Pair<String, List<ImParam>> {
-    return param.identifier().text to parseTypeArgs(param.typeArguments())
+    return param.identifier().text.replace('$', '.') to parseTypeArgs(param.typeArguments())
 }
 
 fun parseDefinedType(param: ClassTypeSignatureContext): ImParam.Type {
@@ -50,16 +50,10 @@ fun parseDefinedType(param: ClassTypeSignatureContext): ImParam.Type {
 
     val fullTypeArgsAttributes =  typeArgs + postfixes.flatMap { it.second }
 
-    val prePackage = parsePackage(param.packageSpecifier())
-    val (packageName, finalName) = if (name.contains("$")) {
-        val split = name.split("$")
-        (prePackage + split.dropLast(1)) to split.last()
-    } else {
-        prePackage to name
-    }
+    val packageName = parsePackage(param.packageSpecifier())
 
     return ImParam.Type(
-            info = MinimalInfo(packageName, finalName),
+            info = MinimalInfo(packageName, name),
             typeArgs = fullTypeArgsAttributes
     )
 }

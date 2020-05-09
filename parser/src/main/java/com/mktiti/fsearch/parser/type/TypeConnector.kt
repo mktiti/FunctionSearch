@@ -10,9 +10,11 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcar
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Direct
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.liftNull
+import com.mktiti.fsearch.parser.util.JavaTypeParseLog
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree
+import java.lang.Error
 
 interface TypeConnector {
 
@@ -30,13 +32,16 @@ interface TypeConnector {
 
 }
 
-class JavaTypeConnector(private val infoRepo: JavaInfoRepo) : TypeConnector {
+class JavaTypeConnector(
+        private val infoRepo: JavaInfoRepo,
+        private val log: JavaTypeParseLog
+) : TypeConnector {
 
     private fun <T> useOneshot(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
             code: OneshotConnector.() -> T
-    ) = OneshotConnector(infoRepo, imDirectTypes, imTemplateTypes).code()
+    ) = OneshotConnector(log, infoRepo, imDirectTypes, imTemplateTypes).code()
 
     override fun connectJcl(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
@@ -57,6 +62,7 @@ class JavaTypeConnector(private val infoRepo: JavaInfoRepo) : TypeConnector {
 }
 
 private class OneshotConnector(
+        private val log: JavaTypeParseLog,
         private val infoRepo: JavaInfoRepo,
         private val imDirectTypes: MutablePrefixTree<String, DirectCreator>,
         private val imTemplateTypes: MutablePrefixTree<String, TemplateCreator>
@@ -84,6 +90,23 @@ private class OneshotConnector(
     }
 
     fun connectJcl(jclArtifact: String): JclResult {
+        val arraySupers = ArrayList<SuperType.StaticSuper>(1)
+        val arrayTemplate = TypeTemplate(
+                info = infoRepo.arrayType.full(jclArtifact),
+                superTypes = arraySupers,
+                typeParams = listOf(TypeParameter("X", TypeBounds(emptySet())))
+        )
+        imTemplateTypes[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TemplateCreator(
+                unfinishedType = arrayTemplate,
+                directSupers = listOf(infoRepo.objectType),
+                templateSupers = mutableListOf(),
+                directSuperAppender = { arraySupers += SuperType.StaticSuper.EagerStatic(it) },
+                templateSuperAppender = {}
+        )
+        PrimitiveType.values().map(infoRepo::primitive).forEach { primitive ->
+            directTypes[primitive.packageName, primitive.simpleName] = DirectType(primitive.full(jclArtifact), emptyList())
+        }
+
         connect()
 
         val javaRepo = RadixJavaRepo(
@@ -102,19 +125,11 @@ private class OneshotConnector(
     }
 
     private fun connect() {
-        println("==== Resolving direct super types")
         resolveDirectSupers(imDirectTypes)
         resolveDirectSupers(imTemplateTypes)
 
-        var iter = 0
         while (!imDirectTypes.empty) {
             var removeCount = 0
-            println("=== Iter #${iter++} -- direct types (${imDirectTypes.size}), type templates (${imTemplateTypes.size}):")
-            // imDirectTypes.forEach { direct ->
-            //   println(direct.unfinishedType)
-            // }
-
-            println("  = Resolving generic super types")
             resolveTemplateSupers(imDirectTypes)
             resolveTemplateSupers(imTemplateTypes)
 
@@ -123,7 +138,7 @@ private class OneshotConnector(
                     if (done) {
                         val type = direct.unfinishedType
                         val info = type.info
-                        // directTypes.mutableSubtreeSafe(com.mktiti.fsearch.core.type.info.packageName)[com.mktiti.fsearch.core.type.info.name] = com.mktiti.fsearch.parser.type
+                        // directTypes.mutableSubtreeSafe(info.packageName)[info.name] = type
                         directTypes[info.packageName, info.name] = type
                         removeCount++
                     }
@@ -135,7 +150,7 @@ private class OneshotConnector(
                     if (done) {
                         val type = template.unfinishedType
                         val info = type.info
-                        // directTypes.mutableSubtreeSafe(com.mktiti.fsearch.core.type.info.packageName)[com.mktiti.fsearch.core.type.info.name] = com.mktiti.fsearch.parser.type
+                        // directTypes.mutableSubtreeSafe(info.packageName)[info.name] = type
                         typeTemplates[info.packageName, info.name] = type
                         removeCount++
                     }
@@ -164,10 +179,10 @@ private class OneshotConnector(
                 } else {
                     when (val superTemplate = anyTemplate(directSuper)) {
                         null -> {
-                            println("Super type $directSuper not found (possibly not public), should create stub type")
+                            log.typeNotFound(creator.unfinishedType.info, directSuper)
                         }
                         else -> {
-                            println("Raw use of super type ${superTemplate.fullName} for type ${creator.unfinishedType} parameterized with ${infoRepo.objectType}")
+                            log.rawUsage(creator.unfinishedType.info, directSuper)
                             creator.templateSupers += DatCreator(
                                     template = directSuper,
                                     args = superTemplate.typeParams.map {
@@ -201,8 +216,11 @@ private class OneshotConnector(
     }
 
     private sealed class DatResult {
-        object Error : DatResult()
         object NotReady : DatResult()
+        sealed class Error : DatResult() {
+            data class NotFound(val info: MinimalInfo) : DatResult.Error()
+            object Application : DatResult.Error()
+        }
         data class Success(val type: Type) : DatResult()
     }
 
@@ -210,26 +228,36 @@ private class OneshotConnector(
         val info = creator.template
         val template: TypeTemplate = if (onlyUseReady) {
             when (val ready = typeTemplates[info]) {
-                null -> return if (anyTemplate(info) != null) DatResult.NotReady else DatResult.Error
+                null -> return if (anyTemplate(info) != null) {
+                    DatResult.NotReady
+                } else {
+                    DatResult.Error.NotFound(info)
+                }
                 else -> ready
             }
         } else {
-            anyTemplate(info) ?: return DatResult.Error
+            anyTemplate(info) ?: return DatResult.Error.NotFound(info)
         }
 
-        val mappedArgs = creator.args.map { mapTypeArgCreator(it) }.liftNull() ?: return DatResult.Error
-        return DatResult.Success(template.apply(mappedArgs) ?: return DatResult.Error)
+        fun applicationError() = DatResult.Error.Application
+
+        val mappedArgs = creator.args.map { mapTypeArgCreator(it) }.liftNull() ?: return applicationError()
+        return DatResult.Success(template.apply(mappedArgs) ?: return applicationError())
     }
 
     private fun <T : SemiType> resolveTemplateSupers(types: PrefixTree<String, TypeCreator<T>>) {
         types.forEach { creator ->
             creator.templateSupers.removeIf { superCreator ->
                 when (val superResult = mapDatCreator(superCreator, true)) {
-                    DatResult.Error -> {
-                        println("Generic super type ${creator.unfinishedType} could not be applied properly, is skipped")
+                    DatResult.NotReady -> false
+                    is DatResult.Error.NotFound -> {
+                        log.typeNotFound(creator.unfinishedType.info, superResult.info)
                         true
                     }
-                    DatResult.NotReady -> false
+                    is DatResult.Error.Application -> {
+                        log.applicationError(creator.unfinishedType.info, superCreator.template)
+                        true
+                    }
                     is DatResult.Success -> {
                         val superType = superResult.type
                         when (creator) {

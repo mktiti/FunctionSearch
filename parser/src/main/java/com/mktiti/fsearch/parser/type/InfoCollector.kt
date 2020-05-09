@@ -6,11 +6,15 @@ import com.mktiti.fsearch.core.type.SuperType.DynamicSuper
 import com.mktiti.fsearch.core.type.SuperType.StaticSuper
 import com.mktiti.fsearch.core.type.SuperType.StaticSuper.EagerStatic
 import com.mktiti.fsearch.parser.function.ImParam
+import com.mktiti.fsearch.parser.function.ImTypeParam
 import com.mktiti.fsearch.util.MutablePrefixTree
+import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.mapMutablePrefixTree
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Opcodes
+import java.lang.Integer.min
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -21,14 +25,23 @@ class InfoCollector(
 
     companion object {
         fun parseNonGeneric(type: String): MinimalInfo {
-            val splitName = type.split('$', '/')
+            val splitName = type.split('/')
             val (packageName, simpleName) = splitName.cutLast()
-            return MinimalInfo(packageName, simpleName)
+            return MinimalInfo(packageName, simpleName.replace('$', '.'))
         }
     }
 
     val directTypes: MutablePrefixTree<String, DirectCreator> = mapMutablePrefixTree()
     val templateTypes: MutablePrefixTree<String, TemplateCreator> = mapMutablePrefixTree()
+
+    private data class TypeMeta(
+            val info: TypeInfo,
+            val signature: String?,
+            val superNames: List<String>,
+            val nestDepth: Int? = null
+    )
+
+    private var currentType: TypeMeta? = null
 
     private fun addUnfinishedDirect(
             info: TypeInfo,
@@ -81,20 +94,33 @@ class InfoCollector(
                     )
                 }
             }
-            is ImParam.TypeParamRef -> TypeArgCreator.Param(typeParams.indexOf(imParam.sign))
+            is ImParam.TypeParamRef -> TypeArgCreator.Param(
+                    typeParams.withIndex().find { it.value == imParam.sign }?.index
+                            ?: -1//error("ASD")
+            )
             is ImParam.Array -> TypeArgCreator.Dat(DatCreator(
                     template = infoRepo.arrayType,
                     args = listOf(transformArg(imParam.type, typeParams))
             ))
             is ImParam.Primitive -> TypeArgCreator.Direct(infoRepo.primitive(imParam.value))
             is ImParam.UpperWildcard -> TypeArgCreator.UpperWildcard(transformArg(imParam.param, typeParams))
-            is ImParam.LowerWildcard -> error("Lower wildcard (? super ...) should not be possible in type declaration")
+            is ImParam.LowerWildcard -> {
+                println("Lower wildcard (? super ...) should not be possible in type declaration")
+                TypeArgCreator.Wildcard
+            }
             ImParam.Void -> TypeArgCreator.Direct(infoRepo.voidType)
         }
     }
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
-        if (access and Opcodes.ACC_PUBLIC == 0) {
+        // if (access and Opcodes.ACC_PUBLIC == 0) {
+        //    return
+        // }
+
+        val info = parseNonGeneric(name).full(artifact)
+        val lastName = info.name.split('.').last()
+        if (lastName.first().isDigit()) {
+            // Skip anonymous nested and local class
             return
         }
 
@@ -104,9 +130,56 @@ class InfoCollector(
             interfaces?.let(this::addAll)
         }
 
-        val info = parseNonGeneric(name).full(artifact)
+        currentType = TypeMeta(info, signature, superNames)
+    }
 
-        if (signature == null) {
+    override fun visitField(access: Int, name: String, descriptor: String?, signature: String?, value: Any?): FieldVisitor? {
+        if (name.startsWith("this$")) {
+            val depth = name.removePrefix("this$").toIntOrNull()?.let { it + 1 } ?: return null
+            currentType?.let {
+                if (it.nestDepth == null || depth > it.nestDepth) {
+                    currentType = it.copy(nestDepth = depth)
+                }
+            }
+        }
+
+        return null
+    }
+
+    override fun visitEnd() {
+        currentType?.let {
+            createInitials(it)
+        }
+        currentType = null
+    }
+
+    private fun createInitials(meta: TypeMeta) {
+        val (info, signature, superNames) = meta
+        val superCount = superNames.size
+
+        val nestContext = if (meta.nestDepth != null) {
+            val nests = info.name.split(".").dropLast(1)
+            val depth = min(meta.nestDepth, nests.size)
+
+            val nestPackage: PrefixTree<String, TemplateCreator> = templateTypes.mutableSubtreeSafe(info.packageName)
+
+            val affectingNests = nests.takeLast(depth)
+            val nestPrefix = when (val prefix = nests.dropLast(depth).joinToString(separator = ".")) {
+                "" -> prefix
+                else -> "$prefix."
+            }
+
+            affectingNests.fold(emptyList<TypeParameter>() to nestPrefix) { (params, name), nest ->
+                val newName = name + nest
+                val nestParams = nestPackage[newName]?.unfinishedType?.typeParams ?: emptyList()
+
+                (params + nestParams) to "$newName."
+            }.first
+        } else {
+            emptyList()
+        }
+
+        if (signature == null && nestContext.isEmpty()) {
             addUnfinishedDirect(
                     info = info,
                     superCount = superCount,
@@ -114,7 +187,19 @@ class InfoCollector(
                     templateSupers = LinkedList()
             )
         } else {
-            val type = parseType(signature)
+            val nestTypeParams = nestContext.map {
+                // TODO param bounds
+                ImTypeParam(it.sign, emptyList())
+            }
+
+            val type = if (signature == null) {
+                ParsedType.Template(
+                        typeParams = nestTypeParams,
+                        superTypes = superNames.map { ImParam.Type(parseNonGeneric(it), emptyList()) }
+                )
+            } else {
+                parseType(signature, nestTypeParams)
+            }
             val (ds, ts) = type.supersTypes.partition { it.typeArgs.isEmpty() }
 
             when (type) {

@@ -3,9 +3,11 @@ package com.mktiti.fsearch.parser.type
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.parser.util.JavaTypeParseLog
 import com.mktiti.fsearch.util.MutablePrefixTree
 import org.objectweb.asm.ClassReader
 import java.io.InputStream
+import java.lang.Exception
 import java.nio.file.Path
 import java.util.zip.ZipFile
 
@@ -23,13 +25,12 @@ private typealias InitialData<T> = MutablePrefixTree<String, T>
 
 class TwoPhaseCollector(
         private val infoRepo: JavaInfoRepo,
-        private val connector: TypeConnector = JavaTypeConnector(infoRepo)
+        private val log: JavaTypeParseLog,
+        private val connector: TypeConnector = JavaTypeConnector(infoRepo, log)
 ) : JarTypeCollector {
 
     private fun loadEntry(collector: InfoCollector, input: InputStream) {
-        val classReader = ClassReader(input)
-
-        classReader.accept(collector, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
+        ClassReader(input).accept(collector, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
     }
 
     private fun collectInitial(name: String, jarPath: Path): Pair<InitialData<DirectCreator>, InitialData<TemplateCreator>> {
@@ -40,8 +41,14 @@ class TwoPhaseCollector(
 
             entries.toList().filter {
                 it.name.endsWith(".class")
+            }.sortedBy {
+                it.name.removeSuffix(".class")
             }.forEach { entry ->
-                loadEntry(typeCollector, jar.getInputStream(entry))
+                try {
+                    loadEntry(typeCollector, jar.getInputStream(entry))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
 

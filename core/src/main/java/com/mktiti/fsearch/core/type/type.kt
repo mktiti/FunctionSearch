@@ -43,18 +43,23 @@ interface Applicable {
     fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType?
 
     fun apply(typeArgs: List<ApplicationParameter>): Type? {
-        when (val argsAsStatic = typeArgs.castIfAllInstance<StaticTypeSubstitution>()) {
-            null -> dynamicApply(typeArgs)
-            else -> if (canByStaticApplied) {
+        val argsAsStatic = typeArgs.map {
+            if (it is Wildcard.Direct) {
+                StaticTypeSubstitution(NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList()))
+            } else {
+                it
+            }
+        }.castIfAllInstance<StaticTypeSubstitution>()
+
+        return if (argsAsStatic == null) {
+            dynamicApply(typeArgs)
+        } else {
+            if (canByStaticApplied) {
                 staticApply(argsAsStatic.map(StaticTypeSubstitution::type))
             } else {
                 dynamicApply(typeArgs)
             }
         }
-
-        return typeArgs.castIfAllInstance<StaticTypeSubstitution>()?.let {
-            staticApply(it.map { sub -> sub.type })
-        } ?: dynamicApply(typeArgs)
     }
 
 }

@@ -24,23 +24,23 @@ class JavaFunctionBuilder(
         private val javaRepo: JavaRepo
 ) : FunctionBuilder {
 
-    private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>): DynamicTypeSubstitution? {
+    private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>, selfRef: String?): DynamicTypeSubstitution? {
         val template = typeRepo.template(param.info) ?: return null
         val args: List<ApplicationParameter> = if (param.typeArgs.isEmpty()) {
             template.typeParams.map { StaticTypeSubstitution(javaRepo.objectType) }
         } else {
-            param.typeArgs.map { mapParam(it, references) ?: return null }
+            param.typeArgs.map { mapParam(it, references, selfRef) ?: return null }
         }
         return DynamicTypeSubstitution(template.forceDynamicApply(args))
     }
 
-    private fun mapParam(param: ImParam, references: List<TypeParameter>): ApplicationParameter? {
+    private fun mapParam(param: ImParam, references: List<TypeParameter>, selfRef: String?): ApplicationParameter? {
         return when (param) {
             ImParam.Wildcard -> Wildcard.Direct
             is ImParam.Primitive -> StaticTypeSubstitution(javaRepo.primitive(param.value))
-            is ImParam.UpperWildcard -> UpperBound(mapSubstitution(param.param, references) ?: return null)
-            is ImParam.LowerWildcard -> LowerBound(mapSubstitution(param.param, references) ?: return null)
-            is ImParam.Array -> DynamicTypeSubstitution(javaRepo.arrayOf(mapParam(param.type, references) ?: return null))
+            is ImParam.UpperWildcard -> UpperBound(mapSubstitution(param.param, references, selfRef) ?: return null)
+            is ImParam.LowerWildcard -> LowerBound(mapSubstitution(param.param, references, selfRef) ?: return null)
+            is ImParam.Array -> DynamicTypeSubstitution(javaRepo.arrayOf(mapParam(param.type, references, selfRef) ?: return null))
             is ImParam.Type -> {
                 val info = param.info
 
@@ -49,36 +49,42 @@ class JavaFunctionBuilder(
                     val type = typeRepo[info]
                     if (type == null) {
                         // println("Direct type info not found, trying raw usage")
-                        mapDatParam(param, references)
+                        mapDatParam(param, references, selfRef)
                     } else {
                         StaticTypeSubstitution(type)
                     }
                 } else {
                     // Dat
-                    mapDatParam(param, references)
+                    mapDatParam(param, references, selfRef)
                 }
             }
             is ImParam.TypeParamRef -> {
-                val index = references.withIndex().find { tp -> param.sign == tp.value.sign }?.index
-                        ?: error("Invalid type param reference ('${param.sign}')")
+                if (selfRef == param.sign) {
+                    Substitution.SelfSubstitution
+                } else {
+                    val index = references.withIndex().find { tp -> param.sign == tp.value.sign }?.index
+                            ?: error("Invalid type param reference ('${param.sign}')")
 
-                ParamSubstitution(index)
+                    ParamSubstitution(index)
+                }
             }
             ImParam.Void -> StaticTypeSubstitution(javaRepo.voidType)
         }
     }
 
-    private fun mapSubstitution(type: ImParam, references: List<TypeParameter>): Substitution? {
-        val mapped = mapParam(type, references) ?: return null
+    private fun mapSubstitution(type: ImParam, references: List<TypeParameter>, selfRef: String?): Substitution? {
+        val mapped = mapParam(type, references, selfRef) ?: return null
         return mapped as? Substitution ?: error("Only substitutions allowed")
     }
 
     private fun buildTypeParam(intermediate: ImTypeParam, references: List<TypeParameter>): TypeParameter? {
         return TypeParameter(
                 sign = intermediate.sign,
-                bounds = TypeBounds(intermediate.bounds.map {
-                    mapSubstitution(it, references) ?: return null
-                }.toSet())
+                bounds = TypeBounds(
+                    upperBounds = intermediate.bounds.map { bound ->
+                        mapSubstitution(bound, references, intermediate.sign) ?: return null
+                    }.toSet()
+                )
         )
     }
 
@@ -86,24 +92,22 @@ class JavaFunctionBuilder(
         val typeParams: List<TypeParameter> = ArrayList<TypeParameter>(intermediate.typeParams.size).apply {
             // Topological sort, may be optimized
             val indexedTypeParams = intermediate.typeParams.withIndex().toMutableList()
-            val added: MutableList<TypeParameter> = ArrayList(intermediate.typeParams.size)
 
             while (indexedTypeParams.isNotEmpty()) {
-                val addedSigns = added.map { it.sign }
+                val addedSigns = map { it.sign }
                 val (index, nonDependent) = indexedTypeParams.find { (_, tp) ->
-                    addedSigns.containsAll(tp.referencedTypeParams)
-                //} ?: throw RuntimeException("Function com.mktiti.fsearch.parser.type parameters have cyclic dependency")
-                } ?: return null
+                    (addedSigns + tp.sign).containsAll(tp.referencedTypeParams)
+                } ?: throw RuntimeException("Function type parameters have cyclic dependency")
 
-                this += buildTypeParam(nonDependent, added) ?: return null
+                this += buildTypeParam(nonDependent, this) ?: return null
                 indexedTypeParams.removeIf { it.index == index }
             }
         }
 
         return TypeSignature.GenericSignature(
             typeParameters = typeParams,
-            inputParameters = intermediate.inputs.mapIndexed { i, p -> "\$$i" to (mapSubstitution(p, typeParams) ?: return null) },
-            output = mapSubstitution(intermediate.output, typeParams) ?: return null
+            inputParameters = intermediate.inputs.mapIndexed { i, p -> "\$$i" to (mapSubstitution(p, typeParams, null) ?: return null) },
+            output = mapSubstitution(intermediate.output, typeParams, null) ?: return null
         )
     }
 }

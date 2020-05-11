@@ -9,12 +9,10 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubsti
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Direct
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.util.JavaTypeParseLog
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree
-import java.lang.Error
 
 interface TypeConnector {
 
@@ -169,6 +167,13 @@ private class OneshotConnector(
 
     }
 
+    private fun rawUse(template: TypeTemplate) = DatCreator(
+            template = MinimalInfo.fromFull(template.info),
+            args = template.typeParams.map {
+                TypeArgCreator.Direct(infoRepo.objectType)
+            }
+    )
+
     private fun <T : SemiType> resolveDirectSupers(types: PrefixTree<String, TypeCreator<T>>) {
         types.forEach { creator ->
             creator.directSupers.forEach { directSuper ->
@@ -183,12 +188,7 @@ private class OneshotConnector(
                         }
                         else -> {
                             log.rawUsage(creator.unfinishedType.info, directSuper)
-                            creator.templateSupers += DatCreator(
-                                    template = directSuper,
-                                    args = superTemplate.typeParams.map {
-                                        TypeArgCreator.Direct(infoRepo.objectType)
-                                    }
-                            )
+                            creator.templateSupers += rawUse(superTemplate)
                         }
                     }
                 }
@@ -196,69 +196,95 @@ private class OneshotConnector(
         }
     }
 
-    private fun mapTypeArgCreator(creator: TypeArgCreator): ApplicationParameter? {
+    private fun mapTypeArgCreator(user: TypeInfo, creator: TypeArgCreator): CreationResult<ApplicationParameter> {
+        fun success(param: ApplicationParameter) = CreationResult.Success(param)
+        fun notFound(info: MinimalInfo) = CreationResult.Error.NotFound<ApplicationParameter>(info)
+        fun appError() = CreationResult.Error.Application<ApplicationParameter>()
+
+        fun dat(creator: DatCreator): CreationResult<ApplicationParameter> {
+            val type = (mapDatCreator(creator, false) as? CreationResult.Success)?.type ?: return appError()
+            return success(TypeSubstitution.wrap(type))
+        }
+
         return when (creator) {
-            TypeArgCreator.Wildcard -> Direct
+            TypeArgCreator.Wildcard -> success(Direct)
             is TypeArgCreator.UpperWildcard -> {
-                val bound: Substitution = mapTypeArgCreator(creator.bound) as? Substitution ?: return null
-                BoundedWildcard.UpperBound(bound)
+                val nested = mapTypeArgCreator(user, creator.bound)
+                if (nested is CreationResult.Success) {
+                    val bound: Substitution = nested.type as? Substitution ?: return appError()
+                    success(BoundedWildcard.UpperBound(bound))
+                } else {
+                    nested
+                }
             }
             is TypeArgCreator.Direct -> {
-                val type = anyDirect(creator.arg) ?: return null
-                StaticTypeSubstitution(type)
+                val direct = anyDirect(creator.arg)
+                if (direct != null) {
+                    success(StaticTypeSubstitution(direct))
+                } else {
+                    anyTemplate(creator.arg)?.let {
+                        log.rawUsage(used = creator.arg, user = user)
+                        dat(rawUse(it))
+                    } ?: notFound(creator.arg)
+                }
             }
-            is TypeArgCreator.Dat -> {
-                val type = (mapDatCreator(creator.dat, false) as? DatResult.Success)?.type ?: return null
-                TypeSubstitution.wrap(type)
-            }
-            is TypeArgCreator.Param -> ParamSubstitution(creator.sign)
+            is TypeArgCreator.Dat -> dat(creator.dat)
+            is TypeArgCreator.Param -> success(ParamSubstitution(creator.sign))
         }
     }
 
-    private sealed class DatResult {
-        object NotReady : DatResult()
-        sealed class Error : DatResult() {
-            data class NotFound(val info: MinimalInfo) : DatResult.Error()
-            object Application : DatResult.Error()
+    private sealed class CreationResult<T> {
+        class NotReady<T> : CreationResult<T>()
+        sealed class Error<T> : CreationResult<T>() {
+            data class NotFound<T>(val info: MinimalInfo) : CreationResult.Error<T>()
+            class Application<T> : CreationResult.Error<T>()
         }
-        data class Success(val type: Type) : DatResult()
+        data class Success<T>(val type: T) : CreationResult<T>()
     }
 
-    private fun mapDatCreator(creator: DatCreator, onlyUseReady: Boolean): DatResult {
+    private fun mapDatCreator(creator: DatCreator, onlyUseReady: Boolean): CreationResult<Type> {
         val info = creator.template
         val template: TypeTemplate = if (onlyUseReady) {
             when (val ready = typeTemplates[info]) {
                 null -> return if (anyTemplate(info) != null) {
-                    DatResult.NotReady
+                    CreationResult.NotReady()
                 } else {
-                    DatResult.Error.NotFound(info)
+                    CreationResult.Error.NotFound(info)
                 }
                 else -> ready
             }
         } else {
-            anyTemplate(info) ?: return DatResult.Error.NotFound(info)
+            anyTemplate(info) ?: return CreationResult.Error.NotFound(info)
         }
 
-        fun applicationError() = DatResult.Error.Application
+        fun applicationError() = CreationResult.Error.Application<Type>()
 
-        val mappedArgs = creator.args.map { mapTypeArgCreator(it) }.liftNull() ?: return applicationError()
-        return DatResult.Success(template.apply(mappedArgs) ?: return applicationError())
+        val mappedArgs = creator.args
+                .map {
+                    when (val mapped = mapTypeArgCreator(creator.template.full(""), it)) {
+                        is CreationResult.NotReady -> return CreationResult.NotReady()
+                        is CreationResult.Error.NotFound -> return CreationResult.Error.NotFound(mapped.info)
+                        is CreationResult.Error.Application -> return CreationResult.Error.Application()
+                        is CreationResult.Success -> mapped.type
+                    }
+                }
+        return CreationResult.Success(template.apply(mappedArgs) ?: return applicationError())
     }
 
     private fun <T : SemiType> resolveTemplateSupers(types: PrefixTree<String, TypeCreator<T>>) {
         types.forEach { creator ->
             creator.templateSupers.removeIf { superCreator ->
                 when (val superResult = mapDatCreator(superCreator, true)) {
-                    DatResult.NotReady -> false
-                    is DatResult.Error.NotFound -> {
+                    is CreationResult.NotReady -> false
+                    is CreationResult.Error.NotFound -> {
                         log.typeNotFound(creator.unfinishedType.info, superResult.info)
                         true
                     }
-                    is DatResult.Error.Application -> {
+                    is CreationResult.Error.Application -> {
                         log.applicationError(creator.unfinishedType.info, superCreator.template)
                         true
                     }
-                    is DatResult.Success -> {
+                    is CreationResult.Success -> {
                         val superType = superResult.type
                         when (creator) {
                             is DirectCreator -> {

@@ -65,15 +65,17 @@ class AsmParser(
         return methodCollector.methods
     }
 
-    fun loadFunctions(jarPath: Path): Collection<FunctionObj> {
-        return ZipFile(jarPath.toFile()).use { jar ->
-            val entries = jar.entries().toList()
-            println("Entries in $jarPath (${entries.size}):")
+    fun loadFunctions(jarPaths: List<Path>): Collection<FunctionObj> {
+        return jarPaths.flatMap { jarPath ->
+            ZipFile(jarPath.toFile()).use { jar ->
+                val entries = jar.entries().toList()
+                println("Entries in $jarPath (${entries.size}):")
 
-            entries.toList().filter {
-                it.name.endsWith(".class")
-            }.flatMap { entry ->
-                loadFunctions(entry.name, jar.getInputStream(entry))
+                entries.toList().filter {
+                    it.name.endsWith(".class")
+                }.flatMap { entry ->
+                    loadFunctions(entry.name, jar.getInputStream(entry))
+                }
             }
         }
     }

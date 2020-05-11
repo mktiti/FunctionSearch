@@ -7,6 +7,13 @@ data class MinimalInfo(
         val simpleName: String
 ) {
 
+    companion object {
+        fun fromFull(info: TypeInfo) = MinimalInfo(
+                packageName = info.packageName,
+                simpleName = info.name
+        )
+    }
+
     fun full(artifact: String) = TypeInfo(
             packageName = packageName,
             name = simpleName,

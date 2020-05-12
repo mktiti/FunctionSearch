@@ -20,12 +20,13 @@ interface TypeConnector {
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
             jclArtifact: String
-    ): JclResult
+    ): JclCollector.JclResult
 
     fun connectArtifact(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            javaRepo: JavaRepo
+            javaRepo: JavaRepo,
+            depsRepos: Collection<TypeRepo>
     ): TypeRepo
 
 }
@@ -38,22 +39,24 @@ class JavaTypeConnector(
     private fun <T> useOneshot(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
+            depsRepos: Collection<TypeRepo>,
             code: OneshotConnector.() -> T
-    ) = OneshotConnector(log, infoRepo, imDirectTypes, imTemplateTypes).code()
+    ) = OneshotConnector(log, infoRepo, depsRepos, imDirectTypes, imTemplateTypes).code()
 
     override fun connectJcl(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
             jclArtifact: String
-    ): JclResult = useOneshot(imDirectTypes, imTemplateTypes) {
+    ): JclCollector.JclResult = useOneshot(imDirectTypes, imTemplateTypes, emptyList()) {
         connectJcl(jclArtifact)
     }
 
     override fun connectArtifact(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            javaRepo: JavaRepo
-    ): TypeRepo = useOneshot(imDirectTypes, imTemplateTypes) {
+            javaRepo: JavaRepo,
+            depsRepos: Collection<TypeRepo>
+    ): TypeRepo = useOneshot(imDirectTypes, imTemplateTypes, depsRepos) {
         connectArtifact(javaRepo)
     }
 
@@ -62,6 +65,7 @@ class JavaTypeConnector(
 private class OneshotConnector(
         private val log: JavaTypeParseLog,
         private val infoRepo: JavaInfoRepo,
+        private val depsRepos: Collection<TypeRepo>,
         private val imDirectTypes: MutablePrefixTree<String, DirectCreator>,
         private val imTemplateTypes: MutablePrefixTree<String, TemplateCreator>
 ) {
@@ -69,12 +73,19 @@ private class OneshotConnector(
     private val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
     private val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
 
+    private fun <R : Any> firstFromDeps(mapper: TypeRepo.() -> R?): R?
+            = depsRepos.asSequence().mapNotNull { it.mapper() }.firstOrNull()
+
     private fun anyDirect(info: MinimalInfo): DirectType? {
-        return directTypes[info] ?: imDirectTypes[info]?.unfinishedType
+        return directTypes[info] ?: imDirectTypes[info]?.unfinishedType ?: firstFromDeps { get(info) }
+    }
+
+    private fun readyTemplate(info: MinimalInfo): TypeTemplate? {
+        return typeTemplates[info] ?: firstFromDeps { template(info) }
     }
 
     private fun anyTemplate(info: MinimalInfo): TypeTemplate? {
-        return typeTemplates[info] ?: imTemplateTypes[info]?.unfinishedType
+        return readyTemplate(info) ?: imTemplateTypes[info]?.unfinishedType
     }
 
     fun connectArtifact(javaRepo: JavaRepo): TypeRepo {
@@ -87,7 +98,7 @@ private class OneshotConnector(
         )
     }
 
-    fun connectJcl(jclArtifact: String): JclResult {
+    fun connectJcl(jclArtifact: String): JclCollector.JclResult {
         val arraySupers = ArrayList<SuperType.StaticSuper>(1)
         val arrayTemplate = TypeTemplate(
                 info = infoRepo.arrayType.full(jclArtifact),
@@ -119,7 +130,7 @@ private class OneshotConnector(
                 templates = typeTemplates
         )
 
-        return JclResult(javaRepo, jclTypeRepo)
+        return JclCollector.JclResult(javaRepo, jclTypeRepo)
     }
 
     private fun connect() {
@@ -245,7 +256,7 @@ private class OneshotConnector(
     private fun mapDatCreator(creator: DatCreator, onlyUseReady: Boolean): CreationResult<Type> {
         val info = creator.template
         val template: TypeTemplate = if (onlyUseReady) {
-            when (val ready = typeTemplates[info]) {
+            when (val ready = readyTemplate(info)) {
                 null -> return if (anyTemplate(info) != null) {
                     CreationResult.NotReady()
                 } else {
@@ -274,6 +285,10 @@ private class OneshotConnector(
     private fun <T : SemiType> resolveTemplateSupers(types: PrefixTree<String, TypeCreator<T>>) {
         types.forEach { creator ->
             creator.templateSupers.removeIf { superCreator ->
+                if (creator.unfinishedType.info.fullName == "org.apache.commons.lang3.mutable.MutableLong") {
+                    val a = 0
+                }
+
                 when (val superResult = mapDatCreator(superCreator, true)) {
                     is CreationResult.NotReady -> false
                     is CreationResult.Error.NotFound -> {

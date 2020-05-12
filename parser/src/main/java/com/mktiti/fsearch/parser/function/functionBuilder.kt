@@ -3,7 +3,7 @@ package com.mktiti.fsearch.parser.function
 import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.core.type.ApplicationParameter
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
@@ -11,8 +11,6 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubsti
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
-import com.mktiti.fsearch.core.type.TypeBounds
-import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.util.forceDynamicApply
 
 interface FunctionBuilder {
@@ -20,12 +18,18 @@ interface FunctionBuilder {
 }
 
 class JavaFunctionBuilder(
-        private val typeRepo: TypeRepo,
-        private val javaRepo: JavaRepo
+        private val javaRepo: JavaRepo,
+        private val typeRepos: Collection<TypeRepo>
 ) : FunctionBuilder {
 
+    private fun <R : Any> firstFromDeps(mapper: TypeRepo.() -> R?): R?
+            = typeRepos.asSequence().mapNotNull { it.mapper() }.firstOrNull()
+
+    private fun direct(info: MinimalInfo) = firstFromDeps { get(info) }
+    private fun template(info: MinimalInfo) = firstFromDeps { template(info) }
+
     private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>, selfRef: String?): DynamicTypeSubstitution? {
-        val template = typeRepo.template(param.info) ?: return null
+        val template = template(param.info) ?: return null
         val args: List<ApplicationParameter> = if (param.typeArgs.isEmpty()) {
             template.typeParams.map { StaticTypeSubstitution(javaRepo.objectType) }
         } else {
@@ -46,9 +50,8 @@ class JavaFunctionBuilder(
 
                 if (param.typeArgs.isEmpty()) {
                     // Direct type
-                    val type = typeRepo[info]
+                    val type = direct(info)
                     if (type == null) {
-                        // println("Direct type info not found, trying raw usage")
                         mapDatParam(param, references, selfRef)
                     } else {
                         StaticTypeSubstitution(type)

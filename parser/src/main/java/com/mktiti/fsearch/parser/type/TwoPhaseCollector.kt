@@ -3,68 +3,38 @@ package com.mktiti.fsearch.parser.type
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.parser.service.InfoCollector
 import com.mktiti.fsearch.parser.util.JavaTypeParseLog
-import com.mktiti.fsearch.util.MutablePrefixTree
-import org.objectweb.asm.ClassReader
-import java.io.InputStream
-import java.lang.Exception
-import java.nio.file.Path
-import java.util.zip.ZipFile
 
-data class JclResult(val javaRepo: JavaRepo, val typeRepo: TypeRepo)
+interface JarTypeCollector<I> {
 
-interface JarTypeCollector {
-
-    fun collectJcl(name: String, jarPaths: Collection<Path>): JclResult
-
-    fun collectArtifact(name: String, jarPaths: Collection<Path>, javaRepo: JavaRepo): TypeRepo
+    fun collectArtifact(info: I, javaRepo: JavaRepo, depsRepos: Collection<TypeRepo>): TypeRepo
 
 }
 
-private typealias InitialData<T> = MutablePrefixTree<String, T>
+interface JclCollector<I> {
 
-class TwoPhaseCollector(
+    data class JclResult(val javaRepo: JavaRepo, val typeRepo: TypeRepo)
+
+    fun collectJcl(name: String, info: I): JclResult
+
+}
+
+class TwoPhaseCollector<I>(
         private val infoRepo: JavaInfoRepo,
         private val log: JavaTypeParseLog,
+        private val infoCollector: InfoCollector<I>,
         private val connector: TypeConnector = JavaTypeConnector(infoRepo, log)
-) : JarTypeCollector {
+) : JarTypeCollector<I>, JclCollector<I> {
 
-    private fun loadEntry(collector: InfoCollector, input: InputStream) {
-        ClassReader(input).accept(collector, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
-    }
-
-    private fun collectInitial(name: String, jarPaths: Collection<Path>): Pair<InitialData<DirectCreator>, InitialData<TemplateCreator>> {
-        val typeCollector = InfoCollector(name, infoRepo)
-
-        jarPaths.forEach { jarPath ->
-            ZipFile(jarPath.toFile()).use { jar ->
-                val entries = jar.entries().toList()
-
-                entries.toList().filter {
-                    it.name.endsWith(".class")
-                }.sortedBy {
-                    it.name.removeSuffix(".class")
-                }.forEach { entry ->
-                    try {
-                        loadEntry(typeCollector, jar.getInputStream(entry))
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-        }
-
-        return typeCollector.directTypes to typeCollector.templateTypes
-    }
-
-    override fun collectJcl(name: String, jarPaths: Collection<Path>): JclResult {
-        val (directs, templates) = collectInitial(name, jarPaths)
+    override fun collectJcl(name: String, info: I): JclCollector.JclResult {
+        val (directs, templates) = infoCollector.collectInitial(info)
         return connector.connectJcl(directs, templates, name)
     }
 
-    override fun collectArtifact(name: String, jarPaths: Collection<Path>, javaRepo: JavaRepo): TypeRepo {
-        val (directs, templates) = collectInitial(name, jarPaths)
-        return connector.connectArtifact(directs, templates, javaRepo)
+    override fun collectArtifact(info: I, javaRepo: JavaRepo, depsRepos: Collection<TypeRepo>): TypeRepo {
+        val (directs, templates) = infoCollector.collectInitial(info)
+        return connector.connectArtifact(directs, templates, javaRepo, depsRepos)
     }
 
 }

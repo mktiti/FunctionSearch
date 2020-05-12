@@ -1,16 +1,42 @@
 package com.mktiti.fsearch.parser.util
 
+import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.fitsQuery
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import com.mktiti.fsearch.parser.function.AsmParser
+import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
+import com.mktiti.fsearch.parser.maven.MavenArtifact
+import com.mktiti.fsearch.parser.maven.MavenCollector
+import com.mktiti.fsearch.parser.maven.MavenManager
 import com.mktiti.fsearch.parser.query.parseQuery
-import com.mktiti.fsearch.parser.type.JarTypeCollector
+import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.streams.toList
+
+fun printLoadResults(typeRepo: TypeRepo, functions: Collection<FunctionObj>) {
+    println("==== Loading Done ====")
+    println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
+    println("\tLoaded ${functions.size} functions")
+}
+
+fun printLog(log: InMemTypeParseLog) {
+    println("\t${log.allCount} warnings")
+
+    println("\t== Type not found errors (${log.typeNotFounds.size}):")
+    log.typeNotFounds.groupBy { it.used }.forEach { (used, users) ->
+        println("\t\t$used used by $users")
+    }
+
+    println("\t== Raw type usages (${log.rawUsages.size})")
+    println("\t== Application errors (${log.applicableErrors.size})")
+    log.applicableErrors.forEach { (user, used) ->
+        println("\t\t$used used by $user")
+    }
+}
 
 fun main(args: Array<String>) {
     val libPath = args.getOrElse(0) {
@@ -40,33 +66,30 @@ fun main(args: Array<String>) {
     val log = InMemTypeParseLog()
 
     println("==== Loading JCL ====")
-    val typeCollector: JarTypeCollector = TwoPhaseCollector(MapJavaInfoRepo, log)
-    val (javaRepo, jclRepo) = typeCollector.collectJcl("JCL", jarPaths)
+    val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
+    val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
+    val (javaRepo, jclRepo) = typeCollector.collectJcl("JCL", jclJarInfo)
+    val jclFunctions = JarFileFunctionCollector(javaRepo).collectFunctions(jclJarInfo, listOf(jclRepo))
 
-    println("==== Loading Done ====")
-    println("\tLoaded ${jclRepo.allTypes.size} direct types and ${jclRepo.allTemplates.size} type templates")
-    println("\t${log.allCount} warnings")
+    printLoadResults(jclRepo, jclFunctions)
 
-    println("\t== Type not found errors (${log.typeNotFounds.size}):")
-    log.typeNotFounds.groupBy { it.used }.forEach { (used, users) ->
-        println("\t\t$used used by $users")
+    val testArtifacts = listOf(
+            "org.apache.commons:commons-lang3:3.10",
+            "org.apache.commons:commons-text:1.8",
+            "org.apache.commons:commons-math3:3.6.1"
+    )
+
+    val mavenCollector = MavenCollector(MavenManager.central, log, MapJavaInfoRepo, javaRepo)
+    val results = testArtifacts.map {
+        val artifact = MavenArtifact.parse(it)!!
+        mavenCollector.collectCombined(artifact, listOf(jclRepo)).apply {
+            printLoadResults(typeRepo, functions)
+        }
     }
 
-    println("\t== Raw type usages (${log.rawUsages.size})")
-    println("\t== Application errors (${log.applicableErrors.size})")
-    log.applicableErrors.forEach { (user, used) ->
-        println("\t\t$used used by $user")
-    }
+    val allFunctions = results.flatMap { it.functions } + jclFunctions
 
-    println("==== Loading Functions ====")
-    val functions = AsmParser(javaRepo, jclRepo).loadFunctions(jarPaths)
-    println("==== Loading Done ====")
-    println("\tLoaded ${functions.size} functions")
-
-    /*functions.forEach { function ->
-        println(function)
-    }
-     */
+    printLog(log)
 
     while (true) {
         print(">")
@@ -76,7 +99,7 @@ fun main(args: Array<String>) {
             val query = parseQuery(input, javaRepo, jclRepo)
             println("Parsed as: $query")
             println("Started searching...")
-            functions.asSequence().forEach { function ->
+            allFunctions.asSequence().forEach { function ->
                 val result = fitsQuery(query, function)
                 if (result != null) {
                     println("Fits function $function")

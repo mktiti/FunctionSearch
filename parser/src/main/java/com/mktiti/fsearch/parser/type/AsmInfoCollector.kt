@@ -2,23 +2,42 @@ package com.mktiti.fsearch.parser.type
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.SuperType.DynamicSuper
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper.EagerStatic
 import com.mktiti.fsearch.parser.function.ImParam
 import com.mktiti.fsearch.parser.function.ImTypeParam
+import com.mktiti.fsearch.parser.service.InfoCollector
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.mapMutablePrefixTree
+import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Opcodes
-import java.lang.Integer.min
+import java.io.InputStream
 import java.util.*
 import kotlin.collections.ArrayList
 
-class InfoCollector(
+interface AsmInfoCollectorView {
+
+    fun loadEntry(input: InputStream)
+
+}
+
+object AsmInfoCollector {
+
+    fun collect(artifact: String, infoRepo: JavaInfoRepo, load: AsmInfoCollectorView.() -> Unit): InfoCollector.InitialData {
+        val visitor = AsmInfoCollectorVisitor(artifact, infoRepo)
+        object : AsmInfoCollectorView {
+            override fun loadEntry(input: InputStream) {
+                ClassReader(input).accept(visitor, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
+            }
+        }.load()
+        return InfoCollector.InitialData(visitor.directTypes, visitor.templateTypes)
+    }
+
+}
+
+private class AsmInfoCollectorVisitor(
         private val artifact: String,
         private val infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
@@ -49,12 +68,12 @@ class InfoCollector(
             directSupers: List<MinimalInfo>,
             templateSupers: MutableList<DatCreator>
     ) {
-        val supers: MutableList<StaticSuper> = ArrayList(superCount)
+        val supers: MutableList<SuperType.StaticSuper> = ArrayList(superCount)
         val created = Type.NonGenericType.DirectType(info, supers)
 
         directTypes.mutableSubtreeSafe(info.packageName)[info.name] = DirectCreator(
                 unfinishedType = created,
-                addNonGenericSuper = { superType -> supers += EagerStatic(superType) },
+                addNonGenericSuper = { superType -> supers += SuperType.StaticSuper.EagerStatic(superType) },
                 templateSupers = templateSupers,
                 directSupers = directSupers
         )
@@ -72,8 +91,8 @@ class InfoCollector(
 
         templateTypes.mutableSubtreeSafe(info.packageName)[info.name] = TemplateCreator(
                 unfinishedType = created,
-                directSuperAppender = { superType -> supers += EagerStatic(superType) },
-                templateSuperAppender = { superType -> supers += DynamicSuper.EagerDynamic(superType) },
+                directSuperAppender = { superType -> supers += SuperType.StaticSuper.EagerStatic(superType) },
+                templateSuperAppender = { superType -> supers += SuperType.DynamicSuper.EagerDynamic(superType) },
                 templateSupers = templateSupers,
                 directSupers = directSupers
         )
@@ -95,8 +114,7 @@ class InfoCollector(
                 }
             }
             is ImParam.TypeParamRef -> TypeArgCreator.Param(
-                    typeParams.withIndex().find { it.value == imParam.sign }?.index
-                            ?: -1//error("ASD")
+                    typeParams.withIndex().find { it.value == imParam.sign }?.index ?: error("ASD")
             )
             is ImParam.Array -> TypeArgCreator.Dat(DatCreator(
                     template = infoRepo.arrayType,
@@ -159,7 +177,7 @@ class InfoCollector(
 
         val nestContext = if (meta.nestDepth != null) {
             val nests = info.name.split(".").dropLast(1)
-            val depth = min(meta.nestDepth, nests.size)
+            val depth = Integer.min(meta.nestDepth, nests.size)
 
             val nestPackage: PrefixTree<String, TemplateCreator> = templateTypes.mutableSubtreeSafe(info.packageName)
 

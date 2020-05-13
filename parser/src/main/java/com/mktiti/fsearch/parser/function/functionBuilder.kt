@@ -12,6 +12,8 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
 import com.mktiti.fsearch.core.util.forceDynamicApply
+import com.mktiti.fsearch.parser.util.anyDirect
+import com.mktiti.fsearch.parser.util.anyTemplate
 
 interface FunctionBuilder {
     data class ImplicitThis(
@@ -27,14 +29,8 @@ class JavaFunctionBuilder(
         private val typeRepos: Collection<TypeRepo>
 ) : FunctionBuilder {
 
-    private fun <R : Any> firstFromDeps(mapper: TypeRepo.() -> R?): R?
-            = typeRepos.asSequence().mapNotNull { it.mapper() }.firstOrNull()
-
-    private fun direct(info: MinimalInfo) = firstFromDeps { get(info) }
-    private fun template(info: MinimalInfo) = firstFromDeps { template(info) }
-
     private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>, selfRef: String?): DynamicTypeSubstitution? {
-        val template = template(param.info) ?: return null
+        val template = typeRepos.anyTemplate(param.info) ?: return null
         val args: List<ApplicationParameter> = if (param.typeArgs.isEmpty()) {
             template.typeParams.map { StaticTypeSubstitution(javaRepo.objectType) }
         } else {
@@ -55,7 +51,7 @@ class JavaFunctionBuilder(
 
                 if (param.typeArgs.isEmpty()) {
                     // Direct type
-                    val type = direct(info)
+                    val type = typeRepos.anyDirect(info)
                     if (type == null) {
                         mapDatParam(param, references, selfRef)
                     } else {
@@ -98,7 +94,7 @@ class JavaFunctionBuilder(
 
     override fun buildFunction(intermediate: ImSignature, implicitThis: FunctionBuilder.ImplicitThis?): TypeSignature? {
         val thisTemplate: TypeTemplate? = if (implicitThis != null && implicitThis.isGeneric) {
-            template(implicitThis.info) ?: return null
+            typeRepos.anyTemplate(implicitThis.info) ?: return null
         } else {
             null
         }
@@ -131,7 +127,7 @@ class JavaFunctionBuilder(
         val allInputs: List<Pair<String, Substitution>> = ArrayList<Pair<String, Substitution>>(intermediate.inputs.size).apply {
             if (implicitThis != null) {
                 val thisParam = if (thisTemplate == null) {
-                    StaticTypeSubstitution(direct(implicitThis.info) ?: return null)
+                    StaticTypeSubstitution(typeRepos.anyDirect(implicitThis.info) ?: return null)
                 } else {
                     val applied = thisTemplate.dynamicApply(
                             thisTemplate.typeParams.mapIndexed { i, _ ->

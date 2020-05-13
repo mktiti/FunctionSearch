@@ -1,8 +1,8 @@
 package com.mktiti.fsearch.parser.function
 
-import SignatureLexer
-import SignatureParser
-import SignatureParser.*
+import com.mktiti.fsearch.parser.generated.SignatureLexer
+import com.mktiti.fsearch.parser.generated.SignatureParser
+import com.mktiti.fsearch.parser.generated.SignatureParser.*
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener

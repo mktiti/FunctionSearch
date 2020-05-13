@@ -16,7 +16,6 @@ class JarFileFunctionCollector(
             info.paths.forEach { jarPath ->
                 ZipFile(jarPath.toFile()).use { jar ->
                     val entries = jar.entries().toList()
-                    println("Entries in $jarPath (${entries.size}):")
 
                     entries.toList().filter {
                         it.name.endsWith(".class")

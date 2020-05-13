@@ -10,6 +10,8 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcar
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Direct
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.parser.util.JavaTypeParseLog
+import com.mktiti.fsearch.parser.util.anyDirect
+import com.mktiti.fsearch.parser.util.anyTemplate
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree
@@ -73,15 +75,12 @@ private class OneshotConnector(
     private val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
     private val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
 
-    private fun <R : Any> firstFromDeps(mapper: TypeRepo.() -> R?): R?
-            = depsRepos.asSequence().mapNotNull { it.mapper() }.firstOrNull()
-
     private fun anyDirect(info: MinimalInfo): DirectType? {
-        return directTypes[info] ?: imDirectTypes[info]?.unfinishedType ?: firstFromDeps { get(info) }
+        return directTypes[info] ?: imDirectTypes[info]?.unfinishedType ?: depsRepos.anyDirect(info)
     }
 
     private fun readyTemplate(info: MinimalInfo): TypeTemplate? {
-        return typeTemplates[info] ?: firstFromDeps { template(info) }
+        return typeTemplates[info] ?: depsRepos.anyTemplate(info)
     }
 
     private fun anyTemplate(info: MinimalInfo): TypeTemplate? {
@@ -155,10 +154,6 @@ private class OneshotConnector(
             }
 
             imTemplateTypes.removeIf { template ->
-                if (template.unfinishedType.info.name == "AdamsBashforthFieldIntegrator") {
-                    val a = 0
-                }
-
                 (template.templateSupers.isEmpty()).also { done ->
                     if (done) {
                         val type = template.unfinishedType
@@ -179,8 +174,6 @@ private class OneshotConnector(
                 // error("Failed to remove during iteration")
             }
         }
-
-        val a = 0
     }
 
     private fun rawUse(template: TypeTemplate) = DatCreator(

@@ -5,6 +5,7 @@ import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.parser.util.AsmUtil
+import com.mktiti.fsearch.parser.util.anyTemplate
 import com.mktiti.fsearch.util.map
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
@@ -39,7 +40,7 @@ private class AsmFunctionCollectorVisitor(
 ) : ClassVisitor(Opcodes.ASM8) {
 
     companion object {
-        private const val checkFlag = /*Opcodes.ACC_STATIC or*/ Opcodes.ACC_PUBLIC
+        private const val checkFlag = Opcodes.ACC_PUBLIC
     }
 
     private lateinit var currentType: FunctionBuilder.ImplicitThis
@@ -53,7 +54,7 @@ private class AsmFunctionCollectorVisitor(
 
         currentType = FunctionBuilder.ImplicitThis(
                 info = info,
-                isGeneric = (signature != null || info.nameParts.isNotEmpty()) && depsRepos.any { it.template(info) != null }
+                isGeneric = (signature != null || info.nameParts.isNotEmpty()) && depsRepos.anyTemplate(info) != null
         )
     }
 

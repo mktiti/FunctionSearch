@@ -129,10 +129,6 @@ private class AsmInfoCollectorVisitor(
 
         val info = AsmUtil.parseName(name).full(artifact)
 
-        if (info.name == "AdamsBashforthFieldIntegrator") {
-            val a = 0
-        }
-
         val lastName = info.name.split('.').last()
         if (lastName.first().isDigit()) {
             // Skip anonymous nested and local class

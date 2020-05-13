@@ -8,7 +8,8 @@ import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.maven.MavenArtifact
 import com.mktiti.fsearch.parser.maven.MavenCollector
 import com.mktiti.fsearch.parser.maven.MavenManager
-import com.mktiti.fsearch.parser.query.parseQuery
+import com.mktiti.fsearch.parser.query.AntlrQueryParser
+import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import org.antlr.v4.runtime.misc.ParseCancellationException
@@ -88,17 +89,18 @@ fun main(args: Array<String>) {
     }
 
     val allFunctions = results.flatMap { it.functions } + jclFunctions
+    val typeRepos = results.map { it.typeRepo } + jclRepo
 
     printLog(log)
 
-    System.gc()
+    val queryParser: QueryParser = AntlrQueryParser(javaRepo, typeRepos)
 
     while (true) {
         print(">")
         val input = readLine() ?: break
         println("Input: $input")
         try {
-            val query = parseQuery(input, javaRepo, jclRepo)
+            val query = queryParser.parse(input)
             println("Parsed as: $query")
             println("Started searching...")
             allFunctions.asSequence().forEach { function ->

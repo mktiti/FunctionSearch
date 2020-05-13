@@ -1,11 +1,11 @@
 package com.mktiti.fsearch.parser.type
 
-import SignatureLexer
-import SignatureParser
 import com.mktiti.fsearch.parser.function.ImParam
 import com.mktiti.fsearch.parser.function.ImTypeParam
 import com.mktiti.fsearch.parser.function.parseDefinedType
 import com.mktiti.fsearch.parser.function.parseTypeParams
+import com.mktiti.fsearch.parser.generated.SignatureLexer
+import com.mktiti.fsearch.parser.generated.SignatureParser
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream

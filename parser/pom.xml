@@ -94,7 +94,12 @@
                 </executions>
                 <configuration>
                     <sourceDirectory>${basedir}/src/main/resources/antlr</sourceDirectory>
+                    <outputDirectory>${project.build.directory}/generated-sources/antlr4/com/mktiti/fsearch/parser/generated</outputDirectory>
                     <visitor>true</visitor>
+                    <arguments>
+                        <argument>-package</argument>
+                        <argument>com.mktiti.fsearch.parser.generated</argument>
+                    </arguments>
                 </configuration>
             </plugin>
             <plugin>

@@ -1,12 +1,20 @@
 package com.mktiti.fsearch.parser.query
 
-import QueryBaseVisitor
-import QueryParser
+import com.mktiti.fsearch.parser.generated.QueryBaseVisitor
+import com.mktiti.fsearch.parser.generated.QueryParser
 
 object QueryTypeParameterSelector : QueryBaseVisitor<List<String>>() {
 
-    override fun visitTemplateArg(ctx: QueryParser.TemplateArgContext): List<String> {
-        return ctx.TEMPLATE_PARAM()?.let { listOf(it.text) } ?: visitCompleteName(ctx.completeName())
+    override fun visitCompleteName(ctx: QueryParser.CompleteNameContext): List<String> {
+        val signature = ctx.templateSignature()
+        val name = ctx.fullName().text
+        return if (signature != null) {
+            visitTemplateSignature(signature)
+        } else if (name.length == 1 && name.first().isLowerCase()) {
+            listOf(name)
+        } else {
+            emptyList()
+        }
     }
 
     override fun defaultResult(): List<String> = emptyList()

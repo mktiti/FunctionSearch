@@ -5,9 +5,9 @@ import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.parser.function.ImParam
 import com.mktiti.fsearch.parser.function.ImTypeParam
 import com.mktiti.fsearch.parser.service.InfoCollector
+import com.mktiti.fsearch.parser.util.AsmUtil
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
-import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.mapMutablePrefixTree
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
@@ -41,14 +41,6 @@ private class AsmInfoCollectorVisitor(
         private val artifact: String,
         private val infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
-
-    companion object {
-        fun parseNonGeneric(type: String): MinimalInfo {
-            val splitName = type.split('/')
-            val (packageName, simpleName) = splitName.cutLast()
-            return MinimalInfo(packageName, simpleName.replace('$', '.'))
-        }
-    }
 
     val directTypes: MutablePrefixTree<String, DirectCreator> = mapMutablePrefixTree()
     val templateTypes: MutablePrefixTree<String, TemplateCreator> = mapMutablePrefixTree()
@@ -135,7 +127,12 @@ private class AsmInfoCollectorVisitor(
         //    return
         // }
 
-        val info = parseNonGeneric(name).full(artifact)
+        val info = AsmUtil.parseName(name).full(artifact)
+
+        if (info.name == "AdamsBashforthFieldIntegrator") {
+            val a = 0
+        }
+
         val lastName = info.name.split('.').last()
         if (lastName.first().isDigit()) {
             // Skip anonymous nested and local class
@@ -201,7 +198,7 @@ private class AsmInfoCollectorVisitor(
             addUnfinishedDirect(
                     info = info,
                     superCount = superCount,
-                    directSupers = superNames.map { parseNonGeneric(it) }.toMutableList(),
+                    directSupers = superNames.map { AsmUtil.parseName(it) }.toMutableList(),
                     templateSupers = LinkedList()
             )
         } else {
@@ -213,7 +210,7 @@ private class AsmInfoCollectorVisitor(
             val type = if (signature == null) {
                 ParsedType.Template(
                         typeParams = nestTypeParams,
-                        superTypes = superNames.map { ImParam.Type(parseNonGeneric(it), emptyList()) }
+                        superTypes = superNames.map { ImParam.Type(AsmUtil.parseName(it), emptyList()) }
                 )
             } else {
                 parseType(signature, nestTypeParams)

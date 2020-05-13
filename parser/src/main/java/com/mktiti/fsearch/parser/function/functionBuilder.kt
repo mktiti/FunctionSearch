@@ -14,7 +14,12 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcar
 import com.mktiti.fsearch.core.util.forceDynamicApply
 
 interface FunctionBuilder {
-    fun buildFunction(intermediate: ImSignature): TypeSignature?
+    data class ImplicitThis(
+            val info: MinimalInfo,
+            val isGeneric: Boolean
+    )
+
+    fun buildFunction(intermediate: ImSignature, implicitThis: ImplicitThis?): TypeSignature?
 }
 
 class JavaFunctionBuilder(
@@ -65,7 +70,7 @@ class JavaFunctionBuilder(
                 if (selfRef == param.sign) {
                     Substitution.SelfSubstitution
                 } else {
-                    val index = references.withIndex().find { tp -> param.sign == tp.value.sign }?.index
+                    val index = references.withIndex().find { tp -> param.sign == tp.value.sign.trimStart('$') }?.index
                             ?: error("Invalid type param reference ('${param.sign}')")
 
                     ParamSubstitution(index)
@@ -91,13 +96,23 @@ class JavaFunctionBuilder(
         )
     }
 
-    override fun buildFunction(intermediate: ImSignature): TypeSignature? {
-        val typeParams: List<TypeParameter> = ArrayList<TypeParameter>(intermediate.typeParams.size).apply {
+    override fun buildFunction(intermediate: ImSignature, implicitThis: FunctionBuilder.ImplicitThis?): TypeSignature? {
+        val thisTemplate: TypeTemplate? = if (implicitThis != null && implicitThis.isGeneric) {
+            template(implicitThis.info) ?: return null
+        } else {
+            null
+        }
+        val typeLevelTypeParams = thisTemplate?.typeParams ?: emptyList()
+
+        val explicitTypeParamCount = intermediate.typeParams.size
+
+        val typeParams: List<TypeParameter> = ArrayList<TypeParameter>(explicitTypeParamCount + typeLevelTypeParams.size).apply {
             // Topological sort, may be optimized
             val indexedTypeParams = intermediate.typeParams.withIndex().toMutableList()
 
             while (indexedTypeParams.isNotEmpty()) {
                 val addedSigns = map { it.sign }
+
                 val (index, nonDependent) = indexedTypeParams.find { (_, tp) ->
                     (addedSigns + tp.sign).containsAll(tp.referencedTypeParams)
                 } ?: throw RuntimeException("Function type parameters have cyclic dependency")
@@ -105,12 +120,37 @@ class JavaFunctionBuilder(
                 this += buildTypeParam(nonDependent, this) ?: return null
                 indexedTypeParams.removeIf { it.index == index }
             }
+
+            addAll(typeLevelTypeParams.map { it.copy(sign = "\$${it.sign}") })
+        }
+
+        fun param(intermediate: ImParam): Substitution? {
+            return mapSubstitution(intermediate, typeParams, null)
+        }
+
+        val allInputs: List<Pair<String, Substitution>> = ArrayList<Pair<String, Substitution>>(intermediate.inputs.size).apply {
+            if (implicitThis != null) {
+                val thisParam = if (thisTemplate == null) {
+                    StaticTypeSubstitution(direct(implicitThis.info) ?: return null)
+                } else {
+                    val applied = thisTemplate.dynamicApply(
+                            thisTemplate.typeParams.mapIndexed { i, _ ->
+                                ParamSubstitution(explicitTypeParamCount + i)
+                            }
+                    ) ?: return null
+                    DynamicTypeSubstitution(applied)
+                }
+
+                this += ("\$this" to thisParam)
+            }
+
+            addAll(intermediate.inputs.mapIndexed { i, p -> "\$$i" to (param(p) ?: return null) })
         }
 
         return TypeSignature.GenericSignature(
             typeParameters = typeParams,
-            inputParameters = intermediate.inputs.mapIndexed { i, p -> "\$$i" to (mapSubstitution(p, typeParams, null) ?: return null) },
-            output = mapSubstitution(intermediate.output, typeParams, null) ?: return null
+            inputParameters = allInputs,
+            output = param(intermediate.output) ?: return null
         )
     }
 }

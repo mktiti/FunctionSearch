@@ -137,7 +137,7 @@ private class OneshotConnector(
         resolveDirectSupers(imDirectTypes)
         resolveDirectSupers(imTemplateTypes)
 
-        while (!imDirectTypes.empty) {
+        while (!imDirectTypes.empty || !imTemplateTypes.empty) {
             var removeCount = 0
             resolveTemplateSupers(imDirectTypes)
             resolveTemplateSupers(imTemplateTypes)
@@ -155,6 +155,10 @@ private class OneshotConnector(
             }
 
             imTemplateTypes.removeIf { template ->
+                if (template.unfinishedType.info.name == "AdamsBashforthFieldIntegrator") {
+                    val a = 0
+                }
+
                 (template.templateSupers.isEmpty()).also { done ->
                     if (done) {
                         val type = template.unfinishedType
@@ -176,6 +180,7 @@ private class OneshotConnector(
             }
         }
 
+        val a = 0
     }
 
     private fun rawUse(template: TypeTemplate) = DatCreator(
@@ -285,10 +290,6 @@ private class OneshotConnector(
     private fun <T : SemiType> resolveTemplateSupers(types: PrefixTree<String, TypeCreator<T>>) {
         types.forEach { creator ->
             creator.templateSupers.removeIf { superCreator ->
-                if (creator.unfinishedType.info.fullName == "org.apache.commons.lang3.mutable.MutableLong") {
-                    val a = 0
-                }
-
                 when (val superResult = mapDatCreator(superCreator, true)) {
                     is CreationResult.NotReady -> false
                     is CreationResult.Error.NotFound -> {

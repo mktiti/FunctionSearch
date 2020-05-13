@@ -91,6 +91,8 @@ fun main(args: Array<String>) {
 
     printLog(log)
 
+    System.gc()
+
     while (true) {
         print(">")
         val input = readLine() ?: break

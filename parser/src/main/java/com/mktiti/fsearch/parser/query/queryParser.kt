@@ -44,6 +44,11 @@ private fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtPara
 
 private tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTable, javaRepo: JavaRepo, typeRepo: TypeRepo): Type.NonGenericType {
     val nested = par.funArg()
+
+    PrimitiveType.fromNameSafe(nested.text)?.let {
+        return javaRepo.primitive(it)
+    }
+
     return when {
         nested.templateArg() != null -> buildTemplateArg(nested.templateArg(), paramVirtualTypes, javaRepo, typeRepo)
         nested.funSignature() != null -> buildFunArg(nested.funSignature(), paramVirtualTypes, javaRepo, typeRepo)

@@ -14,6 +14,9 @@ data class MinimalInfo(
         )
     }
 
+    val nameParts: List<String>
+        get() = simpleName.split('.')
+
     fun full(artifact: String) = TypeInfo(
             packageName = packageName,
             name = simpleName,

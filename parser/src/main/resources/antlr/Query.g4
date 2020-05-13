@@ -2,12 +2,11 @@ grammar Query;
 
 query   :   funSignature EOF;
 
+completeName    :   fullName templateSignature? ARRAY_LITERAL* ;
 fullName    :   FULL_PACKAGE? SIMPLE_NAME ;
-
 templateSignature   :   TEMPLATE_OPEN completeName (ARG_SEP completeName)* TEMPLATE_CLOSE ;
-completeName    :   fullName templateSignature? ;
 
-funArg  :   completeName | PAREN_OPEN funSignature PAREN_CLOSE ;
+funArg  :   completeName | PAREN_OPEN funSignature PAREN_CLOSE ARRAY_LITERAL* ;
 wrappedFunArg   :   funArg | PAREN_OPEN wrappedFunArg PAREN_CLOSE ;
 inArgs  :   wrappedFunArg (ARG_SEP wrappedFunArg)* | EMPTY_ARG  ;
 outArg  :   wrappedFunArg | EMPTY_ARG  ;
@@ -26,6 +25,8 @@ FULL_PACKAGE :   (PACKAGE_PART '.')+ ;
 
 TEMPLATE_OPEN   :   '<' ;
 TEMPLATE_CLOSE   :   '>' ;
+
+ARRAY_LITERAL   :   '[]' ;
 
 JavaLetterOrDigit
 	:	[a-zA-Z0-9$_] // these are the "java letters or digits" below 0x7F

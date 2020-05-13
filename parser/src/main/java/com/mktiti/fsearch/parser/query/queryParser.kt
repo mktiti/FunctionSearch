@@ -1,7 +1,5 @@
 package com.mktiti.fsearch.parser.query
 
-import com.mktiti.fsearch.parser.generated.QueryLexer
-import com.mktiti.fsearch.parser.generated.QueryParser.*
 import com.mktiti.fsearch.core.fit.QueryType
 import com.mktiti.fsearch.core.fit.virtualType
 import com.mktiti.fsearch.core.repo.JavaRepo
@@ -10,12 +8,15 @@ import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.util.TypeException
 import com.mktiti.fsearch.core.util.forceStaticApply
+import com.mktiti.fsearch.parser.generated.QueryLexer
+import com.mktiti.fsearch.parser.generated.QueryParser.*
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
 import com.mktiti.fsearch.parser.util.anyDirect
 import com.mktiti.fsearch.parser.util.anyTemplate
 import com.mktiti.fsearch.parser.util.fromAny
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.tree.TerminalNode
 
 typealias VirtParamTable = Map<String, Type.NonGenericType>
 
@@ -28,14 +29,24 @@ class AntlrQueryParser(
         private val typeRepos: Collection<TypeRepo>
 ) : QueryParser {
 
+    private fun ifArray(type: Type.NonGenericType, arrayLiteral: List<TerminalNode>?): Type.NonGenericType {
+        return arrayOf(type, arrayLiteral?.size ?: 0)
+    }
+
+    private tailrec fun arrayOf(type: Type.NonGenericType, depth: Int): Type.NonGenericType = if (depth == 0) {
+        type
+    } else {
+        arrayOf(javaRepo.arrayOf(type), depth - 1)
+    }
+
     private fun buildFullType(completeName: CompleteNameContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
         val name = completeName.fullName().text
 
         paramVirtualTypes[name]?.let { virtual ->
-            return virtual
+            return ifArray(virtual, completeName.ARRAY_LITERAL())
         }
 
-        return when (val typeSignature = completeName.templateSignature()) {
+        val type = when (val typeSignature = completeName.templateSignature()) {
             null -> {
                 PrimitiveType.fromNameSafe(name)?.let(javaRepo::primitive)
                         ?: typeRepos.anyDirect(name, allowSimple = true)
@@ -47,6 +58,8 @@ class AntlrQueryParser(
                         ?: throw TypeException("Generic type $name not found")
             }
         }
+
+        return ifArray(type, completeName.ARRAY_LITERAL())
     }
 
     private fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
@@ -60,7 +73,7 @@ class AntlrQueryParser(
 
         return when {
             nested.completeName() != null -> buildFullType(nested.completeName(), paramVirtualTypes)
-            nested.funSignature() != null -> buildFunArg(nested.funSignature(), paramVirtualTypes)
+            nested.funSignature() != null -> ifArray(buildFunArg(nested.funSignature(), paramVirtualTypes), nested.ARRAY_LITERAL())
             else -> buildArg(par.wrappedFunArg(), paramVirtualTypes)
         }
     }

@@ -16,6 +16,11 @@
     <dependencies>
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
             <artifactId>core</artifactId>
         </dependency>
 
@@ -23,6 +28,18 @@
             <groupId>org.apache.bcel</groupId>
             <artifactId>bcel</artifactId>
             <version>6.4.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>8.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>${antlr.version}</version>
         </dependency>
 
         <dependency>
@@ -45,7 +62,7 @@
                 <executions>
                     <execution>
                         <id>compile</id>
-                        <phase>compile</phase>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
@@ -60,6 +77,29 @@
                 </executions>
                 <configuration>
                     <jvmTarget>1.8</jvmTarget>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <version>${antlr.version}</version>
+                <executions>
+                    <execution>
+                        <id>antlr</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>antlr4</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <sourceDirectory>${basedir}/src/main/resources/antlr</sourceDirectory>
+                    <outputDirectory>${project.build.directory}/generated-sources/antlr4/com/mktiti/fsearch/parser/generated</outputDirectory>
+                    <visitor>true</visitor>
+                    <arguments>
+                        <argument>-package</argument>
+                        <argument>com.mktiti.fsearch.parser.generated</argument>
+                    </arguments>
                 </configuration>
             </plugin>
             <plugin>

@@ -77,6 +77,10 @@
                 </executions>
                 <configuration>
                     <jvmTarget>1.8</jvmTarget>
+                    <sourceDirs>
+                        <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                        <sourceDir>${project.build.directory}/generated-sources/antlr4</sourceDir>
+                    </sourceDirs>
                 </configuration>
             </plugin>
             <plugin>

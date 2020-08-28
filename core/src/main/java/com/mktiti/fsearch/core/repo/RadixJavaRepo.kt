@@ -16,15 +16,16 @@ class RadixJavaRepo(
 ) : JavaRepo {
 
     override val objectType = directs[infoRepo.objectType]!!
-    override val voidType = DirectType(infoRepo.voidType.full(artifact), emptyList())
+    override val voidType = DirectType(infoRepo.voidType.full(artifact), emptyList(), samType = null)
     private val arrayTemplate = TypeTemplate(
             info = infoRepo.arrayType.full(artifact),
             superTypes = listOf(SuperType.StaticSuper.EagerStatic(objectType)),
-            typeParams = listOf(TypeParameter("X", TypeBounds(setOf(StaticTypeSubstitution(objectType)))))
+            typeParams = listOf(TypeParameter("X", TypeBounds(setOf(StaticTypeSubstitution(objectType))))),
+            samType = null
     )
 
     private val primitiveMap: EnumMap<PrimitiveType, DirectType> = EnumMap.eager { primitive ->
-        DirectType(infoRepo.primitive(primitive).full(artifact), emptyList())
+        DirectType(infoRepo.primitive(primitive).full(artifact), emptyList(), samType = null)
     }
 
     private val boxedMap: EnumMap<PrimitiveType, DirectType> = EnumMap.eager { primitive ->

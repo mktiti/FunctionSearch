@@ -2,15 +2,13 @@
 
 package com.mktiti.fsearch.core.repo // For easier extension
 
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeInfo
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.upperBounds
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
 import com.mktiti.fsearch.core.util.listType
@@ -18,7 +16,7 @@ import com.mktiti.fsearch.core.util.listType
 fun createTestRepo(): MutableTypeRepo {
 
     return SetTypeRepo(
-            funTypeInfo = TypeInfo("TestFun", emptyList(), ""),
+            // funTypeInfo = TypeInfo("TestFun", emptyList(), ""),
             rootInfo = TypeInfo("TestRoot", emptyList(), "")
     ).apply {
 
@@ -150,6 +148,20 @@ fun createTestRepo(): MutableTypeRepo {
 
         val ceo = createDirect("Ceo", boss)
 
+        val function = createTemplate(
+                fullName = "Function",
+                typeParams = listOf(
+                        TypeParameter("I", defaultTypeBounds),
+                        TypeParameter("O", defaultTypeBounds)
+                ),
+                superTypes = listOf(rootType),
+                samType = SamType.GenericSam(
+                        explicit = true,
+                        inputs = listOf(ParamSubstitution(0)),
+                        output = ParamSubstitution(1)
+                )
+        )
+
         val collector = createTemplate(
             fullName = "Collector",
             typeParams = listOf(
@@ -165,7 +177,12 @@ fun createTestRepo(): MutableTypeRepo {
             typeParams = listOf(
                     TypeParameter("T", defaultTypeBounds)
             ),
-            superTypes = listOf(rootType)
+            superTypes = listOf(rootType),
+            samType = SamType.GenericSam(
+                    explicit = true,
+                    inputs = emptyList(),
+                    output = ParamSubstitution(0)
+            )
         )
 
     }

@@ -175,7 +175,7 @@ class FitTest {
     fun `test groupingBy query`() {
         val collector = repo.template("Collector")!!
         val supplier = repo.template("Supplier")!!
-        val function = repo.functionType(1)
+        val function = repo.template("Function")!!
         val list = repo.template("List")!!
         val map = repo.template("Map")!!
         val hashMap = repo.template("HashMap")!!
@@ -197,7 +197,7 @@ class FitTest {
         val personList = list.forceStaticApply(person)
         val bossToPersonMap = hashMap.forceStaticApply(boss, personList)
 
-        val virtType1 = virtualType("downstreamA", listOf(repo.rootType))
+        val virtType1 = QueryType.virtualType("downstreamA", listOf(repo.rootType))
 
         // (Person -> Ceo), (() -> HashMap<Boss, List<Person>>), Collector<Person, _, List<Person>> -> Collector<Boss, _, HashMap<Boss, List<Person>>>
         val query = QueryType(

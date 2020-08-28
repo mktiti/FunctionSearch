@@ -1,19 +1,13 @@
 package com.mktiti.fsearch.core.repo
 
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.SuperType.DynamicSuper.EagerDynamic
 import com.mktiti.fsearch.core.type.SuperType.StaticSuper
 import com.mktiti.fsearch.core.type.SuperType.StaticSuper.EagerStatic
-import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeBounds
-import com.mktiti.fsearch.core.type.TypeInfo
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.TypeTemplate
-import com.mktiti.fsearch.core.type.info
 import kotlin.collections.ArrayList
 import kotlin.collections.Collection
 import kotlin.collections.HashMap
@@ -43,7 +37,7 @@ interface TypeRepo {
 
     fun template(info: MinimalInfo): TypeTemplate?
 
-    fun functionType(paramCount: Int): TypeTemplate
+    // fun functionType(paramCount: Int): TypeTemplate
 
     fun typeParam(sign: String, bounds: TypeBounds = defaultTypeBounds): TypeParameter = TypeParameter(sign, bounds)
 
@@ -58,7 +52,7 @@ interface MutableTypeRepo : TypeRepo {
     fun createSelfRefDirect(fullName: String, superCreators: List<(self: DirectType) -> NonGenericType>): DirectType {
         val supers: MutableList<StaticSuper> = ArrayList(superCreators.size)
 
-        return DirectType(info(fullName), supers).also { self ->
+        return DirectType(info(fullName), supers, samType = null).also { self ->
             this += self
 
             supers += superCreators.map { creator ->
@@ -67,13 +61,13 @@ interface MutableTypeRepo : TypeRepo {
         }
     }
 
-    fun createDirect(fullName: String, vararg superTypes: NonGenericType): DirectType {
-        return DirectType(info(fullName), superTypes.map { EagerStatic(it) }).also {
+    fun createDirect(fullName: String, vararg superTypes: NonGenericType, samType: SamType.DirectSam? = null): DirectType {
+        return DirectType(info(fullName), superTypes.map { EagerStatic(it) }, samType = samType).also {
             this += it
         }
     }
 
-    fun createTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: List<Type>): TypeTemplate {
+    fun createTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: List<Type>, samType: SamType.GenericSam? = null): TypeTemplate {
         return TypeTemplate(
                 info = info(fullName),
                 typeParams = typeParams,
@@ -82,7 +76,7 @@ interface MutableTypeRepo : TypeRepo {
                         is NonGenericType -> EagerStatic(it)
                         is DynamicAppliedType -> EagerDynamic(it)
                     }
-                }
+                }, samType = samType
         ).also {
             this += it
         }
@@ -91,11 +85,11 @@ interface MutableTypeRepo : TypeRepo {
 }
 
 class SetTypeRepo(
-        rootInfo: TypeInfo,
-        private val funTypeInfo: TypeInfo
+        rootInfo: TypeInfo//,
+        //private val funTypeInfo: TypeInfo
 ) : MutableTypeRepo {
 
-    override val rootType = DirectType(rootInfo, emptyList())
+    override val rootType = DirectType(rootInfo, emptyList(), samType = null)
     override val defaultTypeBounds = TypeBounds(
             upperBounds = setOf(StaticTypeSubstitution(rootType))
     )
@@ -109,13 +103,13 @@ class SetTypeRepo(
     override val allTemplates: Collection<TypeTemplate>
         get() = templates.map { it.value }
 
-    private val rootSuper = listOf(EagerStatic(rootType))
-    private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
+    // private val rootSuper = listOf(EagerStatic(rootType))
+    // private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
 
     init {
         this += rootType
     }
-
+/*
     private fun createFunType(paramCount: Int): TypeTemplate {
         return TypeTemplate(
                 info = funTypeInfo.copy(name = funTypeInfo.name + paramCount),
@@ -123,7 +117,7 @@ class SetTypeRepo(
                 superTypes = rootSuper
         )
     }
-
+*/
     override fun get(name: String, allowSimple: Boolean): DirectType? = types[name] ?: if (allowSimple && !name.contains(".")) {
         types.values.find { it.info.name == name }
     } else {
@@ -140,7 +134,7 @@ class SetTypeRepo(
 
     override fun template(info: MinimalInfo): TypeTemplate? = template(info.toString())
 
-    override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
+    // override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
 
     override fun plusAssign(type: DirectType) {
         types[type.info.fullName] = type

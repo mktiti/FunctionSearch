@@ -25,7 +25,8 @@ class ApplyTest {
             val base = TypeTemplate(
                     info = info("A"),
                     typeParams = listOf(TypeParameter("E", repo.defaultTypeBounds)),
-                    superTypes = listOf(EagerStatic(repo.rootType))
+                    superTypes = listOf(EagerStatic(repo.rootType)),
+                    samType = null
             )
 
             val supers = mutableListOf<SuperType<Type>>()
@@ -33,7 +34,8 @@ class ApplyTest {
             val box = TypeTemplate(
                     info = info("Box"),
                     typeParams = listOf(TypeParameter("T", repo.defaultTypeBounds)),
-                    superTypes = supers
+                    superTypes = supers,
+                    samType = null
             )
 
             val innerBox = box.forceDynamicApply(ParamSubstitution(0))

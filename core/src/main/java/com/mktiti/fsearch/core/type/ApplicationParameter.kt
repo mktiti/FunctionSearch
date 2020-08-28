@@ -66,6 +66,8 @@ sealed class ApplicationParameter {
     sealed class Substitution : ApplicationParameter() {
 
         data class ParamSubstitution(val param: Int) : Substitution() {
+            override fun staticApply(typeArgs: List<NonGenericType>) = typeArgs.getOrNull(param)
+
             override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter? {
                 return typeParams.getOrNull(param) ?: return null
             }
@@ -76,6 +78,8 @@ sealed class ApplicationParameter {
         }
 
         object SelfSubstitution : Substitution() {
+            override fun staticApply(typeArgs: List<NonGenericType>): NonGenericType? = null
+
             override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
 
             override fun applySelf(self: NonGenericType) = StaticTypeSubstitution(self)
@@ -83,7 +87,7 @@ sealed class ApplicationParameter {
             override fun toString() = "\$SELF"
         }
 
-        sealed class TypeSubstitution<T : Type>(
+        sealed class TypeSubstitution<out T : Type>(
             val type: T
         ) : Substitution() {
 
@@ -95,6 +99,8 @@ sealed class ApplicationParameter {
             }
 
             class DynamicTypeSubstitution(type: DynamicAppliedType) : TypeSubstitution<DynamicAppliedType>(type) {
+                override fun staticApply(typeArgs: List<NonGenericType>) = type.staticApply(typeArgs)
+
                 override fun dynamicApply(typeParams: List<ApplicationParameter>): DynamicTypeSubstitution? {
                     return type.dynamicApply(typeParams)?.let { DynamicTypeSubstitution(it) }
                 }
@@ -103,6 +109,8 @@ sealed class ApplicationParameter {
             }
 
             class StaticTypeSubstitution(type: NonGenericType) : TypeSubstitution<NonGenericType>(type) {
+                override fun staticApply(typeArgs: List<NonGenericType>) = type
+
                 override fun dynamicApply(typeParams: List<ApplicationParameter>): StaticTypeSubstitution = this
             }
 
@@ -111,6 +119,8 @@ sealed class ApplicationParameter {
             override fun toString() = type.fullName
 
         }
+
+        abstract fun staticApply(typeArgs: List<NonGenericType>): NonGenericType?
 
         abstract override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 

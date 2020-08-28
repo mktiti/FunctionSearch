@@ -25,10 +25,10 @@ class RadixTypeRepo(
     private val directSimpleIndex = simpleNames(directs)
     private val templateSimpleIndex = simpleNames(templates)
 
-    private val rootSuper = listOf(SuperType.StaticSuper.EagerStatic(rootType))
-    private val funTypeInfo = TypeInfo("TestFun", emptyList(), "")
-    private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
-
+  //  private val rootSuper = listOf(SuperType.StaticSuper.EagerStatic(rootType))
+  //  private val funTypeInfo = TypeInfo("\$fun", listOf("\$internal"), "")
+    //private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
+/*
     private fun createFunType(paramCount: Int): TypeTemplate {
         return TypeTemplate(
                 info = funTypeInfo.copy(name = funTypeInfo.name + paramCount),
@@ -36,7 +36,7 @@ class RadixTypeRepo(
                 superTypes = rootSuper
         )
     }
-
+*/
     // TODO optimize or remove
     override val allTypes: Collection<Type>
         get() = directs.toList()
@@ -60,6 +60,6 @@ class RadixTypeRepo(
 
     override fun template(info: MinimalInfo): TypeTemplate? = templates[info]
 
-    override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
+    // override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
 
 }

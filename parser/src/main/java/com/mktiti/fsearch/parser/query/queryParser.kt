@@ -1,7 +1,6 @@
 package com.mktiti.fsearch.parser.query
 
 import com.mktiti.fsearch.core.fit.QueryType
-import com.mktiti.fsearch.core.fit.virtualType
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.core.type.PrimitiveType
@@ -64,8 +63,7 @@ class AntlrQueryParser(
 
     private fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
         val query = buildFunSignature(funCtx, paramVirtualTypes)
-        val funTemplate = typeRepos.fromAny { functionType(query.inputParameters.size) }!! // TODO
-        return funTemplate.forceStaticApply(query.allParams)
+        return QueryType.functionType(query.inputParameters, query.output)
     }
 
     private tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
@@ -105,7 +103,7 @@ class AntlrQueryParser(
         val typeParams = QueryTypeParameterSelector.visit(parseTree)
         val root = typeRepos.fromAny { rootType }!! // TODO
         val paramVirtualTypes = typeParams.map { param ->
-            param to virtualType(param, listOf(root))
+            param to QueryType.virtualType(param, listOf(root))
         }.toMap()
 
         return buildFunSignature(parseTree.funSignature(), paramVirtualTypes)

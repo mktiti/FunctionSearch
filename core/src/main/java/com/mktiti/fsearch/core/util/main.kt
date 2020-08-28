@@ -12,6 +12,7 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubsti
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
+import com.mktiti.fsearch.core.type.SamType
 import com.mktiti.fsearch.core.type.TypeInfo
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.upperBounds
@@ -21,12 +22,12 @@ val defaultRepo: MutableTypeRepo = SetTypeRepo(
                 name = "Object",
                 packageName = emptyList(),
                 artifact = "JCLv8"
-        ),
+        )/*,
         funTypeInfo = TypeInfo(
                 name = "\$Fn",
                 packageName = emptyList(),
                 artifact = "JCLv8"
-        )
+        )*/
 )
 
 val objType = defaultRepo.createDirect("Object")
@@ -47,7 +48,12 @@ val collectionType = defaultRepo.createTemplate(
 val supplierType = defaultRepo.createTemplate(
     fullName = "Supplier",
     typeParams = listOf(defaultRepo.typeParam("S")),
-    superTypes = listOf(objType)
+    superTypes = listOf(objType),
+    samType = SamType.GenericSam(
+            explicit = true,
+            inputs = emptyList(),
+            output = ParamSubstitution(0)
+    )
 )
 
 val refType = defaultRepo.createTemplate(
@@ -203,6 +209,20 @@ fun main() {
 
     printFit(lengthFun, QueryType(listOf(strType), intType))
 
+    val functionType = defaultRepo.createTemplate(
+            fullName = "Function",
+            typeParams = listOf(
+                    TypeParameter("I", defaultRepo.defaultTypeBounds),
+                    TypeParameter("O", defaultRepo.defaultTypeBounds)
+            ),
+            superTypes = listOf(defaultRepo.rootType),
+            samType = SamType.GenericSam(
+                    explicit = true,
+                    inputs = listOf(ParamSubstitution(0)),
+                    output = ParamSubstitution(1)
+            )
+    )
+
     val mapFun = FunctionObj(
             info = FunctionInfo("map", "List"),
             signature = TypeSignature.GenericSignature(
@@ -213,7 +233,7 @@ fun main() {
                     inputParameters = listOf(
                             "list" to DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0))),
                             "mapper" to DynamicTypeSubstitution(
-                                    defaultRepo.functionType(1).forceDynamicApply(
+                                    functionType.forceDynamicApply(
                                             LowerBound(ParamSubstitution(0)), // ? sup T
                                             UpperBound(ParamSubstitution(1))  // ? ext R
                                     )
@@ -225,7 +245,7 @@ fun main() {
     val appliedMapQuery = QueryType(
             inputParameters = listOf(
                     linkedListType.forceStaticApply(strType),
-                    defaultRepo.functionType(1).forceStaticApply(charSeqType, intType)
+                    functionType.forceStaticApply(charSeqType, intType)
             ),
             output = listType.forceStaticApply(intType)
     )
@@ -234,7 +254,7 @@ fun main() {
     val charSeqInt64MapQuery = QueryType(
             inputParameters = listOf(
                     linkedListType.forceStaticApply(strType),
-                    defaultRepo.functionType(1).forceStaticApply(charSeqType, int64Type)
+                    functionType.forceStaticApply(charSeqType, int64Type)
             ),
             output = listType.forceStaticApply(intType)
     )
@@ -243,7 +263,7 @@ fun main() {
     val wrongMapQuery = QueryType(
             inputParameters = listOf(
                     linkedListType.forceStaticApply(strType),
-                    defaultRepo.functionType(1).forceStaticApply(fozType, intType)
+                    functionType.forceStaticApply(fozType, intType)
             ),
             output = listType.forceStaticApply(intType)
     )

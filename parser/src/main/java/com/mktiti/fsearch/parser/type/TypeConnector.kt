@@ -102,7 +102,8 @@ private class OneshotConnector(
         val arrayTemplate = TypeTemplate(
                 info = infoRepo.arrayType.full(jclArtifact),
                 superTypes = arraySupers,
-                typeParams = listOf(TypeParameter("X", TypeBounds(emptySet())))
+                typeParams = listOf(TypeParameter("X", TypeBounds(emptySet()))),
+                samType = null
         )
         imTemplateTypes[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TemplateCreator(
                 unfinishedType = arrayTemplate,
@@ -112,7 +113,7 @@ private class OneshotConnector(
                 templateSuperAppender = {}
         )
         PrimitiveType.values().map(infoRepo::primitive).forEach { primitive ->
-            directTypes[primitive.packageName, primitive.simpleName] = DirectType(primitive.full(jclArtifact), emptyList())
+            directTypes[primitive.packageName, primitive.simpleName] = DirectType(primitive.full(jclArtifact), emptyList(), samType = null)
         }
 
         connect()

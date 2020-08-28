@@ -11,7 +11,8 @@ import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
 @Suppress("UNUSED")
 fun directType(fullName: String, vararg superType: NonGenericType) = DirectType(
     info = info(fullName),
-    superTypes = superType.map { EagerStatic(it) }
+    superTypes = superType.map { EagerStatic(it) },
+    samType = null
 )
 
 @Suppress("UNUSED")
@@ -23,7 +24,7 @@ fun typeTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: 
                 is NonGenericType -> EagerStatic(it)
                 is DynamicAppliedType -> EagerDynamic(it)
             }
-        }
+        }, samType = null
 )
 
 fun Applicable.forceStaticApply(typeArgs: List<NonGenericType>): StaticAppliedType

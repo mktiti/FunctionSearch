@@ -1,10 +1,9 @@
 package com.mktiti.fsearch.core.type
 
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
@@ -15,6 +14,8 @@ interface SemiType {
 
     val info: TypeInfo
     val superTypes: List<SuperType<Type>>
+
+    val samType: SamType<Substitution>?
 
     val typeParamString: String
     val fullName: String
@@ -45,7 +46,7 @@ interface Applicable {
     fun apply(typeArgs: List<ApplicationParameter>): Type? {
         val argsAsStatic = typeArgs.map {
             if (it is Wildcard.Direct) {
-                StaticTypeSubstitution(NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList()))
+                StaticTypeSubstitution(NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), null))
             } else {
                 it
             }
@@ -72,11 +73,14 @@ sealed class Type : SemiType {
 
         abstract override val superTypes: List<SuperType<NonGenericType>>
 
+        abstract override val samType: DirectSam?
+
         abstract val typeArgs: List<NonGenericType>
 
         class DirectType(
                 info: TypeInfo,
-                override val superTypes: List<SuperType<NonGenericType>>
+                override val superTypes: List<SuperType<NonGenericType>>,
+                override val samType: DirectSam?
         ) : NonGenericType(info) {
 
             override val typeArgs: List<NonGenericType>
@@ -89,13 +93,16 @@ sealed class Type : SemiType {
 
         class StaticAppliedType(
                 val baseType: TypeTemplate,
-                override val typeArgs: List<NonGenericType>//,
-            //superTypes: List<StaticSuper>
+                override val typeArgs: List<NonGenericType>
         ) : NonGenericType(baseType.info) {
 
             override val superTypes: List<SuperType<NonGenericType>> =
                 baseType.superTypes.map { it.staticApply(typeArgs) }.liftNull() ?:
                     throw TypeApplicationException("Failed to static apply type $baseType with $typeArgs")
+
+            override val samType: DirectSam? by lazy {
+                baseType.samType?.staticApply(typeArgs)
+            }
 
             override val typeParamString by lazy {
                 baseType.typeParams.zip(typeArgs).genericString { (_, arg) -> arg.fullName }
@@ -114,11 +121,14 @@ sealed class Type : SemiType {
     data class DynamicAppliedType(
             val baseType: TypeTemplate,
             val typeArgMapping: List<ApplicationParameter>
-       // override val superTypes: List<com.mktiti.fsearch.core.type.SuperType<Type>>
     ) : Type(), Applicable {
 
         override val info: TypeInfo
             get() = baseType.info
+
+        override val samType: SamType<Substitution>? by lazy {
+            baseType.samType?.dynamicApply(typeArgMapping)
+        }
 
         override val typeParamString by lazy {
             baseType.typeParams.zip(typeArgMapping).genericString { (_, arg) -> arg.toString() }
@@ -132,21 +142,10 @@ sealed class Type : SemiType {
             get() = typeArgMapping.filterIsInstance<Wildcard.BoundedWildcard>().none()
 
         override fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType? {
-            /*val appliedSupers = superTypes.com.mktiti.fsearch.com.mktiti.fsearch.core.util.map { superType ->
-                when (superType) {
-                    is StaticSuper -> superType
-                    is DynamicSuper -> StaticSuper(superType.com.mktiti.fsearch.parser.type.staticApply(typeArgs) ?: return null)
-                }
-            }
-             */
-
             val mappedArgs: List<NonGenericType> = typeArgMapping.map { argMapping ->
                 when (argMapping) {
-                    is ParamSubstitution -> typeArgs.getOrNull(argMapping.param) ?: return null
-                    is DynamicTypeSubstitution -> argMapping.type.staticApply(typeArgs) ?: return null
-                    is StaticTypeSubstitution -> argMapping.type
-                    is SelfSubstitution -> return null
-                    is Wildcard.Direct -> NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList()) // TODO
+                    is Substitution -> argMapping.staticApply(typeArgs) ?: return null
+                    is Wildcard.Direct -> NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), samType = null) // TODO
                     is Wildcard.BoundedWildcard -> return null
                 }
             }
@@ -190,7 +189,8 @@ sealed class Type : SemiType {
 class TypeTemplate(
         override val info: TypeInfo,
         val typeParams: List<TypeParameter>,
-        override val superTypes: List<SuperType<Type>>
+        override val superTypes: List<SuperType<Type>>,
+        override val samType: SamType<Substitution>?
 ) : Applicable, SemiType {
 
     override val typeParamString: String
@@ -199,32 +199,10 @@ class TypeTemplate(
     override val canByStaticApplied: Boolean
         get() = true
 
-/*
-    private fun <A : Any, S : com.mktiti.fsearch.core.type.SuperType<Type>> applyBase(
-        typeArgs: List<A>,
-        staticMap: (StaticSuper) -> S,
-        superApplier: (DynamicSuper) -> S?
-    ): List<S>? {
-        if (typeParams.size != typeArgs.size) {
-            return null
-        }
-
-        return superTypes.com.mktiti.fsearch.com.mktiti.fsearch.core.util.map { superType ->
-            when (superType) {
-                is StaticSuper -> staticMap(superType)
-                is DynamicSuper -> superApplier(superType) ?: return null
-            }
-        }
-    }
- */
-
     override fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType? {
         return StaticAppliedType(
             baseType = this,
-            typeArgs = typeArgs//,
-            //superTypes = applyBase(typeArgs, ::com.mktiti.fsearch.core.util.identity) {
-            //    it.com.mktiti.fsearch.parser.type.staticApply(typeArgs)?.let(com.mktiti.fsearch.core.type.SuperType::StaticSuper)
-            //} ?: return null
+            typeArgs = typeArgs
         )
     }
 

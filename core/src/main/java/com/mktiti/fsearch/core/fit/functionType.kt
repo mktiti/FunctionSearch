@@ -52,8 +52,8 @@ sealed class TypeSignature {
             inputParameters: List<Pair<String, NonGenericType>>,
             output: NonGenericType
         ) : this(
-            inputParameters = inputParameters.map { (name, type) -> name to StaticTypeSubstitution(type) },
-            output = StaticTypeSubstitution(output)
+            inputParameters = inputParameters.map { (name, type) -> name to StaticTypeSubstitution(type.completeInfo) },
+            output = StaticTypeSubstitution(output.completeInfo)
         )
 
         override val typeParameters: List<TypeParameter>

@@ -2,24 +2,10 @@ package com.mktiti.fsearch.core.repo
 
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.SuperType.DynamicSuper.EagerDynamic
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper.EagerStatic
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import kotlin.collections.ArrayList
-import kotlin.collections.Collection
-import kotlin.collections.HashMap
-import kotlin.collections.List
-import kotlin.collections.MutableList
-import kotlin.collections.MutableMap
-import kotlin.collections.emptyList
-import kotlin.collections.listOf
-import kotlin.collections.map
-import kotlin.collections.plusAssign
 import kotlin.collections.set
-import kotlin.collections.setOf
 
 interface TypeRepo {
 
@@ -50,31 +36,36 @@ interface MutableTypeRepo : TypeRepo {
     operator fun plusAssign(template: TypeTemplate)
 
     fun createSelfRefDirect(fullName: String, superCreators: List<(self: DirectType) -> NonGenericType>): DirectType {
-        val supers: MutableList<StaticSuper> = ArrayList(superCreators.size)
+        val supers: MutableList<CompleteMinInfo.Static> = ArrayList(superCreators.size)
 
-        return DirectType(info(fullName), supers, samType = null).also { self ->
+        return DirectType(
+                minInfo = info(fullName).minimal,
+                superTypes = supers,
+                samType = null,
+                virtual = false
+        ).also { self ->
             this += self
 
             supers += superCreators.map { creator ->
-                EagerStatic(creator(self))
+                creator(self).completeInfo
             }
         }
     }
 
     fun createDirect(fullName: String, vararg superTypes: NonGenericType, samType: SamType.DirectSam? = null): DirectType {
-        return DirectType(info(fullName), superTypes.map { EagerStatic(it) }, samType = samType).also {
+        return DirectType(info(fullName).minimal, superTypes = superTypes.map { it.completeInfo }, samType = samType, virtual = false).also {
             this += it
         }
     }
 
     fun createTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: List<Type>, samType: SamType.GenericSam? = null): TypeTemplate {
         return TypeTemplate(
-                info = info(fullName),
+                info = info(fullName).minimal,
                 typeParams = typeParams,
                 superTypes = superTypes.map {
                     when (it) {
-                        is NonGenericType -> EagerStatic(it)
-                        is DynamicAppliedType -> EagerDynamic(it)
+                        is NonGenericType -> it.completeInfo
+                        is DynamicAppliedType -> it.type
                     }
                 }, samType = samType
         ).also {
@@ -89,9 +80,9 @@ class SetTypeRepo(
         //private val funTypeInfo: TypeInfo
 ) : MutableTypeRepo {
 
-    override val rootType = DirectType(rootInfo, emptyList(), samType = null)
+    override val rootType = DirectType(rootInfo.minimal, superTypes = emptyList(), samType = null, virtual = false)
     override val defaultTypeBounds = TypeBounds(
-            upperBounds = setOf(StaticTypeSubstitution(rootType))
+            upperBounds = setOf(StaticTypeSubstitution(rootType.completeInfo))
     )
 
     private val types: MutableMap<String, DirectType> = HashMap()
@@ -119,7 +110,7 @@ class SetTypeRepo(
     }
 */
     override fun get(name: String, allowSimple: Boolean): DirectType? = types[name] ?: if (allowSimple && !name.contains(".")) {
-        types.values.find { it.info.name == name }
+        types.values.find { it.info.simpleName == name }
     } else {
         null
     }
@@ -127,7 +118,7 @@ class SetTypeRepo(
     override fun get(info: MinimalInfo): DirectType? = get(info.toString())
 
     override fun template(name: String, allowSimple: Boolean): TypeTemplate? = templates[name] ?: if (allowSimple && !name.contains(".")) {
-        templates.values.find { it.info.name == name }
+        templates.values.find { it.info.simpleName == name }
     } else {
         null
     }
@@ -137,11 +128,11 @@ class SetTypeRepo(
     // override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
 
     override fun plusAssign(type: DirectType) {
-        types[type.info.fullName] = type
+        types[type.info.simpleName] = type
     }
 
     override fun plusAssign(template: TypeTemplate) {
-        templates[template.info.fullName] = template
+        templates[template.info.simpleName] = template
     }
 
 }

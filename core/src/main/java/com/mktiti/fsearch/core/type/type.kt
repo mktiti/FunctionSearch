@@ -12,8 +12,10 @@ import java.util.*
 
 interface SemiType {
 
-    val info: TypeInfo
-    val superTypes: List<SuperType<Type>>
+    // val info: TypeInfo
+    val info: MinimalInfo
+    val virtual: Boolean
+    val superTypes: List<CompleteMinInfo<*>>
 
     val samType: SamType<Substitution>?
 
@@ -24,29 +26,36 @@ interface SemiType {
             append(typeParamString)
         }
 
+    /*
     val supersTree: TreeNode<SemiType>
         get() = TreeNode(this, superTypes.map { it.type.supersTree })
+
 
     fun anySuper(predicate: (Type) -> Boolean): Boolean = superTypes.asSequence().any { s ->
         s.type.let {
             predicate(it) || it.anySuper(predicate)
         }
     }
-
+*/
 }
 
 interface Applicable {
 
-    val canByStaticApplied: Boolean
+    val staticApplicable: Boolean
 
-    fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType?
+    fun staticApplyInfo(typeArgs: List<CompleteMinInfo.Static>): StaticAppliedType?
+
+    fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType? {
+        return staticApplyInfo(typeArgs.map(NonGenericType::completeInfo))
+    }
 
     fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType?
 
     fun apply(typeArgs: List<ApplicationParameter>): Type? {
         val argsAsStatic = typeArgs.map {
             if (it is Wildcard.Direct) {
-                StaticTypeSubstitution(NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), null))
+                // StaticTypeSubstitution(NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), null))
+                null
             } else {
                 it
             }
@@ -55,8 +64,8 @@ interface Applicable {
         return if (argsAsStatic == null) {
             dynamicApply(typeArgs)
         } else {
-            if (canByStaticApplied) {
-                staticApply(argsAsStatic.map(StaticTypeSubstitution::type))
+            if (staticApplicable) {
+                staticApplyInfo(argsAsStatic.map(StaticTypeSubstitution::type))
             } else {
                 dynamicApply(typeArgs)
             }
@@ -68,22 +77,27 @@ interface Applicable {
 sealed class Type : SemiType {
 
     sealed class NonGenericType(
-        override val info: TypeInfo
+            val completeInfo: CompleteMinInfo.Static,
+            override val virtual: Boolean
     ) : Type() {
 
-        abstract override val superTypes: List<SuperType<NonGenericType>>
+        override val info: MinimalInfo
+            get() = completeInfo.base
+
+        abstract override val superTypes: List<CompleteMinInfo.Static>
 
         abstract override val samType: DirectSam?
 
-        abstract val typeArgs: List<NonGenericType>
+        abstract val typeArgs: List<CompleteMinInfo.Static>
 
         class DirectType(
-                info: TypeInfo,
-                override val superTypes: List<SuperType<NonGenericType>>,
+                minInfo: MinimalInfo,
+                virtual: Boolean,
+                override val superTypes: List<CompleteMinInfo.Static>,
                 override val samType: DirectSam?
-        ) : NonGenericType(info) {
+        ) : NonGenericType(minInfo.complete(), virtual) {
 
-            override val typeArgs: List<NonGenericType>
+            override val typeArgs: List<CompleteMinInfo.Static>
                 get() = emptyList()
 
             override val typeParamString: String
@@ -92,61 +106,94 @@ sealed class Type : SemiType {
         }
 
         class StaticAppliedType(
-                val baseType: TypeTemplate,
-                override val typeArgs: List<NonGenericType>
-        ) : NonGenericType(baseType.info) {
+                type: CompleteMinInfo.Static,
+                override val superTypes: List<CompleteMinInfo.Static>,
+                virtual: Boolean = false
+        ) : NonGenericType(type, virtual) {
 
-            override val superTypes: List<SuperType<NonGenericType>> =
-                baseType.superTypes.map { it.staticApply(typeArgs) }.liftNull() ?:
-                    throw TypeApplicationException("Failed to static apply type $baseType with $typeArgs")
+            override val typeArgs: List<CompleteMinInfo.Static>
+                get() = completeInfo.args
 
-            override val samType: DirectSam? by lazy {
-                baseType.samType?.staticApply(typeArgs)
-            }
+            // override val superTypes: List<CompleteMinInfo.Static> =
+                // baseType.superTypes.map { it.staticApply(typeArgs) }.liftNull() ?:
+                   // throw TypeApplicationException("Failed to static apply type $baseType with $typeArgs")
+
+            override val samType: DirectSam? = null
 
             override val typeParamString by lazy {
-                baseType.typeParams.zip(typeArgs).genericString { (_, arg) -> arg.fullName }
+                // type.typeParams.zip(typeArgs).genericString { (_, arg) -> arg.fullName }
+                "TODO"
             }
 
         }
-
+/*
         private fun anyNgSuper(predicate: (NonGenericType) -> Boolean): Boolean = superTypes.asSequence().any { s ->
             s.type.anyNgSuperInclusive(predicate)
         }
 
         fun anyNgSuperInclusive(predicate: (NonGenericType) -> Boolean): Boolean = predicate(this) || anyNgSuper(predicate)
-
+*/
     }
 
     data class DynamicAppliedType(
-            val baseType: TypeTemplate,
-            val typeArgMapping: List<ApplicationParameter>
+            val type: CompleteMinInfo.Dynamic,
+            override val superTypes: List<CompleteMinInfo<*>>,
+            override val virtual: Boolean = false
     ) : Type(), Applicable {
 
-        override val info: TypeInfo
-            get() = baseType.info
+        override val info: MinimalInfo
+            get() = type.base
+
+        val typeArgMapping
+            get() = type.args
 
         override val samType: SamType<Substitution>? by lazy {
-            baseType.samType?.dynamicApply(typeArgMapping)
+            //ty.samType?.dynamicApply(typeArgMapping)
+            null
         }
 
         override val typeParamString by lazy {
-            baseType.typeParams.zip(typeArgMapping).genericString { (_, arg) -> arg.toString() }
+            //type..zip(typeArgMapping).genericString { (_, arg) -> arg.toString() }
+            // TODO
+            "<args todo>"
         }
-
+/*
         override val superTypes: List<SuperType<Type>> =
                 baseType.superTypes.map { it.dynamicApply(typeArgMapping) }.liftNull() ?:
                     throw TypeApplicationException("Failed to dynamically apply type $baseType with $typeArgMapping")
+ */
 
-        override val canByStaticApplied: Boolean
-            get() = typeArgMapping.filterIsInstance<Wildcard.BoundedWildcard>().none()
+        override val staticApplicable: Boolean
+            get() = typeArgMapping.filterIsInstance<Wildcard.Bounded>().none()
 
+        override fun staticApplyInfo(typeArgs: List<CompleteMinInfo.Static>): StaticAppliedType? {
+            /*val mappedArgs: List<NonGenericType> = typeArgMapping.map { argMapping ->
+                when (argMapping) {
+                    is Substitution -> argMapping.staticApply(typeArgs) ?: return null
+                    is Wildcard.Direct -> NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), samType = null) // TODO
+                    is Wildcard.Bounded -> return null
+                }
+            }
+             */
+
+            return StaticAppliedType(
+                    type = type.staticApply(typeArgs) ?: return null,
+                    superTypes = superTypes.map {
+                        when (it) {
+                            is CompleteMinInfo.Static -> it
+                            is CompleteMinInfo.Dynamic -> it.staticApply(typeArgs) ?: return null
+                        }
+                    },
+                    virtual = virtual
+            )
+        }
+/*
         override fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType? {
             val mappedArgs: List<NonGenericType> = typeArgMapping.map { argMapping ->
                 when (argMapping) {
                     is Substitution -> argMapping.staticApply(typeArgs) ?: return null
                     is Wildcard.Direct -> NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), samType = null) // TODO
-                    is Wildcard.BoundedWildcard -> return null
+                    is Wildcard.Bounded -> return null
                 }
             }
 
@@ -155,28 +202,49 @@ sealed class Type : SemiType {
                 typeArgs = mappedArgs
             )
         }
+ */
 
         // TODO
-        fun applySelf(self: NonGenericType): DynamicAppliedType {
-            val appliedArgs: List<ApplicationParameter> = typeArgMapping.map { it.applySelf(self) }
+        fun applySelf(self: CompleteMinInfo.Static): DynamicAppliedType {
+            /*val appliedArgs: List<ApplicationParameter> = typeArgMapping.map { it.applySelf(self) }
 
             return copy(
                 typeArgMapping = appliedArgs
             )
+             */
+
+            return copy(
+                    type = type.applySelf(self)
+            )
         }
 
         override fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType? {
-            val mappedArgs: List<ApplicationParameter> = typeArgMapping.map { it.dynamicApply(typeArgs) ?: return null }
+            /*val mappedArgs: List<ApplicationParameter> = typeArgMapping.map { it.dynamicApply(typeArgs) ?: return null }
 
             return DynamicAppliedType(
                 baseType = baseType,
                 typeArgMapping = mappedArgs
             )
+
+             */
+
+            val type = info.dynamicComplete(typeArgs)
+
+            return DynamicAppliedType(
+                    type = type,
+                    superTypes = superTypes.map {
+                        when (it) {
+                            is CompleteMinInfo.Static -> it
+                            is CompleteMinInfo.Dynamic -> it.dynamicApply(typeArgs) ?: return null
+                        }
+                    },
+                    virtual = virtual
+            )
         }
 
     }
 
-    open fun anySuperInclusive(predicate: (Type) -> Boolean): Boolean = predicate(this) || anySuper(predicate)
+    // open fun anySuperInclusive(predicate: (Type) -> Boolean): Boolean = predicate(this) || anySuper(predicate)
 
     override fun equals(other: Any?) = (other as? Type)?.info == info
 
@@ -187,29 +255,39 @@ sealed class Type : SemiType {
 }
 
 class TypeTemplate(
-        override val info: TypeInfo,
+        override val info: MinimalInfo,
         val typeParams: List<TypeParameter>,
-        override val superTypes: List<SuperType<Type>>,
-        override val samType: SamType<Substitution>?
+        override val superTypes: List<CompleteMinInfo<*>>,
+        override val samType: SamType<Substitution>?,
+        override val virtual: Boolean = false
 ) : Applicable, SemiType {
 
     override val typeParamString: String
         get() = typeParams.genericString { it.toString() }
 
-    override val canByStaticApplied: Boolean
+    override val staticApplicable: Boolean
         get() = true
 
-    override fun staticApply(typeArgs: List<NonGenericType>): StaticAppliedType? {
+    override fun staticApplyInfo(typeArgs: List<CompleteMinInfo.Static>): StaticAppliedType? {
         return StaticAppliedType(
-            baseType = this,
-            typeArgs = typeArgs
+                type = info.staticComplete(typeArgs),
+                superTypes = superTypes.map { it.staticApply(typeArgs) ?: return null },
+                virtual = virtual
         )
     }
 
     override fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType? {
+        val type = info.dynamicComplete(typeArgs)
+
         return DynamicAppliedType(
-            baseType = this,
-            typeArgMapping = typeArgs
+            type = type,
+            superTypes = superTypes.map {
+                when (it) {
+                    is CompleteMinInfo.Static -> it
+                    is CompleteMinInfo.Dynamic -> it.dynamicApply(typeArgs) ?: return null
+                }
+            },
+            virtual = virtual
         )
     }
 

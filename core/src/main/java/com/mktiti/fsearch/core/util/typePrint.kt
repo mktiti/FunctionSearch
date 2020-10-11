@@ -1,8 +1,8 @@
 package com.mktiti.fsearch.core.util
 
 import com.mktiti.fsearch.core.fit.FunctionObj
+import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.fit.QueryType
-import com.mktiti.fsearch.core.fit.fitsQuery
 import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
@@ -34,6 +34,7 @@ fun printType(type: Type) {
 
 fun printSemiType(type: SemiType) {
     val siblingDepths: MutableSet<Int> = sortedSetOf()
+    /*
     type.supersTree.walkDf { node, depth, hasMore ->
         for (d in (0 until depth - 1)) {
             if ((d + 1) in siblingDepths) {
@@ -54,14 +55,15 @@ fun printSemiType(type: SemiType) {
             siblingDepths -= depth
         }
     }
+     */
     println("==================")
 }
 
-fun printFit(function: FunctionObj, query: QueryType) {
+fun printFit(queryFitter: QueryFitter, function: FunctionObj, query: QueryType) {
     println("==================")
     println("Function: $function")
     println("Query: $query")
-    val result = when (val fitResult = fitsQuery(query, function)) {
+    val result = when (val fitResult = queryFitter.fitsQuery(query, function)) {
         null -> "Failed to match function with query"
         else -> fitResult.toString()
     }

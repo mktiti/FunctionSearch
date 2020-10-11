@@ -11,8 +11,6 @@ data class TypeParameter(
         )
     }
 
-    fun fits(type: Type.NonGenericType): TypeBoundFit = bounds.fits(type)
-
     override fun toString() = buildString {
         append(sign)
         with(bounds) {

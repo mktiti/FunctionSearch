@@ -1,8 +1,6 @@
 package com.mktiti.fsearch.core.util
 
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.SuperType.DynamicSuper.EagerDynamic
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper.EagerStatic
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
@@ -10,19 +8,20 @@ import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
 
 @Suppress("UNUSED")
 fun directType(fullName: String, vararg superType: NonGenericType) = DirectType(
-    info = info(fullName),
-    superTypes = superType.map { EagerStatic(it) },
-    samType = null
+    minInfo = info(fullName).minimal,
+    superTypes = superType.map { it.completeInfo },
+    samType = null,
+    virtual = false
 )
 
 @Suppress("UNUSED")
 fun typeTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: List<Type>) = TypeTemplate(
-        info = info(fullName),
+        info = info(fullName).minimal,
         typeParams = typeParams,
         superTypes = superTypes.map {
             when (it) {
-                is NonGenericType -> EagerStatic(it)
-                is DynamicAppliedType -> EagerDynamic(it)
+                is NonGenericType -> it.completeInfo
+                is DynamicAppliedType -> it.type
             }
         }, samType = null
 )

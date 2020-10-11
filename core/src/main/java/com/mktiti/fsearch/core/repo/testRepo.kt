@@ -6,7 +6,8 @@ import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.forceDynamicApply
@@ -98,7 +99,7 @@ fun createTestRepo(): MutableTypeRepo {
                         pair.forceDynamicApply(
                             ParamSubstitution(0),
                             ParamSubstitution(1)
-                        )
+                        ).type
                     )
                 )
             )
@@ -123,8 +124,8 @@ fun createTestRepo(): MutableTypeRepo {
                     TypeParameter("K", upperBounds(
                             DynamicTypeSubstitution(
                                     comparable.forceDynamicApply(
-                                            LowerBound(SelfSubstitution)
-                                    )
+                                            Wildcard.Bounded(SelfSubstitution, LOWER)
+                                    ).type
                             )
                     )),
                     TypeParameter("V", defaultTypeBounds)

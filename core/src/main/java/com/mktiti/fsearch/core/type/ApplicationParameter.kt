@@ -11,125 +11,118 @@ sealed class ApplicationParameter {
         object Direct : Wildcard() {
             override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
 
-            override fun applySelf(self: NonGenericType) = this
+            override fun applySelf(self: CompleteMinInfo.Static) = this
 
             override fun toString() = "?"
         }
 
-        sealed class BoundedWildcard(val param: Substitution) : Wildcard() {
-            abstract val subVariance: InheritanceLogic
+        data class Bounded(
+                val param: Substitution,
+                private val direction: BoundDirection
+        ) : Wildcard() {
 
-            class UpperBound(param: Substitution) : BoundedWildcard(param) {
-                override val subVariance: InheritanceLogic
-                    get() = InheritanceLogic.COVARIANCE
-
-                override fun dynamicApply(typeParams: List<ApplicationParameter>): Wildcard? {
-                    return when (val applied = param.dynamicApply(typeParams)) {
-                        null -> null
-                        is Substitution -> UpperBound(applied)
-                        Direct -> Direct
-                        is UpperBound -> applied
-                        is LowerBound -> null
-                    }
-                }
-
-                override fun applySelf(self: NonGenericType) = UpperBound(
-                        param = param.applySelf(self)
-                )
-
-                override fun toString() = "? extends $param"
+            enum class BoundDirection(
+                    val subVariance: InheritanceLogic,
+                    val keyword: String
+            ) {
+                UPPER(InheritanceLogic.COVARIANCE, "extends"),
+                LOWER(InheritanceLogic.CONTRAVARIANCE, "super")
             }
 
-            class LowerBound(param: Substitution) : BoundedWildcard(param) {
-                override val subVariance: InheritanceLogic
-                    get() = InheritanceLogic.CONTRAVARIANCE
+            val subVariance: InheritanceLogic
+                get() = direction.subVariance
 
-                override fun dynamicApply(typeParams: List<ApplicationParameter>): Wildcard? {
-                    return when (val applied = param.dynamicApply(typeParams)) {
-                        null -> null
-                        is Substitution -> LowerBound(applied)
-                        Direct -> Direct
-                        is UpperBound -> null
-                        is LowerBound -> applied
-                    }
+            override fun dynamicApply(typeParams: List<ApplicationParameter>): Wildcard? {
+                return when (val applied = param.dynamicApply(typeParams)) {
+                    null -> null
+                    is Substitution -> copy(param = applied)
+                    Direct -> Direct
+                    is Bounded -> if (direction == applied.direction) applied else null
                 }
-
-                override fun applySelf(self: NonGenericType) = LowerBound(
-                        param = param.applySelf(self)
-                )
-
-                override fun toString() = "? super $param"
             }
+
+            override fun applySelf(self: CompleteMinInfo.Static) = copy(
+                    param = param.applySelf(self)
+            )
+
+            override fun toString() = "? ${direction.keyword} $param"
         }
     }
 
     sealed class Substitution : ApplicationParameter() {
 
         data class ParamSubstitution(val param: Int) : Substitution() {
-            override fun staticApply(typeArgs: List<NonGenericType>) = typeArgs.getOrNull(param)
+            override fun staticApply(typeArgs: List<CompleteMinInfo.Static>) = typeArgs.getOrNull(param)
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter? {
                 return typeParams.getOrNull(param) ?: return null
             }
 
-            override fun applySelf(self: NonGenericType) = this
+            override fun applySelf(self: CompleteMinInfo.Static) = this
 
             override fun toString() = "#$param"
         }
 
         object SelfSubstitution : Substitution() {
-            override fun staticApply(typeArgs: List<NonGenericType>): NonGenericType? = null
+            override fun staticApply(typeArgs: List<CompleteMinInfo.Static>): Nothing? = null
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
 
-            override fun applySelf(self: NonGenericType) = StaticTypeSubstitution(self)
+            override fun applySelf(self: CompleteMinInfo.Static) = StaticTypeSubstitution(self)
 
             override fun toString() = "\$SELF"
         }
 
-        sealed class TypeSubstitution<out T : Type>(
-            val type: T
+        sealed class TypeSubstitution<out T : Type, out I : CompleteMinInfo<*>>(
+            val type: I
         ) : Substitution() {
 
             companion object {
-                fun wrap(type: Type): TypeSubstitution<*> = when (type) {
+                fun wrap(info: CompleteMinInfo<*>): TypeSubstitution<*, *> = when (info) {
+                    is CompleteMinInfo.Static -> StaticTypeSubstitution(info)
+                    is CompleteMinInfo.Dynamic -> DynamicTypeSubstitution(info)
+                }
+
+                /*
+                fun wrap(type: Type): TypeSubstitution<*, *> = when (type) {
                     is NonGenericType -> StaticTypeSubstitution(type)
                     is DynamicAppliedType -> DynamicTypeSubstitution(type)
                 }
+                 */
             }
 
-            class DynamicTypeSubstitution(type: DynamicAppliedType) : TypeSubstitution<DynamicAppliedType>(type) {
-                override fun staticApply(typeArgs: List<NonGenericType>) = type.staticApply(typeArgs)
+            class DynamicTypeSubstitution(type: CompleteMinInfo.Dynamic) : TypeSubstitution<DynamicAppliedType, CompleteMinInfo.Dynamic>(type) {
+                override fun staticApply(typeArgs: List<CompleteMinInfo.Static>) = type.staticApply(typeArgs)
 
                 override fun dynamicApply(typeParams: List<ApplicationParameter>): DynamicTypeSubstitution? {
                     return type.dynamicApply(typeParams)?.let { DynamicTypeSubstitution(it) }
                 }
 
-                override fun applySelf(self: NonGenericType) = DynamicTypeSubstitution(type.applySelf(self))
+                override fun applySelf(self: CompleteMinInfo.Static) = DynamicTypeSubstitution(type.applySelf(self))
             }
 
-            class StaticTypeSubstitution(type: NonGenericType) : TypeSubstitution<NonGenericType>(type) {
-                override fun staticApply(typeArgs: List<NonGenericType>) = type
+            class StaticTypeSubstitution(type: CompleteMinInfo.Static) : TypeSubstitution<NonGenericType, CompleteMinInfo.Static>(type) {
+                override fun staticApply(typeArgs: List<CompleteMinInfo.Static>) = type
 
                 override fun dynamicApply(typeParams: List<ApplicationParameter>): StaticTypeSubstitution = this
             }
 
-            override fun applySelf(self: NonGenericType) = this
+            override fun applySelf(self: CompleteMinInfo.Static) = this
 
-            override fun toString() = type.fullName
+            override fun toString() = type.toString()
 
         }
 
-        abstract fun staticApply(typeArgs: List<NonGenericType>): NonGenericType?
+        abstract fun staticApply(typeArgs: List<CompleteMinInfo.Static>): CompleteMinInfo.Static?
 
         abstract override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 
-        abstract override fun applySelf(self: NonGenericType): Substitution
+        abstract override fun applySelf(self: CompleteMinInfo.Static): Substitution
 
     }
 
     abstract fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 
-    abstract fun applySelf(self: NonGenericType): ApplicationParameter
+    abstract fun applySelf(self: CompleteMinInfo.Static): ApplicationParameter
 
 }

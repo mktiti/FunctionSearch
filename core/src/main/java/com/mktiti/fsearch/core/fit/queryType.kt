@@ -1,13 +1,11 @@
 package com.mktiti.fsearch.core.fit
 
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper
+import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.type.TypeBounds
-import com.mktiti.fsearch.core.type.TypeInfo
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.TypeTemplate
-import com.mktiti.fsearch.core.util.defaultRepo
 
 data class QueryType(
     val inputParameters: List<NonGenericType>,
@@ -19,10 +17,11 @@ data class QueryType(
 
         private fun createFunType(paramCount: Int): TypeTemplate {
             return TypeTemplate(
-                    info = TypeInfo("\$QueryFunArg_$paramCount", emptyList(), "", virtual = true),
+                    info = MinimalInfo(packageName = emptyList(), simpleName = "\$QueryFunArg_$paramCount"),
                     typeParams = (0..paramCount).map { TypeParameter(('A' + it).toString(), TypeBounds(emptySet())) },
                     superTypes = emptyList(),
-                    samType = null
+                    samType = null,
+                    virtual = true
             )
         }
 
@@ -32,14 +31,13 @@ data class QueryType(
         }
 
         fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(
-                info = TypeInfo(
-                        name = name,
-                        packageName = emptyList(),
-                        artifact = "",
-                        virtual = true
+                minInfo = MinimalInfo(
+                        simpleName = name,
+                        packageName = emptyList()
                 ),
-                superTypes = supers.map { StaticSuper.EagerStatic(it) },
-                samType = null
+                superTypes = supers.map { it.completeInfo },
+                samType = null,
+                virtual = true
         )
      }
 

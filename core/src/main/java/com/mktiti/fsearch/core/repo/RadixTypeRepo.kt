@@ -16,11 +16,11 @@ class RadixTypeRepo(
         get() = javaRepo.objectType
 
     override val defaultTypeBounds = TypeBounds(
-            upperBounds = setOf(StaticTypeSubstitution(rootType))
+            upperBounds = setOf(StaticTypeSubstitution(rootType.completeInfo))
     )
 
     // TODO think through - maybe cache?
-    private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.name to it }.toMap()
+    private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.simpleName to it }.toMap()
 
     private val directSimpleIndex = simpleNames(directs)
     private val templateSimpleIndex = simpleNames(templates)

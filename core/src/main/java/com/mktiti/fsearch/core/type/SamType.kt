@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 
 sealed class SamType<out S : Substitution>(
@@ -12,11 +12,11 @@ sealed class SamType<out S : Substitution>(
 
     class DirectSam(
             explicit: Boolean,
-            inputs: List<TypeSubstitution<NonGenericType>>,
-            output: TypeSubstitution<NonGenericType>
-    ) : SamType<TypeSubstitution<NonGenericType>>(explicit, inputs, output) {
+            inputs: List<StaticTypeSubstitution>,
+            output: StaticTypeSubstitution
+    ) : SamType<StaticTypeSubstitution>(explicit, inputs, output) {
 
-        override fun staticApply(typeArgs: List<NonGenericType>) = this
+      //  override fun staticApply(typeArgs: List<NonGenericType>) = this
         override fun dynamicApply(typeArgs: List<ApplicationParameter>) = this
 
     }
@@ -39,9 +39,9 @@ sealed class SamType<out S : Substitution>(
                     explicit = explicit
             )
         }
-
+/*
         override fun staticApply(typeArgs: List<NonGenericType>): DirectSam? {
-            fun Substitution.apply() = staticApply(typeArgs)?.let { TypeSubstitution.StaticTypeSubstitution(it) }
+            fun Substitution.apply() = staticApply(typeArgs)?.let { StaticTypeSubstitution(it) }
 
             val appliedIns = inputs.map { it.apply() ?: return null }
             val appliedOut = output.apply() ?: return null
@@ -53,10 +53,12 @@ sealed class SamType<out S : Substitution>(
             )
         }
 
+
+ */
     }
 
     abstract fun dynamicApply(typeArgs: List<ApplicationParameter>): SamType<Substitution>?
 
-    abstract fun staticApply(typeArgs: List<NonGenericType>): DirectSam?
+    // abstract fun staticApply(typeArgs: List<NonGenericType>): DirectSam?
 
 }

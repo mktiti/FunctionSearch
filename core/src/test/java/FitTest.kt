@@ -1,23 +1,10 @@
-import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.repo.createTestRepo
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.SemiType
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.upperBounds
-import com.mktiti.fsearch.core.util.forceDynamicApply
-import com.mktiti.fsearch.core.util.forceStaticApply
-import com.mktiti.fsearch.core.util.printFit
-import com.mktiti.fsearch.core.util.printSemiType
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import kotlin.test.assertNotNull
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class FitTest {
-
+/*
     companion object {
         init {
             println("All Test Types")
@@ -36,6 +23,8 @@ class FitTest {
         }
     }
 
+
+ */
     private val repo = createTestRepo()
 /*
     @Test

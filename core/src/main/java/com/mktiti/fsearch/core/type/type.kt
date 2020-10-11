@@ -136,16 +136,16 @@ sealed class Type : SemiType {
     }
 
     data class DynamicAppliedType(
-            val type: CompleteMinInfo.Dynamic,
+            val completeInfo: CompleteMinInfo.Dynamic,
             override val superTypes: List<CompleteMinInfo<*>>,
             override val virtual: Boolean = false
     ) : Type(), Applicable {
 
         override val info: MinimalInfo
-            get() = type.base
+            get() = completeInfo.base
 
         val typeArgMapping
-            get() = type.args
+            get() = completeInfo.args
 
         override val samType: SamType<Substitution>? by lazy {
             //ty.samType?.dynamicApply(typeArgMapping)
@@ -177,7 +177,7 @@ sealed class Type : SemiType {
              */
 
             return StaticAppliedType(
-                    type = type.staticApply(typeArgs) ?: return null,
+                    type = completeInfo.staticApply(typeArgs) ?: return null,
                     superTypes = superTypes.map {
                         when (it) {
                             is CompleteMinInfo.Static -> it
@@ -214,7 +214,7 @@ sealed class Type : SemiType {
              */
 
             return copy(
-                    type = type.applySelf(self)
+                    completeInfo = completeInfo.applySelf(self)
             )
         }
 
@@ -231,7 +231,7 @@ sealed class Type : SemiType {
             val type = info.dynamicComplete(typeArgs)
 
             return DynamicAppliedType(
-                    type = type,
+                    completeInfo = type,
                     superTypes = superTypes.map {
                         when (it) {
                             is CompleteMinInfo.Static -> it
@@ -280,7 +280,7 @@ class TypeTemplate(
         val type = info.dynamicComplete(typeArgs)
 
         return DynamicAppliedType(
-            type = type,
+            completeInfo = type,
             superTypes = superTypes.map {
                 when (it) {
                     is CompleteMinInfo.Static -> it

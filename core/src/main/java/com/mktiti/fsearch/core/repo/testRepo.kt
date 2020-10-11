@@ -99,7 +99,7 @@ fun createTestRepo(): MutableTypeRepo {
                         pair.forceDynamicApply(
                             ParamSubstitution(0),
                             ParamSubstitution(1)
-                        ).type
+                        ).completeInfo
                     )
                 )
             )
@@ -125,7 +125,7 @@ fun createTestRepo(): MutableTypeRepo {
                             DynamicTypeSubstitution(
                                     comparable.forceDynamicApply(
                                             Wildcard.Bounded(SelfSubstitution, LOWER)
-                                    ).type
+                                    ).completeInfo
                             )
                     )),
                     TypeParameter("V", defaultTypeBounds)

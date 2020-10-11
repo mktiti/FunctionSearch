@@ -1,11 +1,8 @@
 package com.mktiti.fsearch.core.repo
 
-import com.mktiti.fsearch.core.type.CompleteMinInfo
-import com.mktiti.fsearch.core.type.MinimalInfo
-import com.mktiti.fsearch.core.type.Type
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeTemplate
 import com.mktiti.fsearch.core.util.liftNull
 
 interface TypeResolver {
@@ -28,6 +25,11 @@ interface TypeResolver {
     operator fun get(info: CompleteMinInfo.Dynamic): Type.DynamicAppliedType? {
         val template = template(info.base) ?: return null
         return template.dynamicApply(info.args)
+    }
+
+    fun getAny(info: CompleteMinInfo<*>): SemiType? = when (info) {
+        is CompleteMinInfo.Static -> get(info)
+        is CompleteMinInfo.Dynamic -> get(info)
     }
 
     fun anyNgSuper(info: CompleteMinInfo.Static, predicate: (NonGenericType) -> Boolean): Boolean {

@@ -1,18 +1,10 @@
-import com.mktiti.fsearch.core.fit.*
-import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
 import com.mktiti.fsearch.core.util.forceDynamicApply
-import com.mktiti.fsearch.core.util.forceStaticApply
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class ApplyTest {
@@ -39,10 +31,10 @@ class ApplyTest {
             )
 
             val innerBox = box.forceDynamicApply(ParamSubstitution(0))
-            val outerBox = box.forceDynamicApply(DynamicTypeSubstitution(innerBox.type))
-            val sub = DynamicTypeSubstitution(outerBox.type)
+            val outerBox = box.forceDynamicApply(DynamicTypeSubstitution(innerBox.completeInfo))
+            val sub = DynamicTypeSubstitution(outerBox.completeInfo)
 
-            supers += base.forceDynamicApply(listOf(sub)).type
+            supers += base.forceDynamicApply(listOf(sub)).completeInfo
 
             return Triple(repo, base, box)
         }

@@ -21,7 +21,7 @@ fun typeTemplate(fullName: String, typeParams: List<TypeParameter>, superTypes: 
         superTypes = superTypes.map {
             when (it) {
                 is NonGenericType -> it.completeInfo
-                is DynamicAppliedType -> it.type
+                is DynamicAppliedType -> it.completeInfo
             }
         }, samType = null
 )

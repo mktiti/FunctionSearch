@@ -106,7 +106,7 @@ class JavaTypeBoundFitter(
             is ParamSubstitution -> YetUncertain
             is DynamicTypeSubstitution -> fitsDatBound(type, upperBound.type, type)
             is StaticTypeSubstitution -> {
-                typeResolver.anyNgSuper(upperBound.type) { it.completeInfo == upperBound.type }.fitOrNot()
+                typeResolver.anyNgSuper(type) { it.completeInfo == upperBound.type }.fitOrNot()
             }
         }
     }

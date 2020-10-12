@@ -1,10 +1,17 @@
+import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
 import com.mktiti.fsearch.core.util.forceDynamicApply
+import com.mktiti.fsearch.core.util.forceStaticApply
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class ApplyTest {
@@ -36,36 +43,42 @@ class ApplyTest {
 
             supers += base.forceDynamicApply(listOf(sub)).completeInfo
 
+            repo += base
+            repo += box
+
             return Triple(repo, base, box)
         }
     }
-/*
+
     @Test
     fun `test exploding application`() {
         val (repo, base, box) = createSetup()
         val strType = repo["String"]!!
         val strBox = box.forceStaticApply(strType)
 
-        fun nested(box: StaticAppliedType): StaticAppliedType {
-            val aSuper = box.superTypes.first()
-            return aSuper.typeArgs.first()
+        val resolver: TypeResolver = SingleRepoTypeResolver(repo)
+        val fitter: QueryFitter = JavaQueryFitter(resolver)
+
+        fun nested(currentBox: Type.NonGenericType): Type.NonGenericType {
+            return box.forceStaticApply(currentBox)
         }
 
-        tailrec fun checkArgs(box: StaticAppliedType, goal: Int) {
+        tailrec fun checkArgs(box: CompleteMinInfo.Static, goal: Int) {
+            val checkTarget = box.args.first()
             if (goal == 0) {
-                assertEquals(strType, box.typeArgs.first())
+                assertEquals(strType.completeInfo, checkTarget)
             } else {
-                assertEquals("Box", box.baseType.info.name)
-                checkArgs(box.typeArgs.first() as StaticAppliedType, goal - 1)
+                assertEquals("Box", box.base.simpleName)
+                checkArgs(checkTarget, goal - 1)
             }
         }
 
-        tailrec fun nestedCheck(box: StaticAppliedType, goal: Int, depth: Int = 0) {
+        tailrec fun nestedCheck(box: Type.NonGenericType, goal: Int, depth: Int = 0) {
             if (goal == depth) {
                 return
             }
 
-            checkArgs(box, depth)
+            checkArgs(box.completeInfo, depth)
             nestedCheck(nested(box), goal, depth + 1)
         }
         nestedCheck(strBox, 10000)
@@ -86,9 +99,6 @@ class ApplyTest {
                 )
         )
 
-        val resolver: TypeResolver = SingleRepoTypeResolver(repo)
-        val fitter: QueryFitter = JavaQueryFitter(resolver)
-
         val fitResult = fitter.fitsOrderedQuery(
                 query = querySignature,
                 function = FunctionObj(FunctionInfo("fun", "inmem"), funSignature)
@@ -96,7 +106,5 @@ class ApplyTest {
 
         assertNotNull(fitResult)
     }
-
- */
 
 }

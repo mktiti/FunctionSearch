@@ -7,7 +7,8 @@ import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
-import com.mktiti.fsearch.core.util.*
+import com.mktiti.fsearch.core.util.castIfAllInstance
+import com.mktiti.fsearch.core.util.genericString
 import java.util.*
 
 interface SemiType {
@@ -19,12 +20,7 @@ interface SemiType {
 
     val samType: SamType<Substitution>?
 
-    val typeParamString: String
     val fullName: String
-        get() = buildString {
-            append(info)
-            append(typeParamString)
-        }
 
     /*
     val supersTree: TreeNode<SemiType>
@@ -77,7 +73,7 @@ interface Applicable {
 sealed class Type : SemiType {
 
     sealed class NonGenericType(
-            val completeInfo: CompleteMinInfo.Static,
+            override val completeInfo: CompleteMinInfo.Static,
             override val virtual: Boolean
     ) : Type() {
 
@@ -100,8 +96,8 @@ sealed class Type : SemiType {
             override val typeArgs: List<CompleteMinInfo.Static>
                 get() = emptyList()
 
-            override val typeParamString: String
-                get() = ""
+          //  override val typeParamString: String
+            //    get() = ""
 
         }
 
@@ -115,18 +111,19 @@ sealed class Type : SemiType {
                 get() = completeInfo.args
 
             // override val superTypes: List<CompleteMinInfo.Static> =
-                // baseType.superTypes.map { it.staticApply(typeArgs) }.liftNull() ?:
-                   // throw TypeApplicationException("Failed to static apply type $baseType with $typeArgs")
+            // baseType.superTypes.map { it.staticApply(typeArgs) }.liftNull() ?:
+            // throw TypeApplicationException("Failed to static apply type $baseType with $typeArgs")
 
             override val samType: DirectSam? = null
-
+        }
+/*
             override val typeParamString by lazy {
                 // type.typeParams.zip(typeArgs).genericString { (_, arg) -> arg.fullName }
                 "TODO"
             }
 
         }
-/*
+
         private fun anyNgSuper(predicate: (NonGenericType) -> Boolean): Boolean = superTypes.asSequence().any { s ->
             s.type.anyNgSuperInclusive(predicate)
         }
@@ -136,7 +133,7 @@ sealed class Type : SemiType {
     }
 
     data class DynamicAppliedType(
-            val completeInfo: CompleteMinInfo.Dynamic,
+            override val completeInfo: CompleteMinInfo.Dynamic,
             override val superTypes: List<CompleteMinInfo<*>>,
             override val virtual: Boolean = false
     ) : Type(), Applicable {
@@ -151,13 +148,13 @@ sealed class Type : SemiType {
             //ty.samType?.dynamicApply(typeArgMapping)
             null
         }
-
+/*
         override val typeParamString by lazy {
             //type..zip(typeArgMapping).genericString { (_, arg) -> arg.toString() }
             // TODO
             "<args todo>"
         }
-/*
+
         override val superTypes: List<SuperType<Type>> =
                 baseType.superTypes.map { it.dynamicApply(typeArgMapping) }.liftNull() ?:
                     throw TypeApplicationException("Failed to dynamically apply type $baseType with $typeArgMapping")
@@ -246,6 +243,12 @@ sealed class Type : SemiType {
 
     // open fun anySuperInclusive(predicate: (Type) -> Boolean): Boolean = predicate(this) || anySuper(predicate)
 
+    abstract val completeInfo: CompleteMinInfo<*>
+
+    override val fullName by lazy {
+        completeInfo.toString()
+    }
+
     override fun equals(other: Any?) = (other as? Type)?.info == info
 
     override fun hashCode(): Int = Objects.hashCode(info)
@@ -262,8 +265,12 @@ class TypeTemplate(
         override val virtual: Boolean = false
 ) : Applicable, SemiType {
 
-    override val typeParamString: String
-        get() = typeParams.genericString { it.toString() }
+    override val fullName by lazy {
+        buildString {
+            append(info)
+            append(typeParams.genericString())
+        }
+    }
 
     override val staticApplicable: Boolean
         get() = true

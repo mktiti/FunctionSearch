@@ -2,8 +2,11 @@ package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.liftNull
+import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.PrefixTree
+import java.util.*
 
 data class MinimalInfo(
         val packageName: PackageName,
@@ -48,6 +51,14 @@ sealed class CompleteMinInfo<out P : Any>(
 
         override fun staticApply(typeArgs: List<Static>): Static = this
 
+        override fun equals(other: Any?): Boolean = if (other is Static) {
+            base == other.base && (args.zipIfSameLength(other.args)?.all { (a, b) -> a == b } ?: false)
+        } else {
+            false
+        }
+
+        override fun hashCode() = Objects.hash(base, args)
+
     }
 
     class Dynamic(
@@ -77,6 +88,12 @@ sealed class CompleteMinInfo<out P : Any>(
 
     abstract fun staticApply(typeArgs: List<Static>): Static?
 
+    override fun toString() = buildString {
+        append(base)
+        if (args.isNotEmpty()) {
+            append(args.genericString())
+        }
+    }
 
 }
 

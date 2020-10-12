@@ -11,9 +11,10 @@ class SemiVisitor(
     private fun visitInner(root: SemiType, code: (node: SemiType, depth: Int, hasMore: Boolean) -> Unit, depth: Int, hasMoreSiblings: Boolean) {
         code(root, depth, hasMoreSiblings)
 
+        val childCount = root.superTypes.size
         root.superTypes.forEachIndexed { i, node ->
             val resolved = typeResolver.getAny(node) ?: return
-            visitInner(resolved, code, depth + 1, i < resolved.superTypes.size - 1)
+            visitInner(resolved, code, depth + 1, i < childCount - 1)
         }
     }
 

@@ -17,4 +17,6 @@ interface TypePrint {
 
     fun printFit(queryFitter: QueryFitter, function: FunctionObj, query: QueryType)
 
+    fun printOrderedFit(queryFitter: QueryFitter, function: FunctionObj, query: QueryType)
+
 }

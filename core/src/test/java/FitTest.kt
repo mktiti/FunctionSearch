@@ -1,32 +1,48 @@
+import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.SemiType
+import com.mktiti.fsearch.core.type.TypeParameter
+import com.mktiti.fsearch.core.type.upperBounds
+import com.mktiti.fsearch.core.util.JavaTypePrinter
+import com.mktiti.fsearch.core.util.TypePrint
+import com.mktiti.fsearch.core.util.forceDynamicApply
+import com.mktiti.fsearch.core.util.forceStaticApply
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import kotlin.test.assertNotNull
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class FitTest {
-/*
-    companion object {
-        init {
-            println("All Test Types")
-            printAll(createTestRepo().allTypes)
 
-            println("All Test Type Templates")
-            printAll(createTestRepo().allTemplates)
-        }
+    private val repo = createTestRepo()
+    private val resolver: TypeResolver = SingleRepoTypeResolver(repo)
+    private val fitter: QueryFitter = JavaQueryFitter(resolver)
+    private val printer: TypePrint = JavaTypePrinter(resolver)
 
-        private fun printAll(semis: Collection<SemiType>) {
-            semis.forEach(::printSemiType)
-        }
+    init {
+        println("All Test Types")
+        printAll(createTestRepo().allTypes)
 
-        private fun printAll(vararg semis: SemiType) {
-            printAll(semis.toList())
-        }
+        println("All Test Type Templates")
+        printAll(createTestRepo().allTemplates)
     }
 
+    private fun printAll(semis: Collection<SemiType>) {
+        semis.forEach(printer::printSemiType)
+    }
 
- */
-    private val repo = createTestRepo()
-/*
+    private fun printAll(vararg semis: SemiType) {
+        printAll(semis.toList())
+    }
+
     @Test
     fun `test length success query`() {
         val charSeq = repo["CharSequence"]!!
@@ -56,8 +72,8 @@ class FitTest {
                 )
         )
 
-        printFit(length, query)
-        assertNotNull(fitsQuery(query, length))
+        printer.printFit(fitter, length, query)
+        assertNotNull(fitter.fitsQuery(query, length))
     }
 
     @Test
@@ -89,24 +105,24 @@ class FitTest {
                                 TypeParameter("T", upperBounds(
                                         DynamicTypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        LowerBound(SelfSubstitution)
-                                                )
+                                                        Wildcard.Bounded(SelfSubstitution, LOWER)
+                                                ).completeInfo
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
                                 "coll" to DynamicTypeSubstitution(
-                                        collection.forceDynamicApply(ParamSubstitution(0)) // Collection<T>
+                                        collection.forceDynamicApply(ParamSubstitution(0)).completeInfo // Collection<T>
                                 )
                         ),
                         output = DynamicTypeSubstitution(
-                                list.forceDynamicApply(ParamSubstitution(0)) // List<T>
+                                list.forceDynamicApply(ParamSubstitution(0)).completeInfo // List<T>
                         )
                 )
         )
 
-        printFit(sort, query)
-        assertNotNull(fitsQuery(query, sort))
+        printer.printFit(fitter, sort, query)
+        assertNotNull(fitter.fitsQuery(query, sort))
     }
 
     @Test
@@ -138,24 +154,24 @@ class FitTest {
                                 TypeParameter("T", upperBounds(
                                         DynamicTypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        LowerBound(SelfSubstitution)
-                                                )
+                                                        Wildcard.Bounded(SelfSubstitution, LOWER)
+                                                ).completeInfo
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
                                 "coll" to DynamicTypeSubstitution(
-                                        collection.forceDynamicApply(ParamSubstitution(0)) // Collection<T>
+                                        collection.forceDynamicApply(ParamSubstitution(0)).completeInfo // Collection<T>
                                 )
                         ),
                         output = DynamicTypeSubstitution(
-                                list.forceDynamicApply(ParamSubstitution(0)) // List<T>
+                                list.forceDynamicApply(ParamSubstitution(0)).completeInfo // List<T>
                         )
                 )
         )
 
-        printFit(sort, query)
-        assertNotNull(fitsQuery(query, sort))
+        printer.printFit(fitter, sort, query)
+        assertNotNull(fitter.fitsQuery(query, sort))
     }
 
     @Test
@@ -185,6 +201,7 @@ class FitTest {
         val bossToPersonMap = hashMap.forceStaticApply(boss, personList)
 
         val virtType1 = QueryType.virtualType("downstreamA", listOf(repo.rootType))
+        repo += virtType1
 
         // (Person -> Ceo), (() -> HashMap<Boss, List<Person>>), Collector<Person, _, List<Person>> -> Collector<Boss, _, HashMap<Boss, List<Person>>>
         val query = QueryType(
@@ -213,42 +230,40 @@ class FitTest {
                                         DynamicTypeSubstitution(
                                                 map.forceDynamicApply(
                                                         ParamSubstitution(1), ParamSubstitution(2)
-                                                )
+                                                ).completeInfo
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
                                 "classifier" to DynamicTypeSubstitution( // Function<? super T, ? extends K>
                                         function.forceDynamicApply(
-                                                LowerBound(ParamSubstitution(0)),
-                                                UpperBound(ParamSubstitution(1))
-                                        )
+                                                Wildcard.Bounded(ParamSubstitution(0), LOWER),
+                                                Wildcard.Bounded(ParamSubstitution(1), UPPER)
+                                        ).completeInfo
                                 ),
                                 "supplier" to DynamicTypeSubstitution( // Supplier<M>
-                                        supplier.forceDynamicApply(ParamSubstitution(4))
+                                        supplier.forceDynamicApply(ParamSubstitution(4)).completeInfo
                                 ),
                                 "downstream" to DynamicTypeSubstitution( // Collector<? super T, A, D>
                                         collector.forceDynamicApply(
-                                                LowerBound(ParamSubstitution(0)),
+                                                Wildcard.Bounded(ParamSubstitution(0), LOWER),
                                                 ParamSubstitution(3),
                                                 ParamSubstitution(2)
-                                        )
+                                        ).completeInfo
                                 )
                         ),
                         output = DynamicTypeSubstitution( // Collector<T, ?, M>
                                 collector.forceDynamicApply(
                                         ParamSubstitution(0),
-                                        StaticTypeSubstitution(boss),
+                                        Wildcard.Direct,
                                         ParamSubstitution(4)
-                                )
+                                ).completeInfo
                         )
                 )
         )
 
-        printFit(sort, query)
-        assertNotNull(fitsOrderedQuery(query, sort))
+        printer.printOrderedFit(fitter, sort, query)
+        assertNotNull(fitter.fitsOrderedQuery(query, sort))
     }
 
-
- */
 }

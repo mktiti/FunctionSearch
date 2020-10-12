@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.core.util
 
+import com.mktiti.fsearch.core.fit.FittingMap
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.fit.QueryType
@@ -68,16 +69,24 @@ class JavaTypePrinter(
         output.println("==================")
     }
 
-    override fun printFit(queryFitter: QueryFitter, function: FunctionObj, query: QueryType) {
+    private fun printFitBase(function: FunctionObj, query: QueryType, strategy: (QueryType, FunctionObj) -> FittingMap?) {
         output.println("==================")
         output.println("Function: $function")
         output.println("Query: $query")
-        val result = when (val fitResult = queryFitter.fitsQuery(query, function)) {
+        val result = when (val fitResult = strategy(query, function)) {
             null -> "Failed to match function with query"
             else -> fitResult.toString()
         }
         output.println(result)
         output.println("==================")
+    }
+
+    override fun printFit(queryFitter: QueryFitter, function: FunctionObj, query: QueryType) {
+        printFitBase(function, query, queryFitter::fitsQuery)
+    }
+
+    override fun printOrderedFit(queryFitter: QueryFitter, function: FunctionObj, query: QueryType) {
+        printFitBase(function, query, queryFitter::fitsOrderedQuery)
     }
 
 }

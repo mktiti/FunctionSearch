@@ -6,9 +6,9 @@ import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.service.CombinedCollector
 import com.mktiti.fsearch.parser.service.FunctionCollector
+import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.type.JarTypeCollector
-import com.mktiti.fsearch.parser.type.JavaTypeConnector
 import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import com.mktiti.fsearch.parser.util.JavaTypeParseLog
 import java.io.File
@@ -20,12 +20,16 @@ class MavenCollector(
         private val javaRepo: JavaRepo
 ) : CombinedCollector<MavenArtifact> {
 
+    /*
     private val backingTypeCollector: JarTypeCollector<JarFileInfoCollector.JarInfo> = TwoPhaseCollector(
             infoRepo = infoRepo,
             log = log,
             infoCollector = JarFileInfoCollector(infoRepo),
             connector = JavaTypeConnector(infoRepo, log)
     )
+     */
+
+    private val backingTypeCollector: JarTypeCollector<JarFileInfoCollector.JarInfo> = IndirectJarTypeCollector(infoRepo)
 
     private val backingFunctionCollector: FunctionCollector<JarFileInfoCollector.JarInfo> = JarFileFunctionCollector(
             javaRepo = javaRepo

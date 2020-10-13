@@ -2,9 +2,20 @@ package com.mktiti.fsearch.parser.type
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
+import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.castIfAllInstance
+import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.function.ImParam
 import com.mktiti.fsearch.parser.function.ImTypeParam
-import com.mktiti.fsearch.parser.service.InfoCollector
+import com.mktiti.fsearch.parser.service.IndirectInfoCollector
 import com.mktiti.fsearch.parser.util.AsmUtil
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
@@ -14,8 +25,6 @@ import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Opcodes
 import java.io.InputStream
-import java.util.*
-import kotlin.collections.ArrayList
 
 interface AsmInfoCollectorView {
 
@@ -25,14 +34,68 @@ interface AsmInfoCollectorView {
 
 object AsmInfoCollector {
 
-    fun collect(artifact: String, infoRepo: JavaInfoRepo, load: AsmInfoCollectorView.() -> Unit): InfoCollector.InitialData {
+    fun collect(artifact: String, infoRepo: JavaInfoRepo, load: AsmInfoCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
         val visitor = AsmInfoCollectorVisitor(artifact, infoRepo)
         object : AsmInfoCollectorView {
             override fun loadEntry(input: InputStream) {
                 ClassReader(input).accept(visitor, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
             }
         }.load()
-        return InfoCollector.InitialData(visitor.directTypes, visitor.templateTypes)
+        return IndirectInfoCollector.IndirectInitialData(visitor.directTypes, visitor.typeTemplates)
+    }
+
+}
+
+private class ImTransformer(
+        private val infoRepo: JavaInfoRepo,
+        private val typeParams: List<String>
+) {
+
+    private fun transformTypeBase(info: MinimalInfo, args: List<ImParam>): Substitution.TypeSubstitution<*, *>? {
+        return if (args.isEmpty()) {
+            StaticTypeSubstitution(info.complete())
+        } else {
+            val mappedArgs = args.map(this::transformDynamicArg).liftNull() ?: return null
+            val staticArgs = mappedArgs.castIfAllInstance<StaticTypeSubstitution>()
+
+            if (staticArgs != null) {
+                StaticTypeSubstitution(info.staticComplete(staticArgs.map { it.type }))
+            } else {
+                DynamicTypeSubstitution(info.dynamicComplete(mappedArgs))
+            }
+        }
+    }
+
+    fun transformType(imType: ImParam.Type): Substitution.TypeSubstitution<*, *>? {
+        return transformTypeBase(imType.info, imType.typeArgs)
+    }
+
+    fun transformStaticType(imType: ImParam.Type): StaticTypeSubstitution? = transformType(imType) as? StaticTypeSubstitution
+
+    private fun transformArray(array: ImParam.Array): Substitution.TypeSubstitution<*, *>? {
+        return transformTypeBase(infoRepo.arrayType, listOf(array.type))
+    }
+
+    private fun transformWildcard(wildcardParam: ImParam, direction: BoundDirection): Wildcard.Bounded? {
+        return when (val param = transformDynamicArg(wildcardParam)) {
+            is Substitution -> Wildcard.Bounded(param, direction)
+            else -> null
+        }
+    }
+
+    private fun transformDynamicArg(imParam: ImParam): ApplicationParameter? {
+        fun infoType(getter: JavaInfoRepo.() -> MinimalInfo) = StaticTypeSubstitution(infoRepo.getter().complete())
+
+        return when (imParam) {
+            ImParam.Wildcard -> Wildcard.Direct
+            is ImParam.UpperWildcard -> transformWildcard(imParam.param, UPPER)
+            is ImParam.LowerWildcard -> transformWildcard(imParam.param, LOWER)
+            is ImParam.Primitive -> infoType { primitive(imParam.value) }
+            is ImParam.Array -> transformArray(imParam)
+            is ImParam.Type -> transformType(imParam)
+            is ImParam.TypeParamRef -> ParamSubstitution(typeParams.withIndex().find { it.value == imParam.sign }?.index ?: error("Invalid type param sub."))
+            ImParam.Void -> infoType { voidType }
+        }
     }
 
 }
@@ -42,11 +105,11 @@ private class AsmInfoCollectorVisitor(
         private val infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
 
-    val directTypes: MutablePrefixTree<String, DirectCreator> = mapMutablePrefixTree()
-    val templateTypes: MutablePrefixTree<String, TemplateCreator> = mapMutablePrefixTree()
+    val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
+    val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
 
     private data class TypeMeta(
-            val info: TypeInfo,
+            val info: MinimalInfo,
             val signature: String?,
             val superNames: List<String>,
             val nestDepth: Int? = null
@@ -54,6 +117,33 @@ private class AsmInfoCollectorVisitor(
 
     private var currentType: TypeMeta? = null
 
+    private fun addDirect(
+            info: MinimalInfo,
+            superTypes: List<CompleteMinInfo.Static>
+    ) {
+        directTypes.mutableSubtreeSafe(info.packageName)[info.simpleName] = DirectType(
+                minInfo = info,
+                superTypes = superTypes,
+                samType = null,
+                virtual = false
+        )
+    }
+
+    private fun addTemplate(
+            info: MinimalInfo,
+            superTypes: List<CompleteMinInfo<*>>,
+            typeParams: List<TypeParameter>
+    ) {
+        typeTemplates.mutableSubtreeSafe(info.packageName)[info.simpleName] = TypeTemplate(
+                info = info,
+                superTypes = superTypes,
+                typeParams = typeParams,
+                samType = null,
+                virtual = false
+        )
+    }
+
+    /*
     private fun addUnfinishedDirect(
             info: TypeInfo,
             superCount: Int,
@@ -61,9 +151,9 @@ private class AsmInfoCollectorVisitor(
             templateSupers: MutableList<DatCreator>
     ) {
         val supers: MutableList<SuperType.StaticSuper> = ArrayList(superCount)
-        val created = Type.NonGenericType.DirectType(info, supers)
+        val created = DirectType(info, supers)
 
-        directTypes.mutableSubtreeSafe(info.packageName)[info.name] = DirectCreator(
+        loadedDirects.mutableSubtreeSafe(info.packageName)[info.name] = DirectCreator(
                 unfinishedType = created,
                 addNonGenericSuper = { superType -> supers += SuperType.StaticSuper.EagerStatic(superType) },
                 templateSupers = templateSupers,
@@ -81,7 +171,7 @@ private class AsmInfoCollectorVisitor(
         val supers: MutableList<SuperType<Type>> = ArrayList(superCount)
         val created = TypeTemplate(info, typeParams.map { TypeParameter(it, TypeBounds(emptySet())) }, supers)
 
-        templateTypes.mutableSubtreeSafe(info.packageName)[info.name] = TemplateCreator(
+        loadedTemplates.mutableSubtreeSafe(info.packageName)[info.name] = TemplateCreator(
                 unfinishedType = created,
                 directSuperAppender = { superType -> supers += SuperType.StaticSuper.EagerStatic(superType) },
                 templateSuperAppender = { superType -> supers += SuperType.DynamicSuper.EagerDynamic(superType) },
@@ -89,6 +179,7 @@ private class AsmInfoCollectorVisitor(
                 directSupers = directSupers
         )
     }
+
 
     private fun transformArg(imParam: ImParam, typeParams: List<String>): TypeArgCreator {
         return when (imParam) {
@@ -121,15 +212,16 @@ private class AsmInfoCollectorVisitor(
             ImParam.Void -> TypeArgCreator.Direct(infoRepo.voidType)
         }
     }
+     */
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         // if (access and Opcodes.ACC_PUBLIC == 0) {
         //    return
         // }
 
-        val info = AsmUtil.parseName(name).full(artifact)
+        val info = AsmUtil.parseName(name)
 
-        val lastName = info.name.split('.').last()
+        val lastName = info.simpleName.split('.').last()
         if (lastName.first().isDigit()) {
             // Skip anonymous nested and local class
             return
@@ -169,10 +261,10 @@ private class AsmInfoCollectorVisitor(
         val superCount = superNames.size
 
         val nestContext = if (meta.nestDepth != null) {
-            val nests = info.name.split(".").dropLast(1)
+            val nests = info.simpleName.split(".").dropLast(1)
             val depth = Integer.min(meta.nestDepth, nests.size)
 
-            val nestPackage: PrefixTree<String, TemplateCreator> = templateTypes.mutableSubtreeSafe(info.packageName)
+            val nestPackage: PrefixTree<String, TypeTemplate> = typeTemplates.mutableSubtreeSafe(info.packageName)
 
             val affectingNests = nests.takeLast(depth)
             val nestPrefix = when (val prefix = nests.dropLast(depth).joinToString(separator = ".")) {
@@ -182,7 +274,7 @@ private class AsmInfoCollectorVisitor(
 
             affectingNests.fold(emptyList<TypeParameter>() to nestPrefix) { (params, name), nest ->
                 val newName = name + nest
-                val nestParams = nestPackage[newName]?.unfinishedType?.typeParams ?: emptyList()
+                val nestParams = nestPackage[newName]?.typeParams ?: emptyList()
 
                 (params + nestParams) to "$newName."
             }.first
@@ -191,11 +283,9 @@ private class AsmInfoCollectorVisitor(
         }
 
         if (signature == null && nestContext.isEmpty()) {
-            addUnfinishedDirect(
+            addDirect(
                     info = info,
-                    superCount = superCount,
-                    directSupers = superNames.map { AsmUtil.parseName(it) }.toMutableList(),
-                    templateSupers = LinkedList()
+                    superTypes = superNames.map(AsmUtil::parseCompleteStaticName)
             )
         } else {
             val nestTypeParams = nestContext.map {
@@ -212,39 +302,32 @@ private class AsmInfoCollectorVisitor(
                 parseType(signature, nestTypeParams)
             }
             val (ds, ts) = type.supersTypes.partition { it.typeArgs.isEmpty() }
+            val directSupers: List<CompleteMinInfo.Static> = ds.map { it.info.complete() }
 
             when (type) {
                 is ParsedType.Direct -> {
-                    val templateSupers = ts.map { imSuper ->
-                        DatCreator(
-                                template = imSuper.info,
-                                args = imSuper.typeArgs.map { transformArg(it, emptyList()) }
-                        )
-                    }
+                    val transformer = ImTransformer(infoRepo, emptyList())
+                    val templateSupers: List<CompleteMinInfo.Static> = ts.map { imSuper ->
+                        transformer.transformStaticType(imSuper)?.type
+                    }.liftNull() ?: error("Direct type '$info' has non-static supertypes (raw usage?)")
 
-                    addUnfinishedDirect(
+                    addDirect(
                             info = info,
-                            superCount = superCount,
-                            directSupers = ds.map { it.info },
-                            templateSupers = templateSupers.toMutableList()
+                            superTypes = directSupers + templateSupers
                     )
                 }
                 is ParsedType.Template -> {
                     val params = type.typeParams.map { it.sign }
+                    val transformer = ImTransformer(infoRepo, params)
 
-                    val templateSupers = ts.map { imSuper ->
-                        DatCreator(
-                                template = imSuper.info,
-                                args = imSuper.typeArgs.map { transformArg(it, params) }
-                        )
-                    }
+                    val templateSupers: List<CompleteMinInfo<*>> = ts.map { imSuper ->
+                        transformer.transformType(imSuper)?.type
+                    }.liftNull()!!
 
-                    addUnfinishedTemplate(
+                    addTemplate(
                             info = info,
-                            superCount = superCount,
-                            typeParams = params,
-                            directSupers = ds.map { it.info },
-                            templateSupers = templateSupers.toMutableList()
+                            typeParams = params.map { TypeParameter(it, upperBounds(StaticTypeSubstitution(infoRepo.objectType.complete()))) }, // TODO
+                            superTypes = directSupers + templateSupers
                     )
                 }
             }

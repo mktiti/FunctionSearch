@@ -1,15 +1,19 @@
 package com.mktiti.fsearch.parser.util
 
 import com.mktiti.fsearch.core.fit.FunctionObj
-import com.mktiti.fsearch.core.fit.fitsQuery
+import com.mktiti.fsearch.core.fit.JavaQueryFitter
+import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
+import com.mktiti.fsearch.core.repo.SimpleMultiRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.maven.MavenArtifact
 import com.mktiti.fsearch.parser.maven.MavenCollector
 import com.mktiti.fsearch.parser.maven.MavenManager
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
+import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import org.antlr.v4.runtime.misc.ParseCancellationException
@@ -68,8 +72,9 @@ fun main(args: Array<String>) {
 
     println("==== Loading JCL ====")
     val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
-    val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
-    val (javaRepo, jclRepo) = typeCollector.collectJcl("JCL", jclJarInfo)
+    // val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
+    val jclCollector = IndirectJarTypeCollector(MapJavaInfoRepo)
+    val (javaRepo, jclRepo) = jclCollector.collectJcl("JCL", jclJarInfo)
     val jclFunctions = JarFileFunctionCollector(javaRepo).collectFunctions(jclJarInfo, listOf(jclRepo))
 
     printLoadResults(jclRepo, jclFunctions)
@@ -95,6 +100,9 @@ fun main(args: Array<String>) {
 
     val queryParser: QueryParser = AntlrQueryParser(javaRepo, typeRepos)
 
+    val typeResolver: TypeResolver = SimpleMultiRepoTypeResolver(typeRepos)
+    val fitter: QueryFitter = JavaQueryFitter(typeResolver)
+
     while (true) {
         print(">")
         val input = readLine() ?: break
@@ -104,7 +112,7 @@ fun main(args: Array<String>) {
             println("Parsed as: $query")
             println("Started searching...")
             allFunctions.asSequence().forEach { function ->
-                val result = fitsQuery(query, function)
+                val result = fitter.fitsQuery(query, function)
                 if (result != null) {
                     println("Fits function $function")
                     println("\tas ${result.funSignature}")

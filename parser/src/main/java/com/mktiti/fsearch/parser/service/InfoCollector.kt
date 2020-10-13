@@ -16,3 +16,4 @@ interface InfoCollector<I> {
     fun collectInitial(info: I): InitialData
 
 }
+

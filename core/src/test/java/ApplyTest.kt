@@ -81,7 +81,7 @@ class ApplyTest {
             checkArgs(box.completeInfo, depth)
             nestedCheck(nested(box), goal, depth + 1)
         }
-        nestedCheck(strBox, 10000)
+        nestedCheck(strBox, 10_000)
 
         // fun :: () -> Box<String>
         val funSignature = TypeSignature.DirectSignature(

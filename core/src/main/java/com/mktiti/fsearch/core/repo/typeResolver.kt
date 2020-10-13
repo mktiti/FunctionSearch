@@ -15,10 +15,7 @@ interface TypeResolver {
         return if (info.args.isEmpty()) {
             get(info.base)
         } else {
-            val template = template(info.base) ?: return null
-            val args = info.args.map(this::get).liftNull() ?: return null
-
-            template.staticApply(args)
+            template(info.base)?.staticApplyInfo(info.args)
         }
     }
 

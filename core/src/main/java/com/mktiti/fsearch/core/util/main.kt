@@ -5,24 +5,18 @@ import com.mktiti.fsearch.core.repo.MutableTypeRepo
 import com.mktiti.fsearch.core.repo.SetTypeRepo
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
-import com.mktiti.fsearch.core.type.SamType
-import com.mktiti.fsearch.core.type.TypeInfo
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.upperBounds
 
 val defaultRepo: MutableTypeRepo = SetTypeRepo(
-        rootInfo = TypeInfo(
+        /*rootInfo = TypeInfo(
                 name = "Object",
                 packageName = emptyList(),
                 artifact = "JCLv8"
-        )/*,
+        ),
         funTypeInfo = TypeInfo(
                 name = "\$Fn",
                 packageName = emptyList(),
@@ -31,6 +25,10 @@ val defaultRepo: MutableTypeRepo = SetTypeRepo(
 )
 
 val objType = defaultRepo.createDirect("Object")
+
+val defaultTypeBounds = TypeBounds(
+    upperBounds = setOf(TypeSubstitution(objType.holder()))
+)
 
 val charSeqType = defaultRepo.createDirect("CharSequence", objType)
 val strType = defaultRepo.createDirect("String", charSeqType)
@@ -41,13 +39,13 @@ val int64Type = defaultRepo.createDirect("Int64", intType)
 
 val collectionType = defaultRepo.createTemplate(
     fullName = "Collection",
-    typeParams = listOf(defaultRepo.typeParam("E")),
+    typeParams = listOf(defaultRepo.typeParam("E", defaultTypeBounds)),
     superTypes = listOf(objType)
 )
 
 val supplierType = defaultRepo.createTemplate(
     fullName = "Supplier",
-    typeParams = listOf(defaultRepo.typeParam("S")),
+    typeParams = listOf(defaultRepo.typeParam("S", defaultTypeBounds)),
     superTypes = listOf(objType),
     samType = SamType.GenericSam(
             explicit = true,
@@ -58,7 +56,7 @@ val supplierType = defaultRepo.createTemplate(
 
 val refType = defaultRepo.createTemplate(
     fullName = "Reference",
-    typeParams = listOf(defaultRepo.typeParam("R")),
+    typeParams = listOf(defaultRepo.typeParam("R", defaultTypeBounds)),
     superTypes = listOf(
             objType,
         supplierType.forceDynamicApply(ParamSubstitution(0))
@@ -67,13 +65,13 @@ val refType = defaultRepo.createTemplate(
 
 val pairType = defaultRepo.createTemplate(
     fullName = "Pair",
-    typeParams = listOf(defaultRepo.typeParam("F"), defaultRepo.typeParam("S")),
+    typeParams = listOf(defaultRepo.typeParam("F", defaultTypeBounds), defaultRepo.typeParam("S", defaultTypeBounds)),
     superTypes = listOf(objType)
 )
 
 val listType = defaultRepo.createTemplate(
     fullName = "List",
-    typeParams = listOf(defaultRepo.typeParam("T")),
+    typeParams = listOf(defaultRepo.typeParam("T", defaultTypeBounds)),
     superTypes = listOf(
         collectionType.forceDynamicApply(ParamSubstitution(0))
     )
@@ -81,7 +79,7 @@ val listType = defaultRepo.createTemplate(
 
 val linkedListType = defaultRepo.createTemplate(
     fullName = "LinkedList",
-    typeParams = listOf(defaultRepo.typeParam("E")),
+    typeParams = listOf(defaultRepo.typeParam("E", defaultTypeBounds)),
     superTypes = listOf(
         listType.forceDynamicApply(ParamSubstitution(0))
     )
@@ -101,9 +99,9 @@ fun main() {
     printer.printTypeTemplate(refType)
     printer.printTypeTemplate(collectionType)
 
-    printer.printType(pairType.forceStaticApply(strType, fozType))
+    printer.printType(pairType.forceStaticApply(TypeHolder.staticDirects(strType, fozType)))
     printer.printTypeTemplate(listType)
-    printer.printType(listType.forceStaticApply(strType))
+    printer.printType(listType.forceStaticApply(strType.holder()))
 
     val appliedList = listType.forceDynamicApply(ParamSubstitution(0))
     printer.printType(appliedList)
@@ -112,11 +110,11 @@ fun main() {
 
     val listRefType = defaultRepo.createTemplate(
         fullName = "ListRef",
-        typeParams = listOf(defaultRepo.typeParam("V")),
+        typeParams = listOf(defaultRepo.typeParam("V", defaultTypeBounds)),
         superTypes = listOf(
             refType.forceDynamicApply(
-                DynamicTypeSubstitution(
-                    listType.forceDynamicApply(ParamSubstitution(0)).completeInfo
+                TypeSubstitution(
+                    listType.forceDynamicApply(ParamSubstitution(0)).holder()
                 )
             ),
             listType.forceDynamicApply(ParamSubstitution(0))
@@ -126,14 +124,14 @@ fun main() {
 
     val mapType = defaultRepo.createTemplate(
         fullName = "Map",
-        typeParams = listOf(defaultRepo.typeParam("K"), defaultRepo.typeParam("V")),
+        typeParams = listOf(defaultRepo.typeParam("K", defaultTypeBounds), defaultRepo.typeParam("V", defaultTypeBounds)),
         superTypes = listOf(
             collectionType.forceDynamicApply(
-                DynamicTypeSubstitution(
+                TypeSubstitution(
                     pairType.forceDynamicApply(
                         ParamSubstitution(0),
                         ParamSubstitution(1)
-                    ).completeInfo
+                    ).holder()
                 )
             )
         )
@@ -142,11 +140,11 @@ fun main() {
 
     val reqMapType = defaultRepo.createTemplate(
         fullName = "ReqMap",
-        typeParams = listOf(defaultRepo.typeParam("V")),
+        typeParams = listOf(defaultRepo.typeParam("V", defaultTypeBounds)),
         superTypes = listOf(
             mapType.forceDynamicApply(
                 StaticTypeSubstitution(
-                    defaultRepo.createDirect("Request", objType).completeInfo
+                    defaultRepo.createDirect("Request", objType).holder()
                 ),
                 ParamSubstitution(0)
             )
@@ -156,43 +154,54 @@ fun main() {
 
     val ttlMapType = defaultRepo.createDirect(
         "TtlMap",
-        reqMapType.forceStaticApply(intType)
+        reqMapType.forceStaticApply(intType.holder())
     )
     printer.printType(ttlMapType)
 
     val fooType = defaultRepo.createTemplate(
         fullName = "Foo",
-        typeParams = listOf(defaultRepo.typeParam("A"), defaultRepo.typeParam("B"), defaultRepo.typeParam("C")),
-        superTypes = listOf(objType)
+        typeParams = listOf(
+                defaultRepo.typeParam("A", defaultTypeBounds),
+                defaultRepo.typeParam("B", defaultTypeBounds),
+                defaultRepo.typeParam("C", defaultTypeBounds)
+        ), superTypes = listOf(objType)
     )
     printer.printTypeTemplate(fooType)
 
     val barSuperFoo = fooType.forceDynamicApply(
         ParamSubstitution(0),
-        DynamicTypeSubstitution(
-            pairType.forceDynamicApply(ParamSubstitution(0), ParamSubstitution(1)).completeInfo
+        TypeSubstitution(
+            pairType.forceDynamicApply(
+                    ParamSubstitution(0),
+                    ParamSubstitution(1)
+            ).holder()
         ),
         ParamSubstitution(1)
     )
 
     val barType = defaultRepo.createTemplate(
         fullName = "Bar",
-        typeParams = listOf(defaultRepo.typeParam("X"), defaultRepo.typeParam("Y")),
-        superTypes = listOf(barSuperFoo)
+        typeParams = listOf(
+                defaultRepo.typeParam("X", defaultTypeBounds),
+                defaultRepo.typeParam("Y", defaultTypeBounds)
+        ), superTypes = listOf(barSuperFoo)
     )
     printer.printTypeTemplate(barType)
 
-    val appliedBar = barType.forceStaticApply(strType, intType)
+    val appliedBar = barType.forceStaticApply(strType.holder(), intType.holder())
     printer.printType(appliedBar)
 
     val bazType = defaultRepo.createTemplate(
         fullName = "Baz",
-        typeParams = listOf(defaultRepo.typeParam("K"), defaultRepo.typeParam("V")),
+        typeParams = listOf(
+                defaultRepo.typeParam("K", defaultTypeBounds),
+                defaultRepo.typeParam("V", defaultTypeBounds)
+        ),
         superTypes = listOf(barType.forceDynamicApply(ParamSubstitution(1), ParamSubstitution(0)))
     )
     printer.printTypeTemplate(bazType)
 
-    printer.printType(bazType.forceStaticApply(intType, objType))
+    printer.printType(bazType.forceStaticApply(intType.holder(), objType.holder()))
 
     val maxFun = FunctionObj(
             info = FunctionInfo("max", "Math"),
@@ -217,10 +226,10 @@ fun main() {
     val functionType = defaultRepo.createTemplate(
             fullName = "Function",
             typeParams = listOf(
-                    TypeParameter("I", defaultRepo.defaultTypeBounds),
-                    TypeParameter("O", defaultRepo.defaultTypeBounds)
+                    TypeParameter("I", defaultTypeBounds),
+                    TypeParameter("O", defaultTypeBounds)
             ),
-            superTypes = listOf(defaultRepo.rootType),
+            superTypes = listOf(objType),
             samType = SamType.GenericSam(
                     explicit = true,
                     inputs = listOf(ParamSubstitution(0)),
@@ -232,64 +241,73 @@ fun main() {
             info = FunctionInfo("map", "List"),
             signature = TypeSignature.GenericSignature(
                     typeParameters = listOf(
-                            defaultRepo.typeParam("T", defaultRepo.defaultTypeBounds),
-                            defaultRepo.typeParam("R", defaultRepo.defaultTypeBounds)
+                            defaultRepo.typeParam("T", defaultTypeBounds),
+                            defaultRepo.typeParam("R", defaultTypeBounds)
                     ),
                     inputParameters = listOf(
-                            "list" to DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)).completeInfo),
-                            "mapper" to DynamicTypeSubstitution(
+                            "list" to TypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)).holder()),
+                            "mapper" to TypeSubstitution(
                                     functionType.forceDynamicApply(
                                             Wildcard.Bounded(ParamSubstitution(0), LOWER), // ? sup T
                                             Wildcard.Bounded(ParamSubstitution(1), UPPER)  // ? ext R
-                                    ).completeInfo
+                                    ).holder()
                             )
                     ),
-                    output = DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(1)).completeInfo) // -> List<R>
+                    output = TypeSubstitution(listType.forceDynamicApply(ParamSubstitution(1)).holder()) // -> List<R>
             )
     )
     val appliedMapQuery = QueryType(
             inputParameters = listOf(
-                    linkedListType.forceStaticApply(strType),
-                    functionType.forceStaticApply(charSeqType, intType)
+                    linkedListType.forceStaticApply(strType.holder()),
+                    functionType.forceStaticApply(charSeqType.holder(), intType.holder())
             ),
-            output = listType.forceStaticApply(intType)
+            output = listType.forceStaticApply(intType.holder())
     )
     printer.printFit(fitter, mapFun, appliedMapQuery)
 
     val charSeqInt64MapQuery = QueryType(
             inputParameters = listOf(
-                    linkedListType.forceStaticApply(strType),
-                    functionType.forceStaticApply(charSeqType, int64Type)
+                    linkedListType.forceStaticApply(strType.holder()),
+                    functionType.forceStaticApply(charSeqType.holder(), int64Type.holder())
             ),
-            output = listType.forceStaticApply(intType)
+            output = listType.forceStaticApply(intType.holder())
     )
     printer.printFit(fitter, mapFun, charSeqInt64MapQuery)
 
     val wrongMapQuery = QueryType(
             inputParameters = listOf(
-                    linkedListType.forceStaticApply(strType),
-                    functionType.forceStaticApply(fozType, intType)
+                    linkedListType.forceStaticApply(strType.holder()),
+                    functionType.forceStaticApply(fozType.holder(), intType.holder())
             ),
-            output = listType.forceStaticApply(intType)
+            output = listType.forceStaticApply(intType.holder())
     )
     printer.printFit(fitter, mapFun, wrongMapQuery)
 
     val comparable = defaultRepo.createTemplate(
         fullName = "Comparable",
-        typeParams = listOf(defaultRepo.typeParam("T")),
-        superTypes = listOf(defaultRepo.rootType)
+        typeParams = listOf(defaultRepo.typeParam("T", defaultTypeBounds)),
+        superTypes = listOf(objType)
     )
     printer.printSemiType(comparable)
 
-    val myStr = defaultRepo.createSelfRefDirect(
+    fun comparableTo(name: String): TypeHolder.Static {
+        return comparable.forceStaticApply(TypeHolder.staticIndirects(
+                CompleteMinInfo.Static(
+                        base = MinimalInfo(emptyList(), name),
+                        args = emptyList()
+                )
+        )).holder()
+    }
+
+    val myStr = defaultRepo.createDirect(
         fullName = "MyComparableStr",
-        superCreators = listOf { self -> comparable.forceStaticApply(self) }
+        superTypes = listOf(comparableTo("MyComparableStr"))
     )
     printer.printType(myStr)
 
-    val personType = defaultRepo.createSelfRefDirect(
+    val personType = defaultRepo.createDirect(
         fullName = "Person",
-        superCreators = listOf { self -> comparable.forceStaticApply(self) }
+        superTypes = listOf(comparableTo("Person"))
     )
     printer.printType(personType)
 
@@ -307,32 +325,32 @@ fun main() {
             signature = TypeSignature.GenericSignature(
                     typeParameters = listOf(
                             TypeParameter("T", upperBounds(
-                                    DynamicTypeSubstitution(comparable.forceDynamicApply(Wildcard.Bounded(SelfSubstitution, LOWER)).completeInfo)
+                                    TypeSubstitution(comparable.forceDynamicApply(Wildcard.Bounded(SelfSubstitution, LOWER)).holder())
                             ))
                     ),
                     inputParameters = listOf(
-                            "collection" to DynamicTypeSubstitution(collectionType.forceDynamicApply(ParamSubstitution(0)).completeInfo)
+                            "collection" to TypeSubstitution(collectionType.forceDynamicApply(ParamSubstitution(0)).holder())
                     ),
-                    output = DynamicTypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)).completeInfo)
+                    output = TypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)).holder())
             )
     )
 
     val compStrSortQuery = QueryType(
-            inputParameters = listOf(listType.forceStaticApply(myStr)),
-            output = listType.forceStaticApply(myStr)
+            inputParameters = listOf(listType.forceStaticApply(myStr.holder())),
+            output = listType.forceStaticApply(myStr.holder())
     )
     printer.printFit(fitter, sortedFun, compStrSortQuery)
 
     val personSortQuery = QueryType(
-            inputParameters = listOf(listType.forceStaticApply(personType)),
-            output = listType.forceStaticApply(personType)
+            inputParameters = listOf(listType.forceStaticApply(personType.holder())),
+            output = listType.forceStaticApply(personType.holder())
     )
     printer.printFit(fitter, sortedFun, personSortQuery)
 
 
     val bossSortQuery = QueryType(
-            inputParameters = listOf(listType.forceStaticApply(bossType)),
-            output = listType.forceStaticApply(bossType)
+            inputParameters = listOf(listType.forceStaticApply(bossType.holder())),
+            output = listType.forceStaticApply(bossType.holder())
     )
     printer.printFit(fitter, sortedFun, bossSortQuery)
 }

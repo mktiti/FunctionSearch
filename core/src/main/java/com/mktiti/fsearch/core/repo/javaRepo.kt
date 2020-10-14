@@ -2,23 +2,21 @@ package com.mktiti.fsearch.core.repo
 
 import com.mktiti.fsearch.core.type.ApplicationParameter
 import com.mktiti.fsearch.core.type.PrimitiveType
-import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
-import com.mktiti.fsearch.core.type.Type.NonGenericType
-import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
+import com.mktiti.fsearch.core.type.Type
+import com.mktiti.fsearch.core.type.TypeHolder
 
 interface JavaRepo {
 
-    val objectType: DirectType
+    val objectType: TypeHolder.Static
 
-    val voidType: DirectType
+    val voidType: TypeHolder.Static
 
-    fun primitive(primitive: PrimitiveType): DirectType
+    fun primitive(primitive: PrimitiveType): TypeHolder.Static
 
-    fun boxed(primitive: PrimitiveType): DirectType
+    fun boxed(primitive: PrimitiveType): TypeHolder.Static
 
-    fun arrayOf(type: NonGenericType): StaticAppliedType
+    fun arrayOf(type: TypeHolder.Static): Type.NonGenericType.StaticAppliedType
 
-    fun arrayOf(arg: ApplicationParameter): DynamicAppliedType
+    fun arrayOf(arg: ApplicationParameter): Type.DynamicAppliedType
 
 }

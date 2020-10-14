@@ -5,7 +5,7 @@ import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
 import org.junit.jupiter.api.Test
@@ -20,28 +20,35 @@ class ApplyTest {
         private fun createSetup(): Triple<TypeRepo, TypeTemplate, TypeTemplate> {
             val repo = createTestRepo()
 
+            val rootType = repo["TestRoot"]!!.holder()
+            val defaultTypeBounds = TypeBounds(
+                    upperBounds = setOf(TypeSubstitution(rootType))
+            )
+
             // A<E>
             val base = TypeTemplate(
                     info = info("A").minimal,
-                    typeParams = listOf(TypeParameter("E", repo.defaultTypeBounds)),
-                    superTypes = listOf(repo.rootType.completeInfo),
+                    typeParams = listOf(TypeParameter("E", defaultTypeBounds)),
+                    superTypes = listOf(rootType),
                     samType = null
             )
 
-            val supers = mutableListOf<CompleteMinInfo<*>>()
             // Box<T> : A<Box<Box<T>>>
+
+            val boxInfo = info("Box").minimal
+            fun boxOf(param: ApplicationParameter) = boxInfo.dynamicComplete(listOf(param)).holder()
             val box = TypeTemplate(
-                    info = info("Box").minimal,
-                    typeParams = listOf(TypeParameter("T", repo.defaultTypeBounds)),
-                    superTypes = supers,
+                    info = boxInfo,
+                    typeParams = listOf(TypeParameter("T", defaultTypeBounds)),
+                    superTypes = listOf(
+                            base.forceDynamicApply(
+                                    TypeSubstitution(boxOf(
+                                            TypeSubstitution(boxOf(ParamSubstitution(0)))
+                                    ))
+                            ).holder()
+                    ),
                     samType = null
             )
-
-            val innerBox = box.forceDynamicApply(ParamSubstitution(0))
-            val outerBox = box.forceDynamicApply(DynamicTypeSubstitution(innerBox.completeInfo))
-            val sub = DynamicTypeSubstitution(outerBox.completeInfo)
-
-            supers += base.forceDynamicApply(listOf(sub)).completeInfo
 
             repo += base
             repo += box
@@ -54,13 +61,13 @@ class ApplyTest {
     fun `test exploding application`() {
         val (repo, base, box) = createSetup()
         val strType = repo["String"]!!
-        val strBox = box.forceStaticApply(strType)
+        val strBox = box.forceStaticApply(strType.holder())
 
         val resolver: TypeResolver = SingleRepoTypeResolver(repo)
         val fitter: QueryFitter = JavaQueryFitter(resolver)
 
         fun nested(currentBox: Type.NonGenericType): Type.NonGenericType {
-            return box.forceStaticApply(currentBox)
+            return box.forceStaticApply(currentBox.holder())
         }
 
         tailrec fun checkArgs(box: CompleteMinInfo.Static, goal: Int) {
@@ -94,8 +101,8 @@ class ApplyTest {
                 inputParameters = emptyList(),
                 output = base.forceStaticApply(
                         box.forceStaticApply(
-                                box.forceStaticApply(repo["String"]!!)
-                        )
+                                box.forceStaticApply(repo["String"]!!.holder()).holder()
+                        ).holder()
                 )
         )
 

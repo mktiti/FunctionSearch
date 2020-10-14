@@ -3,8 +3,7 @@ package com.mktiti.fsearch.core.type
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 
 data class TypeBounds(
     val upperBounds: Set<Substitution>
@@ -17,8 +16,7 @@ data class TypeBounds(
                 is ParamSubstitution -> {
                     params.getOrNull(bound.param) ?: return null
                 }
-                is StaticTypeSubstitution -> bound
-                is DynamicTypeSubstitution -> DynamicTypeSubstitution(bound.type.dynamicApply(params) ?: return null)
+                is TypeSubstitution<*, *> -> bound.dynamicApply(params) ?: return null
             }
         }.toSet()
     }

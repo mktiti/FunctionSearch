@@ -4,14 +4,10 @@ import com.mktiti.fsearch.core.fit.TypeBoundFit.*
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.ApplicationParameter
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.CompleteMinInfo
-import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
-import com.mktiti.fsearch.core.type.Type.NonGenericType
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.TypeBounds
+import com.mktiti.fsearch.core.type.TypeHolder
+import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.zipIfSameLength
 
 class JavaTypeBoundFitter(
@@ -23,34 +19,30 @@ class JavaTypeBoundFitter(
         private fun Boolean.fitOrNot(): TypeBoundFit = if (this) Fit else Unfit
     }
 
-    fun fits(typeBounds: TypeBounds, type: CompleteMinInfo.Static): TypeBoundFit =
+    fun fits(typeBounds: TypeBounds, type: TypeHolder.Static): TypeBoundFit =
             typeBounds.upperBounds.asSequence()
                     .map { fitsBound(it, type) }
                     .filter { it != Fit }
                     .firstOrNull() ?: Fit
 
-    private fun CompleteMinInfo.Static.resolve(): NonGenericType? = typeResolver[this]
-
-    private fun CompleteMinInfo.Dynamic.resolve(): DynamicAppliedType? = typeResolver[this]
-
-    private fun commonBase(bound: CompleteMinInfo.Dynamic, type: CompleteMinInfo.Static, variance: InheritanceLogic): Pair<CompleteMinInfo.Dynamic, CompleteMinInfo.Static>? {
-        return if (type.base == bound.base) {
+    private fun commonBase(bound: TypeHolder.Dynamic, type: TypeHolder.Static, variance: InheritanceLogic): Pair<TypeHolder.Dynamic, TypeHolder.Static>? {
+        return if (type.info.base == bound.info.base) {
             bound to type
         } else {
             when (variance) {
                 InheritanceLogic.INVARIANCE -> null
                 InheritanceLogic.COVARIANCE -> {
-                    val resolvedType = type.resolve() ?: return null
+                    val resolvedType = type.with(typeResolver) ?: return null
                     resolvedType.superTypes.asSequence().mapNotNull {
                         commonBase(bound, it, variance)
                     }.firstOrNull()
                 }
                 InheritanceLogic.CONTRAVARIANCE -> {
-                    val resolvedBound = bound.resolve() ?: return null
+                    val resolvedBound = bound.with(typeResolver) ?: return null
                     resolvedBound.superTypes.asSequence().mapNotNull { superType ->
                         when (superType) {
-                            is CompleteMinInfo.Static -> null
-                            is CompleteMinInfo.Dynamic -> commonBase(superType, type, variance)
+                            is TypeHolder.Static -> null
+                            is TypeHolder.Dynamic -> commonBase(superType, type, variance)
                         }
                     }.firstOrNull()
                 }
@@ -58,12 +50,12 @@ class JavaTypeBoundFitter(
         }
     }
 
-    private fun fitsDatBound(self: CompleteMinInfo.Static, upperBound: CompleteMinInfo.Dynamic, type: CompleteMinInfo.Static): TypeBoundFit {
+    private fun fitsDatBound(self: TypeHolder.Static, upperBound: TypeHolder.Dynamic, type: TypeHolder.Static): TypeBoundFit {
         val assumedSelf = upperBound.applySelf(self)
 
-        val (boundBase: CompleteMinInfo<*>, typeBase: CompleteMinInfo.Static) = commonBase(assumedSelf, type, InheritanceLogic.COVARIANCE) ?: return Unfit
-        val resolvedBoundBase = boundBase.resolve() ?: return Unfit
-        val resolvedTypeBase = typeBase.resolve() ?: return Unfit
+        val (boundBase: TypeHolder.Dynamic, typeBase: TypeHolder.Static) = commonBase(assumedSelf, type, InheritanceLogic.COVARIANCE) ?: return Unfit
+        val resolvedBoundBase = boundBase.with(typeResolver) ?: return Unfit
+        val resolvedTypeBase = typeBase.with(typeResolver) ?: return Unfit
 
         val paramPairs = resolvedBoundBase.typeArgMapping.zipIfSameLength(resolvedTypeBase.typeArgs) ?: return Unfit
 
@@ -78,11 +70,11 @@ class JavaTypeBoundFitter(
             when (param) {
                 is ParamSubstitution -> Requires(SubResult.TypeArgUpdate(param.param, arg))
                 SelfSubstitution -> Unfit
-                is DynamicTypeSubstitution -> {
-                    paramFitter.subDynamic(emptyList(), param.type, arg, InheritanceLogic.INVARIANCE).asResult()
-                }
-                is StaticTypeSubstitution -> {
-                    paramFitter.subStatic(param.type, arg, InheritanceLogic.INVARIANCE).fitOrNot()
+                is TypeSubstitution<*, *> -> {
+                    when (val holder = param.holder) {
+                        is TypeHolder.Dynamic -> paramFitter.subDynamic(emptyList(), holder, arg, InheritanceLogic.INVARIANCE).asResult()
+                        is TypeHolder.Static -> paramFitter.subStatic(holder, arg, InheritanceLogic.INVARIANCE).fitOrNot()
+                    }
                 }
                 ApplicationParameter.Wildcard.Direct -> Fit
                 is ApplicationParameter.Wildcard.Bounded -> {
@@ -100,13 +92,19 @@ class JavaTypeBoundFitter(
         }
     }
 
-    private fun fitsBound(upperBound: Substitution, type: CompleteMinInfo.Static): TypeBoundFit {
+    private fun fitsBound(upperBound: Substitution, type: TypeHolder.Static): TypeBoundFit {
         return when (upperBound) {
             is SelfSubstitution -> Fit
             is ParamSubstitution -> YetUncertain
-            is DynamicTypeSubstitution -> fitsDatBound(type, upperBound.type, type)
-            is StaticTypeSubstitution -> {
-                typeResolver.anyNgSuper(type) { it.completeInfo == upperBound.type }.fitOrNot()
+            is TypeSubstitution<*, *> -> {
+                when (val holder = upperBound.holder) {
+                    is TypeHolder.Dynamic -> fitsDatBound(type, holder, type)
+                    is TypeHolder.Static -> {
+                        SuperUtil.anyNgSuper(typeResolver, type) {
+                            it.completeInfo == holder.info
+                        }.fitOrNot()
+                    }
+                }
             }
         }
     }

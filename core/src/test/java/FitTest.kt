@@ -2,13 +2,12 @@ import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.SemiType
+import com.mktiti.fsearch.core.type.TypeBounds
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.upperBounds
 import com.mktiti.fsearch.core.util.JavaTypePrinter
@@ -23,6 +22,10 @@ import kotlin.test.assertNotNull
 class FitTest {
 
     private val repo = createTestRepo()
+    private val rootType = repo["TestRoot"]!!.holder()
+    private val defaultTypeBounds = TypeBounds(
+            upperBounds = setOf(TypeSubstitution(rootType))
+    )
     private val resolver: TypeResolver = SingleRepoTypeResolver(repo)
     private val fitter: QueryFitter = JavaQueryFitter(resolver)
     private val printer: TypePrint = JavaTypePrinter(resolver)
@@ -90,8 +93,8 @@ class FitTest {
         )
 
         val query = QueryType(
-                inputParameters = listOf(collection.forceStaticApply(int)),
-                output = list.forceStaticApply(int)
+                inputParameters = listOf(collection.forceStaticApply(int.holder())),
+                output = list.forceStaticApply(int.holder())
         )
 
         // <T extends Comparable<? super T>> (Collection<T>) -> List<T>
@@ -103,20 +106,20 @@ class FitTest {
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
                                 TypeParameter("T", upperBounds(
-                                        DynamicTypeSubstitution(
+                                        TypeSubstitution(
                                                 comparable.forceDynamicApply(
                                                         Wildcard.Bounded(SelfSubstitution, LOWER)
-                                                ).completeInfo
+                                                ).holder()
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
-                                "coll" to DynamicTypeSubstitution(
-                                        collection.forceDynamicApply(ParamSubstitution(0)).completeInfo // Collection<T>
+                                "coll" to TypeSubstitution(
+                                        collection.forceDynamicApply(ParamSubstitution(0)).holder() // Collection<T>
                                 )
                         ),
-                        output = DynamicTypeSubstitution(
-                                list.forceDynamicApply(ParamSubstitution(0)).completeInfo // List<T>
+                        output = TypeSubstitution(
+                                list.forceDynamicApply(ParamSubstitution(0)).holder() // List<T>
                         )
                 )
         )
@@ -139,8 +142,8 @@ class FitTest {
         )
 
         val query = QueryType(
-                inputParameters = listOf(collection.forceStaticApply(boss)),
-                output = list.forceStaticApply(boss)
+                inputParameters = listOf(collection.forceStaticApply(boss.holder())),
+                output = list.forceStaticApply(boss.holder())
         )
 
         // <T extends Comparable<? super T>> (Collection<T>) -> List<T>
@@ -152,20 +155,20 @@ class FitTest {
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
                                 TypeParameter("T", upperBounds(
-                                        DynamicTypeSubstitution(
+                                        TypeSubstitution(
                                                 comparable.forceDynamicApply(
                                                         Wildcard.Bounded(SelfSubstitution, LOWER)
-                                                ).completeInfo
+                                                ).holder()
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
-                                "coll" to DynamicTypeSubstitution(
-                                        collection.forceDynamicApply(ParamSubstitution(0)).completeInfo // Collection<T>
+                                "coll" to TypeSubstitution(
+                                        collection.forceDynamicApply(ParamSubstitution(0)).holder() // Collection<T>
                                 )
                         ),
-                        output = DynamicTypeSubstitution(
-                                list.forceDynamicApply(ParamSubstitution(0)).completeInfo // List<T>
+                        output = TypeSubstitution(
+                                list.forceDynamicApply(ParamSubstitution(0)).holder() // List<T>
                         )
                 )
         )
@@ -197,20 +200,20 @@ class FitTest {
             ceo
         )
 
-        val personList = list.forceStaticApply(person)
-        val bossToPersonMap = hashMap.forceStaticApply(boss, personList)
+        val personList = list.forceStaticApply(person.holder())
+        val bossToPersonMap = hashMap.forceStaticApply(boss.holder(), personList.holder())
 
-        val virtType1 = QueryType.virtualType("downstreamA", listOf(repo.rootType))
+        val virtType1 = QueryType.virtualType("downstreamA", listOf(rootType.with(resolver)!!))
         repo += virtType1
 
         // (Person -> Ceo), (() -> HashMap<Boss, List<Person>>), Collector<Person, _, List<Person>> -> Collector<Boss, _, HashMap<Boss, List<Person>>>
         val query = QueryType(
                 inputParameters = listOf(
-                        function.forceStaticApply(person, ceo),
-                        supplier.forceStaticApply(bossToPersonMap),
-                        collector.forceStaticApply(person, virtType1, personList)
+                        function.forceStaticApply(person.holder(), ceo.holder()),
+                        supplier.forceStaticApply(bossToPersonMap.holder()),
+                        collector.forceStaticApply(person.holder(), virtType1.holder(), personList.holder())
                 ),
-                output = collector.forceStaticApply(boss, boss, bossToPersonMap)
+                output = collector.forceStaticApply(boss.holder(), boss.holder(), bossToPersonMap.holder())
         )
 
         // <T, K, D, A, M extends Map<K, D>>
@@ -222,42 +225,42 @@ class FitTest {
                 ),
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
-                                TypeParameter("T", repo.defaultTypeBounds),
-                                TypeParameter("K", repo.defaultTypeBounds),
-                                TypeParameter("D", repo.defaultTypeBounds),
-                                TypeParameter("A", repo.defaultTypeBounds),
+                                TypeParameter("T", defaultTypeBounds),
+                                TypeParameter("K", defaultTypeBounds),
+                                TypeParameter("D", defaultTypeBounds),
+                                TypeParameter("A", defaultTypeBounds),
                                 TypeParameter("M", upperBounds( // M extends Map<K, D>
-                                        DynamicTypeSubstitution(
+                                        TypeSubstitution(
                                                 map.forceDynamicApply(
                                                         ParamSubstitution(1), ParamSubstitution(2)
-                                                ).completeInfo
+                                                ).holder()
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
-                                "classifier" to DynamicTypeSubstitution( // Function<? super T, ? extends K>
+                                "classifier" to TypeSubstitution( // Function<? super T, ? extends K>
                                         function.forceDynamicApply(
                                                 Wildcard.Bounded(ParamSubstitution(0), LOWER),
                                                 Wildcard.Bounded(ParamSubstitution(1), UPPER)
-                                        ).completeInfo
+                                        ).holder()
                                 ),
-                                "supplier" to DynamicTypeSubstitution( // Supplier<M>
-                                        supplier.forceDynamicApply(ParamSubstitution(4)).completeInfo
+                                "supplier" to TypeSubstitution( // Supplier<M>
+                                        supplier.forceDynamicApply(ParamSubstitution(4)).holder()
                                 ),
-                                "downstream" to DynamicTypeSubstitution( // Collector<? super T, A, D>
+                                "downstream" to TypeSubstitution( // Collector<? super T, A, D>
                                         collector.forceDynamicApply(
                                                 Wildcard.Bounded(ParamSubstitution(0), LOWER),
                                                 ParamSubstitution(3),
                                                 ParamSubstitution(2)
-                                        ).completeInfo
+                                        ).holder()
                                 )
                         ),
-                        output = DynamicTypeSubstitution( // Collector<T, ?, M>
+                        output = TypeSubstitution( // Collector<T, ?, M>
                                 collector.forceDynamicApply(
                                         ParamSubstitution(0),
                                         Wildcard.Direct,
                                         ParamSubstitution(4)
-                                ).completeInfo
+                                ).holder()
                         )
                 )
         )

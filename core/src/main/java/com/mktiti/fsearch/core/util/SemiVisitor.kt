@@ -13,7 +13,7 @@ class SemiVisitor(
 
         val childCount = root.superTypes.size
         root.superTypes.forEachIndexed { i, node ->
-            val resolved = typeResolver.getAny(node) ?: return
+            val resolved = typeResolver.getAny(node.info) ?: return
             visitInner(resolved, code, depth + 1, i < childCount - 1)
         }
     }

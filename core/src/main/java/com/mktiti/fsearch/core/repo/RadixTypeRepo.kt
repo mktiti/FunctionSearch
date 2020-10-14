@@ -1,7 +1,6 @@
 package com.mktiti.fsearch.core.repo
 
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.elseNull
 import com.mktiti.fsearch.util.PrefixTree
@@ -12,12 +11,12 @@ class RadixTypeRepo(
         private val templates: PrefixTree<String, TypeTemplate>
 ) : TypeRepo {
 
-    override val rootType: DirectType
-        get() = javaRepo.objectType
+    // override val rootType: DirectType
+    //    get() = javaRepo.objectType
 
-    override val defaultTypeBounds = TypeBounds(
-            upperBounds = setOf(StaticTypeSubstitution(rootType.completeInfo))
-    )
+    // override val defaultTypeBounds = TypeBounds(
+    //        upperBounds = setOf(TypeSubstitution(rootType.completeInfo.holder()))
+    // )
 
     // TODO think through - maybe cache?
     private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.simpleName to it }.toMap()
@@ -38,7 +37,7 @@ class RadixTypeRepo(
     }
 */
     // TODO optimize or remove
-    override val allTypes: Collection<Type>
+    override val allTypes: Collection<Type<*>>
         get() = directs.toList()
 
     // TODO optimize or remove

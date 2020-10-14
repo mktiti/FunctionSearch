@@ -1,9 +1,8 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.fit.InheritanceLogic
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
-import com.mktiti.fsearch.core.type.Type.NonGenericType
+
+typealias StaticTypeSubstitution = ApplicationParameter.Substitution.TypeSubstitution<CompleteMinInfo.Static, Type.NonGenericType>
 
 sealed class ApplicationParameter {
 
@@ -11,7 +10,7 @@ sealed class ApplicationParameter {
         object Direct : Wildcard() {
             override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
 
-            override fun applySelf(self: CompleteMinInfo.Static) = this
+            override fun applySelf(self: TypeHolder.Static) = this
 
             override fun toString() = "?"
         }
@@ -41,7 +40,7 @@ sealed class ApplicationParameter {
                 }
             }
 
-            override fun applySelf(self: CompleteMinInfo.Static) = copy(
+            override fun applySelf(self: TypeHolder.Static) = copy(
                     param = param.applySelf(self)
             )
 
@@ -49,31 +48,60 @@ sealed class ApplicationParameter {
         }
     }
 
-    sealed class Substitution : ApplicationParameter() {
+    sealed class Substitution : ApplicationParameter(), StaticApplicable {
 
         data class ParamSubstitution(val param: Int) : Substitution() {
-            override fun staticApply(typeArgs: List<CompleteMinInfo.Static>) = typeArgs.getOrNull(param)
+            override fun staticApply(typeArgs: List<TypeHolder.Static>) = typeArgs.getOrNull(param)
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter? {
                 return typeParams.getOrNull(param) ?: return null
             }
 
-            override fun applySelf(self: CompleteMinInfo.Static) = this
+            override fun applySelf(self: TypeHolder.Static) = this
 
             override fun toString() = "#$param"
         }
 
         object SelfSubstitution : Substitution() {
-            override fun staticApply(typeArgs: List<CompleteMinInfo.Static>): Nothing? = null
+            override fun staticApply(typeArgs: List<TypeHolder.Static>): Nothing? = null
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
 
-            override fun applySelf(self: CompleteMinInfo.Static) = StaticTypeSubstitution(self)
+            override fun applySelf(self: TypeHolder.Static) = TypeSubstitution(self)
 
             override fun toString() = "\$SELF"
         }
 
-        sealed class TypeSubstitution<out T : Type, out I : CompleteMinInfo<*>>(
+        class TypeSubstitution<out I : CompleteMinInfo<*>, out T : Type<I>>(
+                val holder: TypeHolder<I, T>
+        ) : Substitution() {
+
+            override fun dynamicApply(typeParams: List<ApplicationParameter>): TypeSubstitution<*, *>? {
+                return when (holder) {
+                    is TypeHolder.Dynamic -> TypeSubstitution(holder.dynamicApply(typeParams) ?: return null)
+                    is TypeHolder.Static -> this
+                }
+            }
+
+            override fun applySelf(self: TypeHolder.Static): TypeSubstitution<*, *> {
+                return when (holder) {
+                    is TypeHolder.Dynamic -> TypeSubstitution(holder.applySelf(self))
+                    is TypeHolder.Static -> this
+                }
+            }
+
+            override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static? = holder.staticApply(typeArgs)
+
+
+            override fun toString() = holder.toString()
+
+        }
+
+        abstract override fun applySelf(self: TypeHolder.Static): Substitution
+
+    }
+        /*
+        sealed class TypeSubstitution<out T : Type<*>, out I : CompleteMinInfo<*>>(
             val type: I
         ) : Substitution() {
 
@@ -98,7 +126,7 @@ sealed class ApplicationParameter {
                     return type.dynamicApply(typeParams)?.let { DynamicTypeSubstitution(it) }
                 }
 
-                override fun applySelf(self: CompleteMinInfo.Static) = DynamicTypeSubstitution(type.applySelf(self))
+                override fun applySelf(self: TypeHolder.Static) = DynamicTypeSubstitution(type.applySelf(self))
             }
 
             class StaticTypeSubstitution(type: CompleteMinInfo.Static) : TypeSubstitution<NonGenericType, CompleteMinInfo.Static>(type) {
@@ -107,7 +135,7 @@ sealed class ApplicationParameter {
                 override fun dynamicApply(typeParams: List<ApplicationParameter>): StaticTypeSubstitution = this
             }
 
-            override fun applySelf(self: CompleteMinInfo.Static) = this
+            override fun applySelf(self: TypeHolder.Static) = this
 
             override fun toString() = type.toString()
 
@@ -117,12 +145,13 @@ sealed class ApplicationParameter {
 
         abstract override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 
-        abstract override fun applySelf(self: CompleteMinInfo.Static): Substitution
+        abstract override fun applySelf(self: TypeHolder.Static): Substitution
 
     }
 
+         */
     abstract fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 
-    abstract fun applySelf(self: CompleteMinInfo.Static): ApplicationParameter
+    abstract fun applySelf(self: TypeHolder.Static): ApplicationParameter
 
 }

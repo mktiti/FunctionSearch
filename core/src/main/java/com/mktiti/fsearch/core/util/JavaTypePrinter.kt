@@ -32,7 +32,7 @@ class JavaTypePrinter(
         printSemiType(template)
     }
 
-    override fun printType(type: Type) {
+    override fun printType(type: Type<*>) {
         val info = when (type) {
             is DirectType -> "Direct Type"
             is StaticAppliedType -> "Statically Applied Type"

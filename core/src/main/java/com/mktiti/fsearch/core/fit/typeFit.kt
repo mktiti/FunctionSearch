@@ -7,18 +7,11 @@ import com.mktiti.fsearch.core.fit.SubResult.Failure
 import com.mktiti.fsearch.core.fit.SubResult.TypeArgUpdate
 import com.mktiti.fsearch.core.fit.TypeBoundFit.*
 import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.core.type.ApplicationParameter
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.Companion.wrap
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
-import com.mktiti.fsearch.core.type.CompleteMinInfo
-import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
-import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.nList
 import com.mktiti.fsearch.core.util.zipIfSameLength
@@ -31,15 +24,14 @@ class JavaQueryFitter(
 
     private val boundFitter = JavaTypeBoundFitter(this, typeResolver)
 
-    private fun CompleteMinInfo.Static.resolve(): NonGenericType? = typeResolver[this]
-    private fun CompleteMinInfo.Dynamic.resolve(): DynamicAppliedType? = typeResolver[this]
+    private fun <I : CompleteMinInfo<*>, T : Type<I>> TypeHolder<I, T>.resolve(): T? = with(typeResolver)
 
     override fun subStatic(
-            argPar: CompleteMinInfo.Static,
-            subPar: CompleteMinInfo.Static,
+            argPar: TypeHolder.Static,
+            subPar: TypeHolder.Static,
             variance: InheritanceLogic
     ): Boolean {
-        return if (argPar == subPar) {
+        return if (argPar.info.base == subPar.info.base) {
             val resolvedArg = argPar.resolve() ?: return false
             val resolvedSub = subPar.resolve() ?: return false
 
@@ -66,7 +58,7 @@ class JavaQueryFitter(
     private fun subParamSub(
             ctx: List<TypeParameter>,
             arg: ParamSubstitution,
-            type: CompleteMinInfo.Static
+            type: TypeHolder.Static
     ): SubResult {
         val referenced = ctx.getOrNull(arg.param) ?: return Failure
         return when (val fitRes = boundFitter.fits(referenced.bounds, type)) {
@@ -79,13 +71,13 @@ class JavaQueryFitter(
 
     override fun subDynamic(
             argCtx: List<TypeParameter>,
-            argPar: CompleteMinInfo.Dynamic,
-            subPar: CompleteMinInfo.Static,
+            argPar: TypeHolder.Dynamic,
+            subPar: TypeHolder.Static,
             variance: InheritanceLogic
     ): SubResult {
         fun Boolean.asResult(): SubResult = if (this) ConstraintsKept else Failure
 
-        return if (argPar.base == subPar.base) {
+        return if (argPar.info.base == subPar.info.base) {
             val resolvedArg = argPar.resolve() ?: return Failure
             val resolvedSub = subPar.resolve() ?: return Failure
             val zipped = resolvedArg.typeArgMapping.zipIfSameLength(resolvedSub.typeArgs) ?: return Failure
@@ -121,8 +113,8 @@ class JavaQueryFitter(
                     val resolvedArg = argPar.resolve() ?: return Failure
                     resolvedArg.superTypes.asSequence().asIterable().map { superType ->
                         when (superType) {
-                            is CompleteMinInfo.Static -> subStatic(superType, subPar, variance).asResult()
-                            is CompleteMinInfo.Dynamic -> subDynamic(argCtx, superType, subPar, variance)
+                            is TypeHolder.Static -> subStatic(superType, subPar, variance).asResult()
+                            is TypeHolder.Dynamic -> subDynamic(argCtx, superType, subPar, variance)
                         }
                     }.rollResult()
                 }
@@ -133,7 +125,7 @@ class JavaQueryFitter(
     override fun subAny(
             context: List<TypeParameter>,
             argPar: ApplicationParameter,
-            subType: CompleteMinInfo.Static,
+            subType: TypeHolder.Static,
             variance: InheritanceLogic
     ): SubResult {
         return when (argPar) {
@@ -141,14 +133,18 @@ class JavaQueryFitter(
             is ParamSubstitution -> {
                 subParamSub(context, argPar, subType)
             }
-            is DynamicTypeSubstitution -> {
-                subDynamic(context, argPar.type, subType, variance)
-            }
-            is StaticTypeSubstitution -> {
-                if (subStatic(argPar.type, subType, variance)) {
-                    ConstraintsKept
-                } else {
-                    Failure
+            is TypeSubstitution<*, *> -> {
+                when (val holder = argPar.holder) {
+                    is TypeHolder.Static -> {
+                        if (subStatic(holder, subType, variance)) {
+                            ConstraintsKept
+                        } else {
+                            Failure
+                        }
+                    }
+                    is TypeHolder.Dynamic -> {
+                        subDynamic(context, holder, subType, variance)
+                    }
                 }
             }
             is Wildcard.Direct -> ConstraintsKept
@@ -221,8 +217,7 @@ class JavaQueryFitter(
                             else -> ParamSubstitution(param.param - 1)
                         }
                     }
-                    is DynamicTypeSubstitution -> wrap(param.type.dynamicApply(newApplyArgs) ?: return null)
-                    is StaticTypeSubstitution -> param
+                    is TypeSubstitution<*, *> -> param.dynamicApply(newApplyArgs) ?: return null
                 }
             }
 
@@ -291,7 +286,7 @@ class JavaQueryFitter(
 
         return transformContext(MatchingContext(query, function), FittingMap(query, function.signature)) { matchingCtx ->
             val essentialResult = matchingCtx.pairings.toList().roll(MatchRoll()) { statAcc, (index, funArg, queryArg, variance) ->
-                when (val subResult = subAny(matchingCtx.funCtx.typeParams, funArg, queryArg.completeInfo, variance)) {
+                when (val subResult = subAny(matchingCtx.funCtx.typeParams, funArg, TypeHolder.Static.Direct(queryArg), variance)) {
                     ConstraintsKept -> statAcc.withFit(index)
                     Skip -> statAcc.skipped()
                     else -> statAcc.terminal(subResult)

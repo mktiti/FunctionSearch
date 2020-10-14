@@ -11,7 +11,7 @@ interface TypePrint {
 
     fun printTypeTemplate(template: TypeTemplate)
 
-    fun printType(type: Type)
+    fun printType(type: Type<*>)
 
     fun printSemiType(type: SemiType)
 

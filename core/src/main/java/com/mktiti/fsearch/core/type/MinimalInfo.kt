@@ -42,14 +42,18 @@ data class MinimalInfo(
 sealed class CompleteMinInfo<out P : Any>(
         val base: MinimalInfo,
         val args: List<P>
-) {
+) : StaticApplicable {
 
     class Static(
             base : MinimalInfo,
             args: List<Static>
     ) : CompleteMinInfo<Static>(base, args) {
 
-        override fun staticApply(typeArgs: List<Static>): Static = this
+        companion object {
+            fun List<Static>.holders() = map { it.holder() }
+        }
+
+        override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static = holder()
 
         override fun equals(other: Any?): Boolean = if (other is Static) {
             base == other.base && (args.zipIfSameLength(other.args)?.all { (a, b) -> a == b } ?: false)
@@ -59,6 +63,8 @@ sealed class CompleteMinInfo<out P : Any>(
 
         override fun hashCode() = Objects.hash(base, args)
 
+        override fun holder(): TypeHolder.Static = TypeHolder.Static.Indirect(this)
+
     }
 
     class Dynamic(
@@ -66,15 +72,15 @@ sealed class CompleteMinInfo<out P : Any>(
             args: List<ApplicationParameter>
     ) : CompleteMinInfo<ApplicationParameter>(base, args) {
 
-        override fun staticApply(typeArgs: List<Static>): Static? {
+        override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static? {
             val applied = args.map { arg ->
                 when (arg) {
                     is Wildcard -> null
-                    is Substitution -> arg.staticApply(typeArgs)
-                }
-            }.liftNull() ?: return null
+                    is Substitution -> arg.staticApply(typeArgs)?.info
+                } ?: return null
+            }
 
-            return Static(base, applied)
+            return Static(base, applied).holder()
         }
 
         fun dynamicApply(typeArgs: List<ApplicationParameter>): Dynamic? {
@@ -82,11 +88,13 @@ sealed class CompleteMinInfo<out P : Any>(
             return Dynamic(base, applied)
         }
 
-        fun applySelf(self: Static): Dynamic = Dynamic(base, args.map { it.applySelf(self) })
+        fun applySelf(self: TypeHolder.Static): Dynamic = Dynamic(base, args.map { it.applySelf(self) })
+
+        override fun holder(): TypeHolder.Dynamic = TypeHolder.Dynamic.Indirect(this)
 
     }
 
-    abstract fun staticApply(typeArgs: List<Static>): Static?
+    abstract fun holder(): TypeHolder<*, *>
 
     override fun toString() = buildString {
         append(base)

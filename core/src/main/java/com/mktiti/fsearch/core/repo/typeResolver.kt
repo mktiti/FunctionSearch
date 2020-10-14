@@ -1,9 +1,12 @@
 package com.mktiti.fsearch.core.repo
 
-import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.CompleteMinInfo
+import com.mktiti.fsearch.core.type.CompleteMinInfo.Static.Companion.holders
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.util.liftNull
+import com.mktiti.fsearch.core.type.TypeTemplate
 
 interface TypeResolver {
 
@@ -15,7 +18,7 @@ interface TypeResolver {
         return if (info.args.isEmpty()) {
             get(info.base)
         } else {
-            template(info.base)?.staticApplyInfo(info.args)
+            template(info.base)?.staticApply(info.args.holders())
         }
     }
 
@@ -24,18 +27,9 @@ interface TypeResolver {
         return template.dynamicApply(info.args)
     }
 
-    fun getAny(info: CompleteMinInfo<*>): SemiType? = when (info) {
+    fun getAny(info: CompleteMinInfo<*>): Type<*>? = when (info) {
         is CompleteMinInfo.Static -> get(info)
         is CompleteMinInfo.Dynamic -> get(info)
-    }
-
-    fun anyNgSuper(info: CompleteMinInfo.Static, predicate: (NonGenericType) -> Boolean): Boolean {
-        val resolved = this[info] ?: return false
-        return if (predicate(resolved)) {
-            true
-        } else {
-            resolved.superTypes.asSequence().any { anyNgSuper(it, predicate) }
-        }
     }
 
 }

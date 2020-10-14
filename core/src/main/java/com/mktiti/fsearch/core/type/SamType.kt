@@ -1,8 +1,6 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.Type.NonGenericType
 
 sealed class SamType<out S : Substitution>(
         val explicit: Boolean,

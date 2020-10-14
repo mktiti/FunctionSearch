@@ -7,7 +7,7 @@ interface ArtifactTypeRepo {
     val artefact: String // TODO
     val javaRepo: JavaRepo
 
-    val allTypes: Collection<Type>
+    val allTypes: Collection<Type<*>>
     val allTemplates: Collection<TypeTemplate>
 
     operator fun get(name: String, allowSimple: Boolean = false): Type.NonGenericType.DirectType?

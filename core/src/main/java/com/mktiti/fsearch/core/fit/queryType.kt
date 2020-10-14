@@ -1,11 +1,8 @@
 package com.mktiti.fsearch.core.fit
 
-import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeBounds
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.TypeTemplate
 
 data class QueryType(
     val inputParameters: List<NonGenericType>,
@@ -27,7 +24,7 @@ data class QueryType(
 
         // TODO
         fun functionType(inputs: List<NonGenericType>, output: NonGenericType): NonGenericType {
-            return funTypeMap.computeIfAbsent(inputs.size, this::createFunType).staticApply(inputs + output)!!
+            return funTypeMap.computeIfAbsent(inputs.size, this::createFunType).staticApply(TypeHolder.staticDirects(inputs + output))!!
         }
 
         fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(
@@ -35,7 +32,7 @@ data class QueryType(
                         simpleName = name,
                         packageName = emptyList()
                 ),
-                superTypes = supers.map { it.completeInfo },
+                superTypes = TypeHolder.staticDirects(supers),
                 samType = null,
                 virtual = true
         )

@@ -3,10 +3,7 @@ package com.mktiti.fsearch.parser.util
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
-import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import com.mktiti.fsearch.core.repo.SimpleMultiRepoTypeResolver
-import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.core.repo.TypeResolver
+import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.maven.MavenArtifact
@@ -75,7 +72,8 @@ fun main(args: Array<String>) {
     // val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
     val jclCollector = IndirectJarTypeCollector(MapJavaInfoRepo)
     val (javaRepo, jclRepo) = jclCollector.collectJcl("JCL", jclJarInfo)
-    val jclFunctions = JarFileFunctionCollector(javaRepo).collectFunctions(jclJarInfo, listOf(jclRepo))
+    val jclResolver = SingleRepoTypeResolver(jclRepo)
+    val jclFunctions = JarFileFunctionCollector(javaRepo).collectFunctions(jclJarInfo, jclResolver)
 
     printLoadResults(jclRepo, jclFunctions)
 
@@ -88,7 +86,7 @@ fun main(args: Array<String>) {
     val mavenCollector = MavenCollector(MavenManager.central, log, MapJavaInfoRepo, javaRepo)
     val results = testArtifacts.map {
         val artifact = MavenArtifact.parse(it)!!
-        mavenCollector.collectCombined(artifact, listOf(jclRepo)).apply {
+        mavenCollector.collectCombined(artifact, jclResolver).apply {
             printLoadResults(typeRepo, functions)
         }
     }

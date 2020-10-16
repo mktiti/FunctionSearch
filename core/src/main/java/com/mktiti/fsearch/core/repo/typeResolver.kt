@@ -51,6 +51,25 @@ class SingleRepoTypeResolver(
     override fun template(name: String, allowSimple: Boolean): TypeTemplate? = repo.template(name, allowSimple)
 }
 
+class FallbackResolver(
+        repo: TypeRepo,
+        private val fallback: TypeResolver
+) : TypeResolver {
+
+    private val primary = SingleRepoTypeResolver(repo)
+
+    private fun <T : Any> resolve(query: TypeResolver.() -> T?): T? = primary.query() ?: fallback.query()
+
+    override fun get(info: MinimalInfo): DirectType? = resolve { get(info) }
+
+    override fun get(name: String, allowSimple: Boolean): DirectType? = resolve { get(name, allowSimple) }
+
+    override fun template(info: MinimalInfo): TypeTemplate? = resolve { template(info) }
+
+    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = resolve { template(name, allowSimple) }
+
+}
+
 class SimpleMultiRepoTypeResolver(
         private val repos: Collection<TypeRepo>
 ) : TypeResolver {

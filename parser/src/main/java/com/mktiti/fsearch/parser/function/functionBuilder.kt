@@ -2,7 +2,7 @@ package com.mktiti.fsearch.parser.function
 
 import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
@@ -11,8 +11,6 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.util.forceDynamicApply
-import com.mktiti.fsearch.parser.util.anyDirect
-import com.mktiti.fsearch.parser.util.anyTemplate
 
 interface FunctionBuilder {
 
@@ -26,11 +24,11 @@ interface FunctionBuilder {
 
 class JavaFunctionBuilder(
         private val javaRepo: JavaRepo,
-        private val typeRepos: Collection<TypeRepo>
+        private val typeResolver: TypeResolver
 ) : FunctionBuilder {
 
     private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>, selfRef: String?): TypeSubstitution<*, *>? {
-        val template = typeRepos.anyTemplate(param.info) ?: return null
+        val template = typeResolver.template(param.info) ?: return null
         val args: List<ApplicationParameter> = if (param.typeArgs.isEmpty()) {
             template.typeParams.map { StaticTypeSubstitution(javaRepo.objectType) }
         } else {
@@ -51,7 +49,7 @@ class JavaFunctionBuilder(
 
                 if (param.typeArgs.isEmpty()) {
                     // Direct type
-                    val type = typeRepos.anyDirect(info)
+                    val type = typeResolver[info]
                     if (type == null) {
                         mapDatParam(param, references, selfRef)
                     } else {
@@ -94,7 +92,7 @@ class JavaFunctionBuilder(
 
     override fun buildFunction(intermediate: ImSignature, implicitThis: FunctionBuilder.ImplicitThis?): TypeSignature? {
         val thisTemplate: TypeTemplate? = if (implicitThis != null && implicitThis.isGeneric) {
-            typeRepos.anyTemplate(implicitThis.info) ?: return null
+            typeResolver.template(implicitThis.info) ?: return null
         } else {
             null
         }
@@ -127,7 +125,7 @@ class JavaFunctionBuilder(
         val allInputs: List<Pair<String, Substitution>> = ArrayList<Pair<String, Substitution>>(intermediate.inputs.size).apply {
             if (implicitThis != null) {
                 val thisParam = if (thisTemplate == null) {
-                    StaticTypeSubstitution(typeRepos.anyDirect(implicitThis.info)?.holder() ?: return null)
+                    StaticTypeSubstitution(typeResolver[implicitThis.info]?.holder() ?: return null)
                 } else {
                     val applied = thisTemplate.dynamicApply(
                             thisTemplate.typeParams.mapIndexed { i, _ ->

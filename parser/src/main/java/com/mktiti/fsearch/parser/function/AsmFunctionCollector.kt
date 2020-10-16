@@ -4,6 +4,7 @@ import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.parser.util.AsmUtil
 import com.mktiti.fsearch.parser.util.anyTemplate
 import com.mktiti.fsearch.util.map
@@ -21,9 +22,9 @@ interface AsmFunctionCollectorView {
 
 object AsmFunctionCollector {
 
-    fun collect(javaRepo: JavaRepo, depsRepos: Collection<TypeRepo>, load: AsmFunctionCollectorView.() -> Unit): Collection<FunctionObj> {
-        val funBuilder = JavaFunctionBuilder(javaRepo, depsRepos)
-        val visitor = AsmFunctionCollectorVisitor(funBuilder, depsRepos)
+    fun collect(javaRepo: JavaRepo, dependencyResolver: TypeResolver, load: AsmFunctionCollectorView.() -> Unit): Collection<FunctionObj> {
+        val funBuilder = JavaFunctionBuilder(javaRepo, dependencyResolver)
+        val visitor = AsmFunctionCollectorVisitor(funBuilder, dependencyResolver)
         object : AsmFunctionCollectorView {
             override fun loadEntry(input: InputStream) {
                 ClassReader(input).accept(visitor, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
@@ -35,8 +36,8 @@ object AsmFunctionCollector {
 }
 
 private class AsmFunctionCollectorVisitor(
-        private val funBuilder: JavaFunctionBuilder,
-        private val depsRepos: Collection<TypeRepo>
+        private val funBuilder: FunctionBuilder,
+        private val dependencyResolver: TypeResolver
 ) : ClassVisitor(Opcodes.ASM8) {
 
     companion object {
@@ -54,7 +55,7 @@ private class AsmFunctionCollectorVisitor(
 
         currentType = FunctionBuilder.ImplicitThis(
                 info = info,
-                isGeneric = (signature != null || info.nameParts.isNotEmpty()) && depsRepos.anyTemplate(info) != null
+                isGeneric = (signature != null || info.nameParts.isNotEmpty()) && dependencyResolver.template(info) != null
         )
     }
 
@@ -69,7 +70,7 @@ private class AsmFunctionCollectorVisitor(
 
             //println("\t\tMethod visited: $name :: ${signature ?: descriptor} throws $exceptions")
             try {
-                val parsed = parseFunction(name, signature ?: descriptor)
+                val parsed = FunctionParser.parseFunction(name, signature ?: descriptor)
                 val parsedSignature = funBuilder.buildFunction(parsed, isStatic.map(onTrue = null, onFalse = currentType))
                 if (parsedSignature == null) {
                     println("Failed to parse method ${currentType.info} $name :: ${signature ?: descriptor} throws $exceptions")

@@ -11,7 +11,7 @@ import com.mktiti.fsearch.parser.util.JavaTypeParseLog
 
 interface JarTypeCollector<I> {
 
-    fun collectArtifact(info: I, javaRepo: JavaRepo, depsRepos: Collection<TypeRepo>): TypeRepo
+    fun collectArtifact(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver): TypeRepo
 
 }
 
@@ -21,7 +21,7 @@ class IndirectJarTypeCollector(
 
     private val infoCollector = JarFileInfoCollector(infoRepo)
 
-    override fun collectArtifact(info: JarFileInfoCollector.JarInfo, javaRepo: JavaRepo, depsRepos: Collection<TypeRepo>): TypeRepo {
+    override fun collectArtifact(info: JarFileInfoCollector.JarInfo, javaRepo: JavaRepo, dependencyResolver: TypeResolver): TypeRepo {
         val (directs, templates) = infoCollector.collectInitial(info)
         return RadixTypeRepo(
                 javaRepo = javaRepo,
@@ -75,7 +75,7 @@ interface JclCollector<I> {
     fun collectJcl(name: String, info: I): JclResult
 
 }
-
+/*
 class TwoPhaseCollector<I>(
         private val infoRepo: JavaInfoRepo,
         private val log: JavaTypeParseLog,
@@ -88,9 +88,10 @@ class TwoPhaseCollector<I>(
         return connector.connectJcl(directs, templates, name)
     }
 
-    override fun collectArtifact(info: I, javaRepo: JavaRepo, depsRepos: Collection<TypeRepo>): TypeRepo {
+    override fun collectArtifact(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver): TypeRepo {
         val (directs, templates) = infoCollector.collectInitial(info)
-        return connector.connectArtifact(directs, templates, javaRepo, depsRepos)
+        return connector.connectArtifact(directs, templates, javaRepo, dependencyResolver)
     }
 
 }
+ */

@@ -1,9 +1,8 @@
 package com.mktiti.fsearch.parser.type
 
+import com.mktiti.fsearch.parser.function.FunctionParser
 import com.mktiti.fsearch.parser.function.ImParam
 import com.mktiti.fsearch.parser.function.ImTypeParam
-import com.mktiti.fsearch.parser.function.parseDefinedType
-import com.mktiti.fsearch.parser.function.parseTypeParams
 import com.mktiti.fsearch.parser.generated.SignatureLexer
 import com.mktiti.fsearch.parser.generated.SignatureParser
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
@@ -36,11 +35,11 @@ fun parseType(signature: String, nestTypeParams: List<ImTypeParam>): ParsedType 
 
     val signatureCtx = parser.classSignature()
 
-    val typeParams = nestTypeParams + parseTypeParams(signatureCtx.typeParameters())
+    val typeParams = nestTypeParams + FunctionParser.parseTypeParams(signatureCtx.typeParameters())
 
     val parentClass = signatureCtx.superclassSignature().classTypeSignature()
     val interfaces = signatureCtx.superinterfaceSignature().map { it.classTypeSignature() }
-    val supers = (interfaces + parentClass).map { parseDefinedType(it) }
+    val supers = (interfaces + parentClass).map { FunctionParser.parseDefinedType(it) }
 
     return if (typeParams.isEmpty()) {
         ParsedType.Direct(supers)

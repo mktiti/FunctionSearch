@@ -1,15 +1,12 @@
 package com.mktiti.fsearch.parser.maven
 
-import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.service.CombinedCollector
 import com.mktiti.fsearch.parser.service.FunctionCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.type.JarTypeCollector
-import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import com.mktiti.fsearch.parser.util.JavaTypeParseLog
 import java.io.File
 
@@ -40,13 +37,14 @@ class MavenCollector(
             paths = listOf(file.toPath())
     )
 
-    override fun collectCombined(info: MavenArtifact, depsRepo: Collection<TypeRepo>): CombinedCollector.Result {
+    override fun collectCombined(info: MavenArtifact, dependenyResolver: TypeResolver): CombinedCollector.Result {
         return MavenManager.onArtifact(repoInfo, info) { file ->
             val jarInfo = jarInfo(info, file)
             println(">>> Loading downloaded artifact $info")
 
-            val typeRepo = backingTypeCollector.collectArtifact(jarInfo, javaRepo, depsRepo)
-            val functions = backingFunctionCollector.collectFunctions(jarInfo, depsRepo + typeRepo)
+            val typeRepo = backingTypeCollector.collectArtifact(jarInfo, javaRepo, dependenyResolver)
+            val extendedResolver = FallbackResolver(typeRepo, dependenyResolver)
+            val functions = backingFunctionCollector.collectFunctions(jarInfo, extendedResolver)
 
             CombinedCollector.Result(typeRepo, functions)
         }

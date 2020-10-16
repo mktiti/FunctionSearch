@@ -2,6 +2,7 @@ package com.mktiti.fsearch.parser.service
 
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 
 interface CombinedCollector<I> {
 
@@ -10,6 +11,6 @@ interface CombinedCollector<I> {
             val functions: Collection<FunctionObj>
     )
 
-    fun collectCombined(info: I, depsRepo: Collection<TypeRepo>): Result
+    fun collectCombined(info: I, dependencyResolver: TypeResolver): Result
 
 }

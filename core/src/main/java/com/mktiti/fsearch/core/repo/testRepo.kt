@@ -142,7 +142,7 @@ fun createTestRepo(): MutableTypeRepo {
                     TypeParameter("K", upperBounds(
                             TypeSubstitution(
                                     comparable.forceDynamicApply(
-                                            BoundedWildcard(SelfSubstitution, LOWER)
+                                            BoundedWildcard.Dynamic(SelfSubstitution, LOWER)
                                     ).holder()
                             )
                     )),

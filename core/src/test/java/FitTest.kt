@@ -109,7 +109,7 @@ class FitTest {
                                 TypeParameter("T", upperBounds(
                                         TypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        BoundedWildcard(SelfSubstitution, LOWER)
+                                                        BoundedWildcard.Dynamic(SelfSubstitution, LOWER)
                                                 ).holder()
                                         )
                                 ))
@@ -158,7 +158,7 @@ class FitTest {
                                 TypeParameter("T", upperBounds(
                                         TypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        BoundedWildcard(SelfSubstitution, LOWER)
+                                                        BoundedWildcard.Dynamic(SelfSubstitution, LOWER)
                                                 ).holder()
                                         )
                                 ))
@@ -241,8 +241,8 @@ class FitTest {
                         inputParameters = listOf(
                                 "classifier" to TypeSubstitution( // Function<? super T, ? extends K>
                                         function.forceDynamicApply(
-                                                BoundedWildcard(ParamSubstitution(0), LOWER),
-                                                BoundedWildcard(ParamSubstitution(1), UPPER)
+                                                BoundedWildcard.Dynamic(ParamSubstitution(0), LOWER),
+                                                BoundedWildcard.Dynamic(ParamSubstitution(1), UPPER)
                                         ).holder()
                                 ),
                                 "supplier" to TypeSubstitution( // Supplier<M>
@@ -250,7 +250,7 @@ class FitTest {
                                 ),
                                 "downstream" to TypeSubstitution( // Collector<? super T, A, D>
                                         collector.forceDynamicApply(
-                                                BoundedWildcard(ParamSubstitution(0), LOWER),
+                                                BoundedWildcard.Dynamic(ParamSubstitution(0), LOWER),
                                                 ParamSubstitution(3),
                                                 ParamSubstitution(2)
                                         ).holder()

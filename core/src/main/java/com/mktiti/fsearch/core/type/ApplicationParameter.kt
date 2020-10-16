@@ -6,8 +6,7 @@ typealias StaticTypeSubstitution = ApplicationParameter.Substitution.TypeSubstit
 
 sealed class ApplicationParameter {
 
-    data class BoundedWildcard(
-            val param: Substitution,
+    sealed class BoundedWildcard(
             val direction: BoundDirection
     ) : ApplicationParameter() {
 
@@ -19,20 +18,41 @@ sealed class ApplicationParameter {
             LOWER(InheritanceLogic.CONTRAVARIANCE, "super")
         }
 
+        abstract val param: Substitution
+
         val subVariance: InheritanceLogic
             get() = direction.subVariance
 
-        override fun dynamicApply(typeParams: List<ApplicationParameter>): BoundedWildcard? {
-            return when (val applied = param.dynamicApply(typeParams)) {
-                null -> null
-                is Substitution -> copy(param = applied)
-                is BoundedWildcard -> if (direction == applied.direction) applied else null
-            }
+        class Static(
+                override val param: StaticTypeSubstitution,
+                direction: BoundDirection
+        ) : BoundedWildcard(direction) {
+
+            override fun dynamicApply(typeParams: List<ApplicationParameter>): Static = this
+
+            override fun applySelf(self: TypeHolder.Static): Static = this
+
         }
 
-        override fun applySelf(self: TypeHolder.Static) = copy(
-                param = param.applySelf(self)
-        )
+        class Dynamic(
+                override val param: Substitution,
+                direction: BoundDirection
+        ) : BoundedWildcard(direction) {
+
+            override fun dynamicApply(typeParams: List<ApplicationParameter>): BoundedWildcard? {
+                return when (val applied = param.dynamicApply(typeParams)) {
+                    null -> null
+                    is Substitution -> Dynamic(param = applied, direction = direction)
+                    is BoundedWildcard -> if (direction == applied.direction) applied else null
+                }
+            }
+
+            override fun applySelf(self: TypeHolder.Static) = Dynamic(
+                    param = param.applySelf(self),
+                    direction = direction
+            )
+
+        }
 
         override fun toString() = "? ${direction.keyword} $param"
 
@@ -85,7 +105,6 @@ sealed class ApplicationParameter {
             }
 
             override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static? = holder.staticApply(typeArgs)
-
 
             override fun toString() = holder.toString()
 

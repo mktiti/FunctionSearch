@@ -247,8 +247,8 @@ fun main() {
                             "list" to TypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)).holder()),
                             "mapper" to TypeSubstitution(
                                     functionType.forceDynamicApply(
-                                            BoundedWildcard(ParamSubstitution(0), LOWER), // ? sup T
-                                            BoundedWildcard(ParamSubstitution(1), UPPER)  // ? ext R
+                                            BoundedWildcard.Dynamic(ParamSubstitution(0), LOWER), // ? sup T
+                                            BoundedWildcard.Dynamic(ParamSubstitution(1), UPPER)  // ? ext R
                                     ).holder()
                             )
                     ),
@@ -324,7 +324,7 @@ fun main() {
             signature = TypeSignature.GenericSignature(
                     typeParameters = listOf(
                             TypeParameter("T", upperBounds(
-                                    TypeSubstitution(comparable.forceDynamicApply(BoundedWildcard(SelfSubstitution, LOWER)).holder())
+                                    TypeSubstitution(comparable.forceDynamicApply(BoundedWildcard.Dynamic(SelfSubstitution, LOWER)).holder())
                             ))
                     ),
                     inputParameters = listOf(

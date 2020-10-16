@@ -37,12 +37,24 @@ class JavaFunctionBuilder(
         return TypeSubstitution(template.forceDynamicApply(args).holder())
     }
 
+    private fun mapWildcardParam(param: ImParam, references: List<TypeParameter>, selfRef: String?, direction: BoundedWildcard.BoundDirection): BoundedWildcard? {
+        val sub = mapSubstitution(param, references, selfRef) ?: return null
+        return if (sub is TypeSubstitution<*, *>) {
+            when (val holder = sub.holder) {
+                is TypeHolder.Static -> BoundedWildcard.Static(TypeSubstitution(holder), direction)
+                else -> BoundedWildcard.Dynamic(sub, direction)
+            }
+        } else {
+            BoundedWildcard.Dynamic(sub, direction)
+        }
+    }
+
     private fun mapParam(param: ImParam, references: List<TypeParameter>, selfRef: String?): ApplicationParameter? {
         return when (param) {
             ImParam.Wildcard -> TypeSubstitution.unboundedWildcard
             is ImParam.Primitive -> StaticTypeSubstitution(javaRepo.primitive(param.value))
-            is ImParam.UpperWildcard -> BoundedWildcard(mapSubstitution(param.param, references, selfRef) ?: return null, UPPER)
-            is ImParam.LowerWildcard -> BoundedWildcard(mapSubstitution(param.param, references, selfRef) ?: return null, LOWER)
+            is ImParam.UpperWildcard -> mapWildcardParam(param.param, references, selfRef, UPPER)
+            is ImParam.LowerWildcard -> mapWildcardParam(param.param, references, selfRef, LOWER)
             is ImParam.Array -> TypeSubstitution(javaRepo.arrayOf(mapParam(param.type, references, selfRef) ?: return null).holder())
             is ImParam.Type -> {
                 val info = param.info

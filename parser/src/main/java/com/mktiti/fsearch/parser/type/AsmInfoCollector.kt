@@ -88,7 +88,13 @@ private class ImTransformer(
 
     private fun transformWildcard(wildcardParam: ImParam, direction: BoundDirection): BoundedWildcard? {
         return when (val param = transformDynamicArg(wildcardParam)) {
-            is Substitution -> BoundedWildcard(param, direction)
+            is TypeSubstitution<*, *> -> {
+                when (val holder = param.holder) {
+                    is TypeHolder.Static -> BoundedWildcard.Static(TypeSubstitution(holder), direction)
+                    else -> BoundedWildcard.Dynamic(param, direction)
+                }
+            }
+            is Substitution -> BoundedWildcard.Dynamic(param, direction)
             else -> null
         }
     }

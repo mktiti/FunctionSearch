@@ -35,7 +35,7 @@ class IndirectJarTypeCollector(
 
         templates[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TypeTemplate(
                 info = infoRepo.arrayType,
-                superTypes = listOf(infoRepo.objectType.complete()),
+                superTypes = listOf(infoRepo.objectType.complete().holder()),
                 typeParams = listOf(TypeParameter("X", TypeBounds(emptySet()))),
                 samType = null
         )

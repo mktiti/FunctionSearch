@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.core.util.zipIfSameLength
@@ -10,7 +10,8 @@ import java.util.*
 
 data class MinimalInfo(
         val packageName: PackageName,
-        val simpleName: String
+        val simpleName: String,
+        val virtual: Boolean = false
 ) {
 
     companion object {
@@ -18,10 +19,17 @@ data class MinimalInfo(
                 packageName = info.packageName,
                 simpleName = info.name
         )
+
+        val uniqueVirtual = MinimalInfo(simpleName = "_", packageName = emptyList(), virtual = true)
+
+        val anyWildcard = MinimalInfo(simpleName = "?", packageName = emptyList(), virtual = true)
     }
 
     val nameParts: List<String>
         get() = simpleName.split('.')
+
+    val fullName: String
+        get() = (packageName + simpleName).joinToString(separator = ".")
 
     fun full(artifact: String) = TypeInfo(
             packageName = packageName,
@@ -34,6 +42,18 @@ data class MinimalInfo(
     fun staticComplete(args: List<CompleteMinInfo.Static>) = CompleteMinInfo.Static(this, args)
 
     fun dynamicComplete(args: List<ApplicationParameter>) = CompleteMinInfo.Dynamic(this, args)
+
+    override fun equals(other: Any?): Boolean = when {
+        other !is MinimalInfo -> false
+        this === anyWildcard -> true
+        other === anyWildcard -> true
+        virtual -> this === other && this !== uniqueVirtual
+        else -> {
+            other.simpleName == simpleName && other.packageName == packageName
+        }
+    }
+
+    override fun hashCode(): Int = Objects.hash(simpleName, packageName, virtual)
 
     override fun toString() = (packageName + simpleName).joinToString(separator = ".")
 
@@ -75,7 +95,7 @@ sealed class CompleteMinInfo<out P : Any>(
         override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static? {
             val applied = args.map { arg ->
                 when (arg) {
-                    is Wildcard -> null
+                    is BoundedWildcard -> null
                     is Substitution -> arg.staticApply(typeArgs)?.info
                 } ?: return null
             }

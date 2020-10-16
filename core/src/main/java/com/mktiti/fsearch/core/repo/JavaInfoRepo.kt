@@ -16,12 +16,14 @@ interface JavaInfoRepo {
 
     fun boxed(primitive: PrimitiveType): MinimalInfo
 
+    fun isInternal(info: MinimalInfo): Boolean
+
 }
 
 object MapJavaInfoRepo : JavaInfoRepo {
 
-    private val internalPackage = MinimalInfo(listOf("\$internal"), "")
-    private fun internal(name: String) = internalPackage.copy(simpleName = "\$$name")
+    private val internalPackage = listOf("\$internal")
+    private fun internal(name: String) = MinimalInfo(simpleName = name, packageName = internalPackage, virtual = true)
 
     private val langPackage = MinimalInfo(listOf("java", "lang"), "")
     private fun inLang(name: String) = langPackage.copy(simpleName = name)
@@ -44,5 +46,7 @@ object MapJavaInfoRepo : JavaInfoRepo {
     override fun primitive(primitive: PrimitiveType) = primitiveMap[primitive]
 
     override fun boxed(primitive: PrimitiveType) = boxMap[primitive]
+
+    override fun isInternal(info: MinimalInfo) = info.packageName == internalPackage
 
 }

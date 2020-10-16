@@ -1,17 +1,18 @@
 import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.core.type.TypeBounds
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.upperBounds
-import com.mktiti.fsearch.core.util.JavaTypePrinter
-import com.mktiti.fsearch.core.util.TypePrint
+import com.mktiti.fsearch.core.util.show.JavaTypePrinter
+import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
 import org.junit.jupiter.api.Test
@@ -28,7 +29,7 @@ class FitTest {
     )
     private val resolver: TypeResolver = SingleRepoTypeResolver(repo)
     private val fitter: QueryFitter = JavaQueryFitter(resolver)
-    private val printer: TypePrint = JavaTypePrinter(resolver)
+    private val printer: TypePrint = JavaTypePrinter(resolver, MapJavaInfoRepo)
 
     init {
         println("All Test Types")
@@ -108,7 +109,7 @@ class FitTest {
                                 TypeParameter("T", upperBounds(
                                         TypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        Wildcard.Bounded(SelfSubstitution, LOWER)
+                                                        BoundedWildcard(SelfSubstitution, LOWER)
                                                 ).holder()
                                         )
                                 ))
@@ -157,7 +158,7 @@ class FitTest {
                                 TypeParameter("T", upperBounds(
                                         TypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        Wildcard.Bounded(SelfSubstitution, LOWER)
+                                                        BoundedWildcard(SelfSubstitution, LOWER)
                                                 ).holder()
                                         )
                                 ))
@@ -240,8 +241,8 @@ class FitTest {
                         inputParameters = listOf(
                                 "classifier" to TypeSubstitution( // Function<? super T, ? extends K>
                                         function.forceDynamicApply(
-                                                Wildcard.Bounded(ParamSubstitution(0), LOWER),
-                                                Wildcard.Bounded(ParamSubstitution(1), UPPER)
+                                                BoundedWildcard(ParamSubstitution(0), LOWER),
+                                                BoundedWildcard(ParamSubstitution(1), UPPER)
                                         ).holder()
                                 ),
                                 "supplier" to TypeSubstitution( // Supplier<M>
@@ -249,7 +250,7 @@ class FitTest {
                                 ),
                                 "downstream" to TypeSubstitution( // Collector<? super T, A, D>
                                         collector.forceDynamicApply(
-                                                Wildcard.Bounded(ParamSubstitution(0), LOWER),
+                                                BoundedWildcard(ParamSubstitution(0), LOWER),
                                                 ParamSubstitution(3),
                                                 ParamSubstitution(2)
                                         ).holder()
@@ -258,7 +259,7 @@ class FitTest {
                         output = TypeSubstitution( // Collector<T, ?, M>
                                 collector.forceDynamicApply(
                                         ParamSubstitution(0),
-                                        Wildcard.Direct,
+                                        TypeSubstitution.unboundedWildcard,
                                         ParamSubstitution(4)
                                 ).holder()
                         )

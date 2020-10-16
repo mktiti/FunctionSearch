@@ -1,15 +1,14 @@
 package com.mktiti.fsearch.core.util
 
 import com.mktiti.fsearch.core.fit.*
-import com.mktiti.fsearch.core.repo.MutableTypeRepo
-import com.mktiti.fsearch.core.repo.SetTypeRepo
-import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
-import com.mktiti.fsearch.core.repo.TypeResolver
+import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
+import com.mktiti.fsearch.core.util.show.JavaTypePrinter
+import com.mktiti.fsearch.core.util.show.TypePrint
 
 val defaultRepo: MutableTypeRepo = SetTypeRepo(
         /*rootInfo = TypeInfo(
@@ -89,7 +88,7 @@ fun main() {
     val resolver: TypeResolver = SingleRepoTypeResolver(defaultRepo)
     val fitter = JavaQueryFitter(resolver)
 
-    val printer: TypePrint = JavaTypePrinter(resolver)
+    val printer: TypePrint = JavaTypePrinter(resolver, MapJavaInfoRepo)
 
     printer.printType(objType)
     printer.printType(strType)
@@ -248,8 +247,8 @@ fun main() {
                             "list" to TypeSubstitution(listType.forceDynamicApply(ParamSubstitution(0)).holder()),
                             "mapper" to TypeSubstitution(
                                     functionType.forceDynamicApply(
-                                            Wildcard.Bounded(ParamSubstitution(0), LOWER), // ? sup T
-                                            Wildcard.Bounded(ParamSubstitution(1), UPPER)  // ? ext R
+                                            BoundedWildcard(ParamSubstitution(0), LOWER), // ? sup T
+                                            BoundedWildcard(ParamSubstitution(1), UPPER)  // ? ext R
                                     ).holder()
                             )
                     ),
@@ -325,7 +324,7 @@ fun main() {
             signature = TypeSignature.GenericSignature(
                     typeParameters = listOf(
                             TypeParameter("T", upperBounds(
-                                    TypeSubstitution(comparable.forceDynamicApply(Wildcard.Bounded(SelfSubstitution, LOWER)).holder())
+                                    TypeSubstitution(comparable.forceDynamicApply(BoundedWildcard(SelfSubstitution, LOWER)).holder())
                             ))
                     ),
                     inputParameters = listOf(

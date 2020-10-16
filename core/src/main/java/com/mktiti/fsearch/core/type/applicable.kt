@@ -35,10 +35,6 @@ interface TypeApplicable {
         val argsAsStatic = typeArgs.map {
             when (it) {
                 is TypeSubstitution<*, *> -> it.holder
-                is ApplicationParameter.Wildcard.Direct -> {
-                    // StaticTypeSubstitution(NonGenericType.DirectType(TypeInfo.anyWildcard, emptyList(), null))
-                    null
-                }
                 else -> null
             }
         }.castIfAllInstance<TypeHolder.Static>()

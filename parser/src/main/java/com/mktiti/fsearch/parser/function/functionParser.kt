@@ -111,7 +111,7 @@ fun parseFunction(name: String, signature: String): ImSignature {
     return ImSignature(
         name = name,
         typeParams = parseTypeParams(signatureCtx.typeParameters()),
-        inputs = signatureCtx.javaTypeSignature().map(::parseJavaType),
+        inputs = signatureCtx.javaTypeSignature().map { null to parseJavaType(it) },
         output = parseReturnType(signatureCtx.returnType())
     )
 }

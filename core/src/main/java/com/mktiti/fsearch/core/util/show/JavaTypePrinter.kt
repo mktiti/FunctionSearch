@@ -1,9 +1,10 @@
-package com.mktiti.fsearch.core.util
+package com.mktiti.fsearch.core.util.show
 
 import com.mktiti.fsearch.core.fit.FittingMap
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.fit.QueryType
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.core.type.Type
@@ -11,10 +12,13 @@ import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
 import com.mktiti.fsearch.core.type.TypeTemplate
+import com.mktiti.fsearch.core.util.SemiVisitor
 import java.io.PrintStream
 
 class JavaTypePrinter(
         typeResolver: TypeResolver,
+        private val infoRepo: JavaInfoRepo,
+        private val stringResolver: TypeStringResolver = JavaTypeStringResolver(infoRepo),
         private val output: PrintStream = System.out
 ) : TypePrint {
 
@@ -57,7 +61,7 @@ class JavaTypePrinter(
             if (depth > 0) {
                 output.print(if (hasMore) TypePrintConst.pre else TypePrintConst.preLast)
             }
-            output.println(node.fullName)
+            output.println(stringResolver.resolveSemiName(node))
 
             if (hasMore) {
                 siblingDepths += depth
@@ -69,15 +73,27 @@ class JavaTypePrinter(
         output.println("==================")
     }
 
+    override fun print(query: QueryType) {
+        output.println(stringResolver.resolveQuery(query))
+    }
+
+    override fun printFun(function: FunctionObj) {
+        output.println(stringResolver.resolveFun(function))
+    }
+
+    override fun printFittingMap(result: FittingMap) {
+        output.println("Query fit, where ")
+        output.println(stringResolver.resolveFittingMap(result))
+    }
+
     private fun printFitBase(function: FunctionObj, query: QueryType, strategy: (QueryType, FunctionObj) -> FittingMap?) {
         output.println("==================")
-        output.println("Function: $function")
-        output.println("Query: $query")
-        val result = when (val fitResult = strategy(query, function)) {
-            null -> "Failed to match function with query"
-            else -> fitResult.toString()
+        output.println("Function: ${stringResolver.resolveFun(function)}")
+        output.println("Query: ${stringResolver.resolveQuery(query)}")
+        when (val fitResult = strategy(query, function)) {
+            null -> output.println("Failed to match function with query")
+            else -> printFittingMap(fitResult)
         }
-        output.println(result)
         output.println("==================")
     }
 

@@ -7,6 +7,7 @@ import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SimpleMultiRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
+import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.maven.MavenArtifact
 import com.mktiti.fsearch.parser.maven.MavenCollector
@@ -15,7 +16,6 @@ import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 import java.nio.file.Files
@@ -98,10 +98,12 @@ fun main(args: Array<String>) {
 
     printLog(log)
 
-    val queryParser: QueryParser = AntlrQueryParser(javaRepo, typeRepos)
+    val queryParser: QueryParser = AntlrQueryParser(javaRepo, SimpleMultiRepoTypeResolver(typeRepos))
 
     val typeResolver: TypeResolver = SimpleMultiRepoTypeResolver(typeRepos)
     val fitter: QueryFitter = JavaQueryFitter(typeResolver)
+
+    val typePrint = JavaTypePrinter(typeResolver, MapJavaInfoRepo)
 
     while (true) {
         print(">")
@@ -109,13 +111,16 @@ fun main(args: Array<String>) {
         println("Input: $input")
         try {
             val query = queryParser.parse(input)
-            println("Parsed as: $query")
+            print("Parsed as: ")
+            typePrint.print(query)
             println("Started searching...")
             allFunctions.asSequence().forEach { function ->
                 val result = fitter.fitsQuery(query, function)
                 if (result != null) {
-                    println("Fits function $function")
-                    println("\tas ${result.funSignature}")
+                    print("Fits function ")
+                    typePrint.printFun(function)
+                    typePrint.printFittingMap(result)
+                    // println("\tas ${result.funSignature}")
                 }
             }
             println("Search done!")

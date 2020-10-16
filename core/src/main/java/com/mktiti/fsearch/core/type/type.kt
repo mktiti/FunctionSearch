@@ -1,10 +1,11 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
+import com.mktiti.fsearch.core.util.castIfAllInstance
 import com.mktiti.fsearch.core.util.genericString
 import java.util.*
 
@@ -98,16 +99,21 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
     }
 
     data class DynamicAppliedType(
-            override val completeInfo: CompleteMinInfo.Dynamic,
+            val base: MinimalInfo,
+            val typeArgMapping: List<ApplicationParameter>,
+            // override val completeInfo: CompleteMinInfo.Dynamic,
             override val superTypes: List<TypeHolder<*, *>>,
             override val virtual: Boolean = false
     ) : Type<CompleteMinInfo.Dynamic>(), TypeApplicable {
 
-        override val info: MinimalInfo
-            get() = completeInfo.base
+        override val completeInfo: CompleteMinInfo.Dynamic
+            get() = base.dynamicComplete(typeArgMapping)
 
-        val typeArgMapping
-            get() = completeInfo.args
+        override val info: MinimalInfo
+            get() = base
+
+        // val typeArgMapping
+        //    get() = completeInfo.args
 
         override val samType: SamType<Substitution>? by lazy {
             //ty.samType?.dynamicApply(typeArgMapping)
@@ -126,20 +132,23 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
  */
 
         override val staticApplicable: Boolean
-            get() = typeArgMapping.filterIsInstance<Wildcard.Bounded>().none()
+            get() = typeArgMapping.filterIsInstance<BoundedWildcard>().none()
 
         override fun staticApply(typeArgs: List<TypeHolder.Static>): StaticAppliedType? {
-            return StaticAppliedType(
-                    base = info,
-                    typeArgs = TypeHolder.staticIndirects(completeInfo.staticApply(typeArgs)?.info?.args ?: return null),
-                    superTypes = superTypes.map { it.staticApply(typeArgs) ?: return null },
-                    virtual = virtual
-            )
+            return typeArgMapping.castIfAllInstance<Substitution>()?.let { subArgs ->
+                return StaticAppliedType(
+                        base = info,
+                        typeArgs = subArgs.map { it.staticApply(typeArgs) ?: return null },
+                        superTypes = superTypes.map { it.staticApply(typeArgs) ?: return null },
+                        virtual = virtual
+                )
+            }
         }
 
         fun applySelf(self: TypeHolder.Static): DynamicAppliedType {
             return copy(
-                    completeInfo = completeInfo.applySelf(self),
+                    // completeInfo = completeInfo.applySelf(self),
+                    typeArgMapping = typeArgMapping.map { it.applySelf(self) },
                     superTypes = superTypes.map { it.applySelf(self) }
             )
         }
@@ -177,8 +186,9 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
 
  */
         override fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType? {
-            return DynamicAppliedType(
-                    completeInfo = completeInfo.dynamicApply(typeArgs) ?: return null,
+            return copy(
+                    // completeInfo = completeInfo.dynamicApply(typeArgs) ?: return null,
+                    typeArgMapping = typeArgMapping.map { it.dynamicApply(typeArgs) ?: return null },
                     superTypes = superTypes.map { it.dynamicApply(typeArgs) ?: return null },
                     virtual = virtual
             )
@@ -237,7 +247,9 @@ class TypeTemplate(
 
     override fun dynamicApply(typeArgs: List<ApplicationParameter>): DynamicAppliedType? {
         return DynamicAppliedType(
-            completeInfo = info.dynamicComplete(typeArgs),
+            //completeInfo = info.dynamicComplete(typeArgs),
+            base = info,
+            typeArgMapping = typeArgs,
             superTypes = superTypes.map { it.dynamicApply(typeArgs) ?: return null },
             virtual = virtual
         )

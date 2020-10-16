@@ -4,9 +4,8 @@ package com.mktiti.fsearch.core.repo // For easier extension
 
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
-import com.mktiti.fsearch.core.type.Type.NonGenericType
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
@@ -143,7 +142,7 @@ fun createTestRepo(): MutableTypeRepo {
                     TypeParameter("K", upperBounds(
                             TypeSubstitution(
                                     comparable.forceDynamicApply(
-                                            Wildcard.Bounded(SelfSubstitution, LOWER)
+                                            BoundedWildcard(SelfSubstitution, LOWER)
                                     ).holder()
                             )
                     )),

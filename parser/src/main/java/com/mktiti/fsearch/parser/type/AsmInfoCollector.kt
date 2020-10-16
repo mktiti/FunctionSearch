@@ -4,14 +4,12 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.LOWER
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Bounded.BoundDirection.UPPER
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.util.castIfAllInstance
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.function.ImParam
 import com.mktiti.fsearch.parser.function.ImTypeParam
@@ -51,43 +49,55 @@ private class ImTransformer(
         private val typeParams: List<String>
 ) {
 
-    private fun transformTypeBase(info: MinimalInfo, args: List<ImParam>): Substitution.TypeSubstitution<*, *>? {
-        return if (args.isEmpty()) {
-            StaticTypeSubstitution(info.complete())
+    private fun transformStaticTypeBase(info: MinimalInfo, args: List<ApplicationParameter>): StaticTypeSubstitution? {
+        val completeInfo: CompleteMinInfo.Static = if (args.isEmpty()) {
+            info.complete()
         } else {
-            val mappedArgs = args.map(this::transformDynamicArg).liftNull() ?: return null
-            val staticArgs = mappedArgs.castIfAllInstance<StaticTypeSubstitution>()
+            val staticArgInfos = args.map {
+                when (it) {
+                    is TypeSubstitution<*, *> -> {
+                        when (val holder = it.holder) {
+                            is TypeHolder.Static -> holder.info
+                            is TypeHolder.Dynamic -> null
+                        }
+                    }
+                    else -> null
+                }
+            }.liftNull() ?: return null
 
-            if (staticArgs != null) {
-                StaticTypeSubstitution(info.staticComplete(staticArgs.map { it.type }))
-            } else {
-                DynamicTypeSubstitution(info.dynamicComplete(mappedArgs))
-            }
+            info.staticComplete(staticArgInfos)
         }
+        return TypeSubstitution(completeInfo.holder())
     }
 
-    fun transformType(imType: ImParam.Type): Substitution.TypeSubstitution<*, *>? {
-        return transformTypeBase(imType.info, imType.typeArgs)
+    private fun transformTypeBase(info: MinimalInfo, args: List<ImParam>): TypeSubstitution<*, *>? {
+        val mappedArgs = args.map(this::transformDynamicArg).liftNull() ?: return null
+        return transformStaticTypeBase(info, mappedArgs) ?: TypeSubstitution(info.dynamicComplete(mappedArgs).holder())
     }
 
-    fun transformStaticType(imType: ImParam.Type): StaticTypeSubstitution? = transformType(imType) as? StaticTypeSubstitution
+    fun transformType(imType: ImParam.Type): TypeSubstitution<*, *>? = transformTypeBase(imType.info, imType.typeArgs)
 
-    private fun transformArray(array: ImParam.Array): Substitution.TypeSubstitution<*, *>? {
+    fun transformStaticType(imType: ImParam.Type): StaticTypeSubstitution? {
+        val mappedArgs = imType.typeArgs.map(this::transformDynamicArg).liftNull() ?: return null
+        return transformStaticTypeBase(imType.info, mappedArgs)
+    }
+
+    private fun transformArray(array: ImParam.Array): TypeSubstitution<*, *>? {
         return transformTypeBase(infoRepo.arrayType, listOf(array.type))
     }
 
-    private fun transformWildcard(wildcardParam: ImParam, direction: BoundDirection): Wildcard.Bounded? {
+    private fun transformWildcard(wildcardParam: ImParam, direction: BoundDirection): BoundedWildcard? {
         return when (val param = transformDynamicArg(wildcardParam)) {
-            is Substitution -> Wildcard.Bounded(param, direction)
+            is Substitution -> BoundedWildcard(param, direction)
             else -> null
         }
     }
 
     private fun transformDynamicArg(imParam: ImParam): ApplicationParameter? {
-        fun infoType(getter: JavaInfoRepo.() -> MinimalInfo) = StaticTypeSubstitution(infoRepo.getter().complete())
+        fun infoType(getter: JavaInfoRepo.() -> MinimalInfo) = TypeSubstitution(infoRepo.getter().complete().holder())
 
         return when (imParam) {
-            ImParam.Wildcard -> Wildcard.Direct
+            ImParam.Wildcard -> TypeSubstitution(MinimalInfo.anyWildcard.complete().holder())
             is ImParam.UpperWildcard -> transformWildcard(imParam.param, UPPER)
             is ImParam.LowerWildcard -> transformWildcard(imParam.param, LOWER)
             is ImParam.Primitive -> infoType { primitive(imParam.value) }
@@ -123,7 +133,7 @@ private class AsmInfoCollectorVisitor(
     ) {
         directTypes.mutableSubtreeSafe(info.packageName)[info.simpleName] = DirectType(
                 minInfo = info,
-                superTypes = superTypes,
+                superTypes = TypeHolder.staticIndirects(superTypes),
                 samType = null,
                 virtual = false
         )
@@ -136,7 +146,7 @@ private class AsmInfoCollectorVisitor(
     ) {
         typeTemplates.mutableSubtreeSafe(info.packageName)[info.simpleName] = TypeTemplate(
                 info = info,
-                superTypes = superTypes,
+                superTypes = TypeHolder.anyIndirects(superTypes),
                 typeParams = typeParams,
                 samType = null,
                 virtual = false
@@ -308,7 +318,7 @@ private class AsmInfoCollectorVisitor(
                 is ParsedType.Direct -> {
                     val transformer = ImTransformer(infoRepo, emptyList())
                     val templateSupers: List<CompleteMinInfo.Static> = ts.map { imSuper ->
-                        transformer.transformStaticType(imSuper)?.type
+                        transformer.transformStaticType(imSuper)?.holder?.info
                     }.liftNull() ?: error("Direct type '$info' has non-static supertypes (raw usage?)")
 
                     addDirect(
@@ -321,12 +331,12 @@ private class AsmInfoCollectorVisitor(
                     val transformer = ImTransformer(infoRepo, params)
 
                     val templateSupers: List<CompleteMinInfo<*>> = ts.map { imSuper ->
-                        transformer.transformType(imSuper)?.type
+                        transformer.transformType(imSuper)?.holder?.info
                     }.liftNull()!!
 
                     addTemplate(
                             info = info,
-                            typeParams = params.map { TypeParameter(it, upperBounds(StaticTypeSubstitution(infoRepo.objectType.complete()))) }, // TODO
+                            typeParams = params.map { TypeParameter(it, upperBounds(TypeSubstitution(infoRepo.objectType.complete().holder()))) }, // TODO
                             superTypes = directSupers + templateSupers
                     )
                 }

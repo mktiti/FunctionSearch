@@ -76,8 +76,7 @@ class JavaTypeBoundFitter(
                         is TypeHolder.Static -> paramFitter.subStatic(holder, arg, InheritanceLogic.INVARIANCE).fitOrNot()
                     }
                 }
-                ApplicationParameter.Wildcard.Direct -> Fit
-                is ApplicationParameter.Wildcard.Bounded -> {
+                is ApplicationParameter.BoundedWildcard -> {
                     paramFitter.subAny(emptyList(), param, arg, param.subVariance).asResult()
                 }
             }

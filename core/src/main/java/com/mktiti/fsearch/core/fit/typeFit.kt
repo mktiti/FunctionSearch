@@ -10,7 +10,7 @@ import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.nList
@@ -147,8 +147,7 @@ class JavaQueryFitter(
                     }
                 }
             }
-            is Wildcard.Direct -> ConstraintsKept
-            is Wildcard.Bounded -> {
+            is BoundedWildcard -> {
                 when (subAny(context, argPar.param, subType, argPar.subVariance)) {
                     Failure -> Failure
                     ConstraintsKept -> ConstraintsKept

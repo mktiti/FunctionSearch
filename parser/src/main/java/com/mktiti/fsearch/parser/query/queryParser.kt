@@ -2,17 +2,15 @@ package com.mktiti.fsearch.parser.query
 
 import com.mktiti.fsearch.core.fit.QueryType
 import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.core.type.Type
+import com.mktiti.fsearch.core.type.TypeHolder
 import com.mktiti.fsearch.core.util.TypeException
 import com.mktiti.fsearch.core.util.forceStaticApply
 import com.mktiti.fsearch.parser.generated.QueryLexer
 import com.mktiti.fsearch.parser.generated.QueryParser.*
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
-import com.mktiti.fsearch.parser.util.anyDirect
-import com.mktiti.fsearch.parser.util.anyTemplate
-import com.mktiti.fsearch.parser.util.fromAny
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.tree.TerminalNode
@@ -25,7 +23,7 @@ interface QueryParser {
 
 class AntlrQueryParser(
         private val javaRepo: JavaRepo,
-        private val typeRepos: Collection<TypeRepo>
+        private val typeResolver: TypeResolver
 ) : QueryParser {
 
     private fun ifArray(type: Type.NonGenericType, arrayLiteral: List<TerminalNode>?): Type.NonGenericType {
@@ -35,7 +33,7 @@ class AntlrQueryParser(
     private tailrec fun arrayOf(type: Type.NonGenericType, depth: Int): Type.NonGenericType = if (depth == 0) {
         type
     } else {
-        arrayOf(javaRepo.arrayOf(type), depth - 1)
+        arrayOf(javaRepo.arrayOf(type.holder()), depth - 1)
     }
 
     private fun buildFullType(completeName: CompleteNameContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
@@ -45,15 +43,15 @@ class AntlrQueryParser(
             return ifArray(virtual, completeName.ARRAY_LITERAL())
         }
 
-        val type = when (val typeSignature = completeName.templateSignature()) {
+        val type: Type.NonGenericType = when (val typeSignature = completeName.templateSignature()) {
             null -> {
-                PrimitiveType.fromNameSafe(name)?.let(javaRepo::primitive)
-                        ?: typeRepos.anyDirect(name, allowSimple = true)
+                PrimitiveType.fromNameSafe(name)?.let(javaRepo::primitive)?.with(typeResolver)
+                        ?: typeResolver.get(name, allowSimple = true)
                         ?: throw TypeException("Simple type $name not found")
             }
             else -> {
                 val typeArgs = typeSignature.completeName().map { buildFullType(it, paramVirtualTypes) }
-                typeRepos.anyTemplate(name, allowSimple = true)?.forceStaticApply(typeArgs)
+                typeResolver.template(name, allowSimple = true)?.forceStaticApply(TypeHolder.staticDirects(typeArgs))
                         ?: throw TypeException("Generic type $name not found")
             }
         }
@@ -83,7 +81,7 @@ class AntlrQueryParser(
         fun WrappedFunArgContext.mapArg() = buildArg(this, paramVirtualTypes)
 
         val inArgs = (funSignature.inArgs().wrappedFunArg() ?: emptyList()).map { it.mapArg() }
-        val outArg = funSignature.outArg().wrappedFunArg()?.mapArg() ?: javaRepo.voidType
+        val outArg = funSignature.outArg().wrappedFunArg()?.mapArg() ?: javaRepo.voidType.with(typeResolver) ?: error("Void not found")
 
         return QueryType(inArgs, outArg)
     }
@@ -101,7 +99,7 @@ class AntlrQueryParser(
         val parseTree: QueryContext = parser.query()
 
         val typeParams = QueryTypeParameterSelector.visit(parseTree)
-        val root = typeRepos.fromAny { rootType }!! // TODO
+        val root = javaRepo.objectType.with(typeResolver) ?: error("Object not found") // TODO
         val paramVirtualTypes = typeParams.map { param ->
             param to QueryType.virtualType(param, listOf(root))
         }.toMap()

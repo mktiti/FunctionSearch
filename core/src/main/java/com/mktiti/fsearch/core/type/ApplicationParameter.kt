@@ -6,46 +6,36 @@ typealias StaticTypeSubstitution = ApplicationParameter.Substitution.TypeSubstit
 
 sealed class ApplicationParameter {
 
-    sealed class Wildcard : ApplicationParameter() {
-        object Direct : Wildcard() {
-            override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
+    data class BoundedWildcard(
+            val param: Substitution,
+            val direction: BoundDirection
+    ) : ApplicationParameter() {
 
-            override fun applySelf(self: TypeHolder.Static) = this
-
-            override fun toString() = "?"
+        enum class BoundDirection(
+                val subVariance: InheritanceLogic,
+                val keyword: String
+        ) {
+            UPPER(InheritanceLogic.COVARIANCE, "extends"),
+            LOWER(InheritanceLogic.CONTRAVARIANCE, "super")
         }
 
-        data class Bounded(
-                val param: Substitution,
-                private val direction: BoundDirection
-        ) : Wildcard() {
+        val subVariance: InheritanceLogic
+            get() = direction.subVariance
 
-            enum class BoundDirection(
-                    val subVariance: InheritanceLogic,
-                    val keyword: String
-            ) {
-                UPPER(InheritanceLogic.COVARIANCE, "extends"),
-                LOWER(InheritanceLogic.CONTRAVARIANCE, "super")
+        override fun dynamicApply(typeParams: List<ApplicationParameter>): BoundedWildcard? {
+            return when (val applied = param.dynamicApply(typeParams)) {
+                null -> null
+                is Substitution -> copy(param = applied)
+                is BoundedWildcard -> if (direction == applied.direction) applied else null
             }
-
-            val subVariance: InheritanceLogic
-                get() = direction.subVariance
-
-            override fun dynamicApply(typeParams: List<ApplicationParameter>): Wildcard? {
-                return when (val applied = param.dynamicApply(typeParams)) {
-                    null -> null
-                    is Substitution -> copy(param = applied)
-                    Direct -> Direct
-                    is Bounded -> if (direction == applied.direction) applied else null
-                }
-            }
-
-            override fun applySelf(self: TypeHolder.Static) = copy(
-                    param = param.applySelf(self)
-            )
-
-            override fun toString() = "? ${direction.keyword} $param"
         }
+
+        override fun applySelf(self: TypeHolder.Static) = copy(
+                param = param.applySelf(self)
+        )
+
+        override fun toString() = "? ${direction.keyword} $param"
+
     }
 
     sealed class Substitution : ApplicationParameter(), StaticApplicable {
@@ -75,6 +65,10 @@ sealed class ApplicationParameter {
         class TypeSubstitution<out I : CompleteMinInfo<*>, out T : Type<I>>(
                 val holder: TypeHolder<I, T>
         ) : Substitution() {
+
+            companion object {
+                val unboundedWildcard: StaticTypeSubstitution = TypeSubstitution(MinimalInfo.anyWildcard.complete().holder())
+            }
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): TypeSubstitution<*, *>? {
                 return when (holder) {

@@ -12,7 +12,11 @@ interface TypeResolver {
 
     operator fun get(info: MinimalInfo): DirectType?
 
+    operator fun get(name: String, allowSimple: Boolean = false): DirectType?
+
     fun template(info: MinimalInfo): TypeTemplate?
+
+    fun template(name: String, allowSimple: Boolean = false): TypeTemplate?
 
     operator fun get(info: CompleteMinInfo.Static): NonGenericType? {
         return if (info.args.isEmpty()) {
@@ -42,6 +46,9 @@ class SingleRepoTypeResolver(
 
     override fun template(info: MinimalInfo) = repo.template(info)
 
+    override fun get(name: String, allowSimple: Boolean): DirectType? = repo[name, allowSimple]
+
+    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = repo.template(name, allowSimple)
 }
 
 class SimpleMultiRepoTypeResolver(
@@ -53,5 +60,9 @@ class SimpleMultiRepoTypeResolver(
     override fun get(info: MinimalInfo) = first { it[info] }
 
     override fun template(info: MinimalInfo) = first { it.template(info) }
+
+    override fun get(name: String, allowSimple: Boolean) = first { it[name, allowSimple] }
+
+    override fun template(name: String, allowSimple: Boolean) = first { it.template(name, allowSimple) }
 
 }

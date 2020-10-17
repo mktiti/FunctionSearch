@@ -87,7 +87,7 @@ sealed class ApplicationParameter {
         ) : Substitution() {
 
             companion object {
-                val unboundedWildcard: StaticTypeSubstitution = TypeSubstitution(MinimalInfo.anyWildcard.complete().holder())
+                val unboundedWildcard: StaticTypeSubstitution = TypeSubstitution(TypeHolder.anyWildcard)
             }
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): TypeSubstitution<*, *>? {

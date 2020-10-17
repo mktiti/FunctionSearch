@@ -2,6 +2,11 @@
 
 package com.mktiti.fsearch.util
 
+fun <T> List<T>.indexOfOrNull(element: T): Int? = when (val index = indexOf(element)) {
+    -1 -> null
+    else -> index
+}
+
 fun <T> T.repeat(count: Int): List<T> = (0 until count).map { this }
 
 fun <T> List<T>.safeCutHead(): Pair<T, List<T>>? = if (isEmpty()) {

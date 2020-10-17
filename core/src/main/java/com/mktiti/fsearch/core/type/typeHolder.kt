@@ -12,6 +12,8 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
     }
 
     companion object {
+        val anyWildcard = MinimalInfo.anyWildcard.complete().holder()
+
         fun staticDirects(types: List<NonGenericType>) = types.map { Static.Direct(it) }
         fun dynamicDirects(types: List<DynamicAppliedType>) = types.map { Dynamic.Direct(it) }
         fun anyDirects(types: List<Type<*>>): List<TypeHolder<*, *>> = types.map<Type<*>, TypeHolder<*, *>> {

@@ -71,9 +71,9 @@ fun main(args: Array<String>) {
     val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
     // val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
     val jclCollector = IndirectJarTypeCollector(MapJavaInfoRepo)
-    val (javaRepo, jclRepo) = jclCollector.collectJcl("JCL", jclJarInfo)
+    val (javaRepo, jclRepo) = jclCollector.collectJcl(jclJarInfo, "JCL")
     val jclResolver = SingleRepoTypeResolver(jclRepo)
-    val jclFunctions = JarFileFunctionCollector(javaRepo).collectFunctions(jclJarInfo, jclResolver)
+    val jclFunctions = JarFileFunctionCollector.collectFunctions(jclJarInfo, javaRepo, jclResolver)
 
     printLoadResults(jclRepo, jclFunctions)
 
@@ -83,10 +83,10 @@ fun main(args: Array<String>) {
             "org.apache.commons:commons-math3:3.6.1"
     )
 
-    val mavenCollector = MavenCollector(MavenManager.central, log, MapJavaInfoRepo, javaRepo)
+    val mavenCollector = MavenCollector(MavenManager.central, log, MapJavaInfoRepo)
     val results = testArtifacts.map {
         val artifact = MavenArtifact.parse(it)!!
-        mavenCollector.collectCombined(artifact, jclResolver).apply {
+        mavenCollector.collectCombined(artifact, javaRepo, jclResolver).apply {
             printLoadResults(typeRepo, functions)
         }
     }

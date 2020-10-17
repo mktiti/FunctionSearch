@@ -2,17 +2,19 @@ package com.mktiti.fsearch.parser.type
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.castIfAllInstance
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.function.ImParam
-import com.mktiti.fsearch.parser.function.ImTypeParam
+import com.mktiti.fsearch.parser.intermediate.DefaultSignatureParser
+import com.mktiti.fsearch.parser.intermediate.JavaSignatureParser
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
 import com.mktiti.fsearch.parser.util.AsmUtil
 import com.mktiti.fsearch.util.MutablePrefixTree
@@ -32,8 +34,8 @@ interface AsmInfoCollectorView {
 
 object AsmInfoCollector {
 
-    fun collect(artifact: String, infoRepo: JavaInfoRepo, load: AsmInfoCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
-        val visitor = AsmInfoCollectorVisitor(artifact, infoRepo)
+    fun collect(infoRepo: JavaInfoRepo, load: AsmInfoCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
+        val visitor = AsmInfoCollectorVisitor(infoRepo)
         object : AsmInfoCollectorView {
             override fun loadEntry(input: InputStream) {
                 ClassReader(input).accept(visitor, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
@@ -43,7 +45,7 @@ object AsmInfoCollector {
     }
 
 }
-
+/*
 private class ImTransformer(
         private val infoRepo: JavaInfoRepo,
         private val typeParams: List<String>
@@ -103,7 +105,7 @@ private class ImTransformer(
         fun infoType(getter: JavaInfoRepo.() -> MinimalInfo) = TypeSubstitution(infoRepo.getter().complete().holder())
 
         return when (imParam) {
-            ImParam.Wildcard -> TypeSubstitution(MinimalInfo.anyWildcard.complete().holder())
+            ImParam.Wildcard -> TypeSubstitution.unboundedWildcard
             is ImParam.UpperWildcard -> transformWildcard(imParam.param, UPPER)
             is ImParam.LowerWildcard -> transformWildcard(imParam.param, LOWER)
             is ImParam.Primitive -> infoType { primitive(imParam.value) }
@@ -116,13 +118,19 @@ private class ImTransformer(
 
 }
 
+ */
+
 private class AsmInfoCollectorVisitor(
-        private val artifact: String,
         private val infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
 
+    private val signatureParser: JavaSignatureParser = DefaultSignatureParser(infoRepo)
+
     val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
     val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
+
+    // val directInfos: MutablePrefixTree<String, CreatorInfo.Direct> = mapMutablePrefixTree()
+    // val templateInfos: MutablePrefixTree<String, CreatorInfo.Template> = mapMutablePrefixTree()
 
     private data class TypeMeta(
             val info: MinimalInfo,
@@ -133,16 +141,52 @@ private class AsmInfoCollectorVisitor(
 
     private var currentType: TypeMeta? = null
 
+    /*
     private fun addDirect(
             info: MinimalInfo,
             superTypes: List<CompleteMinInfo.Static>
     ) {
-        directTypes.mutableSubtreeSafe(info.packageName)[info.simpleName] = DirectType(
+        directInfos.mutableSubtreeSafe(info.packageName)[info.simpleName] = CreatorInfo.Direct(
+                info = info,
+                directSupers = superTypes
+        )
+    }
+
+    private fun addTemplate(
+            info: MinimalInfo,
+            typeParams: List<TypeParamInfo>,
+            directSupers: List<CompleteMinInfo.Static>,
+            datSupers: List<CompleteMinInfo.Dynamic>
+    ) {
+        templateInfos.mutableSubtreeSafe(info.packageName)[info.simpleName] = CreatorInfo.Template(
+                info = info,
+                typeParams = typeParams,
+                directSupers = directSupers,
+                datSupers = datSupers
+        )
+    }
+    */
+
+    private fun addDirect(type: DirectType) {
+        directTypes.mutableSubtreeSafe(type.info.packageName)[type.info.simpleName] = type
+    }
+
+    private fun addDirect(
+            info: MinimalInfo,
+            superTypes: List<CompleteMinInfo.Static>
+    ) {
+        addDirect(
+            DirectType(
                 minInfo = info,
                 superTypes = TypeHolder.staticIndirects(superTypes),
                 samType = null,
                 virtual = false
+            )
         )
+    }
+
+    private fun addTemplate(template: TypeTemplate) {
+        typeTemplates.mutableSubtreeSafe(template.info.packageName)[template.info.simpleName] = template
     }
 
     private fun addTemplate(
@@ -150,12 +194,14 @@ private class AsmInfoCollectorVisitor(
             superTypes: List<CompleteMinInfo<*>>,
             typeParams: List<TypeParameter>
     ) {
-        typeTemplates.mutableSubtreeSafe(info.packageName)[info.simpleName] = TypeTemplate(
+        addTemplate(
+            TypeTemplate(
                 info = info,
                 superTypes = TypeHolder.anyIndirects(superTypes),
                 typeParams = typeParams,
                 samType = null,
                 virtual = false
+            )
         )
     }
 
@@ -274,12 +320,12 @@ private class AsmInfoCollectorVisitor(
 
     private fun createInitials(meta: TypeMeta) {
         val (info, signature, superNames) = meta
-        val superCount = superNames.size
 
-        val nestContext = if (meta.nestDepth != null) {
+        val nestContext: List<TypeParameter> = if (meta.nestDepth != null) {
             val nests = info.simpleName.split(".").dropLast(1)
             val depth = Integer.min(meta.nestDepth, nests.size)
 
+            //val nestPackage: PrefixTree<String, CreatorInfo.Template> = templateInfos.mutableSubtreeSafe(info.packageName)
             val nestPackage: PrefixTree<String, TypeTemplate> = typeTemplates.mutableSubtreeSafe(info.packageName)
 
             val affectingNests = nests.takeLast(depth)
@@ -304,19 +350,36 @@ private class AsmInfoCollectorVisitor(
                     superTypes = superNames.map(AsmUtil::parseCompleteStaticName)
             )
         } else {
-            val nestTypeParams = nestContext.map {
-                // TODO param bounds
-                ImTypeParam(it.sign, emptyList())
+
+            if (signature == null) {
+                addTemplate(
+                        info = info,
+                        typeParams = nestContext,
+                        superTypes = superNames.map { directSuper ->
+                            AsmUtil.parseName(directSuper).complete()
+                        }
+                )
+            } else {
+                when (val direct = signatureParser.parseDirectTypeSignature(info, signature)) {
+                    null -> {
+                        addTemplate(signatureParser.parseTemplateSignature(info, signature, nestContext))
+                    }
+                    else -> {
+                        addDirect(direct)
+                    }
+                }
             }
 
+            /*
             val type = if (signature == null) {
                 ParsedType.Template(
-                        typeParams = nestTypeParams,
+                        typeParams = nestContext,
                         superTypes = superNames.map { ImParam.Type(AsmUtil.parseName(it), emptyList()) }
                 )
             } else {
-                parseType(signature, nestTypeParams)
+                TypeParser.parseType(signature)
             }
+
             val (ds, ts) = type.supersTypes.partition { it.typeArgs.isEmpty() }
             val directSupers: List<CompleteMinInfo.Static> = ds.map { it.info.complete() }
 
@@ -333,20 +396,22 @@ private class AsmInfoCollectorVisitor(
                     )
                 }
                 is ParsedType.Template -> {
-                    val params = type.typeParams.map { it.sign }
-                    val transformer = ImTransformer(infoRepo, params)
+                    val paramNames = type.typeParams.map { it.sign }
+                    val transformer = ImTransformer(infoRepo, paramNames)
 
-                    val templateSupers: List<CompleteMinInfo<*>> = ts.map { imSuper ->
+                    val datSupers: List<CompleteMinInfo.Dynamic> = ts.map { imSuper ->
                         transformer.transformType(imSuper)?.holder?.info
-                    }.liftNull()!!
+                    }.liftNull()?.castIfAllInstance()!!
 
                     addTemplate(
                             info = info,
-                            typeParams = params.map { TypeParameter(it, upperBounds(TypeSubstitution(infoRepo.objectType.complete().holder()))) }, // TODO
-                            superTypes = directSupers + templateSupers
+                            typeParams = type.typeParams,
+                            directSupers = directSupers,
+                            datSupers = datSupers
                     )
                 }
             }
+             */
         }
     }
 

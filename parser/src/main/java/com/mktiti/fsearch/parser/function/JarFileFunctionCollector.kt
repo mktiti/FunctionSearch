@@ -8,11 +8,9 @@ import com.mktiti.fsearch.parser.service.FunctionCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import java.util.zip.ZipFile
 
-class JarFileFunctionCollector(
-        private val javaRepo: JavaRepo
-) : FunctionCollector<JarFileInfoCollector.JarInfo> {
+object JarFileFunctionCollector : FunctionCollector<JarFileInfoCollector.JarInfo> {
 
-    override fun collectFunctions(info: JarFileInfoCollector.JarInfo, dependencyResolver: TypeResolver): Collection<FunctionObj> {
+    override fun collectFunctions(info: JarFileInfoCollector.JarInfo, javaRepo: JavaRepo, dependencyResolver: TypeResolver): Collection<FunctionObj> {
         return AsmFunctionCollector.collect(javaRepo, dependencyResolver) {
             info.paths.forEach { jarPath ->
                 ZipFile(jarPath.toFile()).use { jar ->

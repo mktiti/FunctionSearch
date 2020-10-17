@@ -2,7 +2,6 @@ package com.mktiti.fsearch.parser.type
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
-import com.mktiti.fsearch.parser.service.InfoCollector
 import java.nio.file.Path
 import java.util.zip.ZipFile
 
@@ -16,7 +15,7 @@ class JarFileInfoCollector(
     )
 
     override fun collectInitial(info: JarInfo): IndirectInfoCollector.IndirectInitialData {
-        return AsmInfoCollector.collect(info.name, infoRepo) {
+        return AsmInfoCollector.collect(infoRepo) {
             info.paths.forEach { jarPath ->
                 ZipFile(jarPath.toFile()).use { jar ->
                     val entries = jar.entries().toList()

@@ -6,14 +6,8 @@ import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.type.TypeBounds
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.TypeTemplate
-import com.mktiti.fsearch.parser.service.InfoCollector
-import com.mktiti.fsearch.parser.util.JavaTypeParseLog
-
-interface JarTypeCollector<I> {
-
-    fun collectArtifact(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver): TypeRepo
-
-}
+import com.mktiti.fsearch.parser.service.JarTypeCollector
+import com.mktiti.fsearch.parser.service.JclCollector
 
 class IndirectJarTypeCollector(
         private val infoRepo: JavaInfoRepo
@@ -30,7 +24,7 @@ class IndirectJarTypeCollector(
         )
     }
 
-    override fun collectJcl(name: String, info: JarFileInfoCollector.JarInfo): JclCollector.JclResult {
+    override fun collectJcl(info: JarFileInfoCollector.JarInfo, name: String): JclCollector.Result {
         val (directs, templates) = infoCollector.collectInitial(info)
 
         templates[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TypeTemplate(
@@ -60,21 +54,14 @@ class IndirectJarTypeCollector(
                 templates = templates
         )
 
-        return JclCollector.JclResult(
+        return JclCollector.Result(
                 javaRepo = javaRepo,
-                typeRepo = typeRepo
+                jclRepo = typeRepo
         )
     }
 
 }
 
-interface JclCollector<I> {
-
-    data class JclResult(val javaRepo: JavaRepo, val typeRepo: TypeRepo)
-
-    fun collectJcl(name: String, info: I): JclResult
-
-}
 /*
 class TwoPhaseCollector<I>(
         private val infoRepo: JavaInfoRepo,

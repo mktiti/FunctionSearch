@@ -82,7 +82,7 @@ class JavaTypePrinter(
     }
 
     override fun printFittingMap(result: FittingMap) {
-        output.println("Query fit, where ")
+        output.print("Query fit, where ")
         output.println(stringResolver.resolveFittingMap(result))
     }
 

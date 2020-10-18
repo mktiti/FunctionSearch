@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.parser.type
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.parser.asm.AsmInfoCollector
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
 import java.nio.file.Path
 import java.util.zip.ZipFile

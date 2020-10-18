@@ -1,46 +1,23 @@
-package com.mktiti.fsearch.parser.type
+package com.mktiti.fsearch.parser.asm
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection
-import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
-import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.util.castIfAllInstance
-import com.mktiti.fsearch.core.util.liftNull
-import com.mktiti.fsearch.parser.function.ImParam
-import com.mktiti.fsearch.parser.intermediate.DefaultSignatureParser
-import com.mktiti.fsearch.parser.intermediate.JavaSignatureParser
+import com.mktiti.fsearch.parser.intermediate.DefaultTypeParser
+import com.mktiti.fsearch.parser.intermediate.JavaSignatureTypeParser
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
-import com.mktiti.fsearch.parser.util.AsmUtil
 import com.mktiti.fsearch.util.MutablePrefixTree
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree
-import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.Opcodes
-import java.io.InputStream
-
-interface AsmInfoCollectorView {
-
-    fun loadEntry(input: InputStream)
-
-}
 
 object AsmInfoCollector {
 
-    fun collect(infoRepo: JavaInfoRepo, load: AsmInfoCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
+    fun collect(infoRepo: JavaInfoRepo, load: AsmCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
         val visitor = AsmInfoCollectorVisitor(infoRepo)
-        object : AsmInfoCollectorView {
-            override fun loadEntry(input: InputStream) {
-                ClassReader(input).accept(visitor, ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES)
-            }
-        }.load()
+        DefaultAsmCollectorView(visitor).load()
         return IndirectInfoCollector.IndirectInitialData(visitor.directTypes, visitor.typeTemplates)
     }
 
@@ -124,7 +101,7 @@ private class AsmInfoCollectorVisitor(
         private val infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
 
-    private val signatureParser: JavaSignatureParser = DefaultSignatureParser(infoRepo)
+    private val typeParser: JavaSignatureTypeParser = DefaultTypeParser(infoRepo)
 
     val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
     val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
@@ -360,9 +337,9 @@ private class AsmInfoCollectorVisitor(
                         }
                 )
             } else {
-                when (val direct = signatureParser.parseDirectTypeSignature(info, signature)) {
+                when (val direct = typeParser.parseDirectTypeSignature(info, signature)) {
                     null -> {
-                        addTemplate(signatureParser.parseTemplateSignature(info, signature, nestContext))
+                        addTemplate(typeParser.parseTemplateSignature(info, signature, nestContext))
                     }
                     else -> {
                         addDirect(direct)

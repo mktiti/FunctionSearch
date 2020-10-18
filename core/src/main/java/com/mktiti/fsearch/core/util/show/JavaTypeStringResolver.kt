@@ -119,13 +119,12 @@ class JavaTypeStringResolver(
             val ins = if (inputParameters.isEmpty()) {
                 "(() -> "
             } else {
-                inputParameters.joinToString(prefix = "(", separator = ", ", postfix = " -> ") { (name, param) ->
+                inputParameters.joinToString(prefix = "(", separator = ", ", postfix = ") -> ") { (name, param) ->
                     name + ": " + resolveMapSub(param, typeParams)
                 }
             }
             append(ins)
             append(resolveMapSub(output, typeParams))
-            append(")")
         }
     }
 

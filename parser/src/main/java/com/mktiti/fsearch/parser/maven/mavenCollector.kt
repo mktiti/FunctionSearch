@@ -32,14 +32,14 @@ class MavenCollector(
             paths = listOf(file.toPath())
     )
 
-    override fun collectCombined(info: MavenArtifact, javaRepo: JavaRepo, dependenyResolver: TypeResolver): CombinedCollector.Result {
+    override fun collectCombined(info: MavenArtifact, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependenyResolver: TypeResolver): CombinedCollector.Result {
         return MavenManager.onArtifact(repoInfo, info) { file ->
             val jarInfo = jarInfo(info, file)
             println(">>> Loading downloaded artifact $info")
 
             val typeRepo = backingTypeCollector.collectArtifact(jarInfo, javaRepo, dependenyResolver)
             val extendedResolver = FallbackResolver(typeRepo, dependenyResolver)
-            val functions = JarFileFunctionCollector.collectFunctions(jarInfo, javaRepo, extendedResolver)
+            val functions = JarFileFunctionCollector.collectFunctions(jarInfo, javaRepo, infoRepo, extendedResolver)
 
             CombinedCollector.Result(typeRepo, functions)
         }

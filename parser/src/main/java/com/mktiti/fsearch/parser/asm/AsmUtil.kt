@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.parser.util
+package com.mktiti.fsearch.parser.asm
 
 import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo

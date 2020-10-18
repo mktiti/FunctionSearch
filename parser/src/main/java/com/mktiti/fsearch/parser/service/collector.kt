@@ -31,11 +31,11 @@ interface FunctionCollector<in I> {
         fun empty(): Collection<FunctionObj> = emptyList()
 
         fun <I> nop() = object : FunctionCollector<I> {
-            override fun collectFunctions(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver) = empty()
+            override fun collectFunctions(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver) = empty()
         }
     }
 
-    fun collectFunctions(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver): Collection<FunctionObj>
+    fun collectFunctions(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): Collection<FunctionObj>
 
 }
 
@@ -43,7 +43,7 @@ interface CombinedCollector<in I> {
 
     companion object {
         fun <I> nop() = object : CombinedCollector<I> {
-            override fun collectCombined(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver) = Result(
+            override fun collectCombined(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver) = Result(
                     JarTypeCollector.empty(), FunctionCollector.empty()
             )
         }
@@ -54,7 +54,7 @@ interface CombinedCollector<in I> {
             val functions: Collection<FunctionObj>
     )
 
-    fun collectCombined(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver): Result
+    fun collectCombined(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): Result
 
 }
 
@@ -63,10 +63,10 @@ class FallbackCombinedCollector<in I>(
         private val functionCollector: FunctionCollector<I>
 ) : CombinedCollector<I> {
 
-    override fun collectCombined(info: I, javaRepo: JavaRepo, dependencyResolver: TypeResolver): CombinedCollector.Result {
+    override fun collectCombined(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): CombinedCollector.Result {
         val types = typeCollector.collectArtifact(info, javaRepo, dependencyResolver)
         val extendedResolver = FallbackResolver(types, dependencyResolver)
-        val functions = functionCollector.collectFunctions(info, javaRepo, extendedResolver)
+        val functions = functionCollector.collectFunctions(info, javaRepo, infoRepo, extendedResolver)
         return CombinedCollector.Result(types, functions)
     }
 

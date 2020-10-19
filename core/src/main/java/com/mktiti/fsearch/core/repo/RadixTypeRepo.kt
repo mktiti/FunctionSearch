@@ -1,7 +1,6 @@
 package com.mktiti.fsearch.core.repo
 
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.elseNull
 import com.mktiti.fsearch.util.PrefixTree
@@ -12,23 +11,23 @@ class RadixTypeRepo(
         private val templates: PrefixTree<String, TypeTemplate>
 ) : TypeRepo {
 
-    override val rootType: DirectType
-        get() = javaRepo.objectType
+    // override val rootType: DirectType
+    //    get() = javaRepo.objectType
 
-    override val defaultTypeBounds = TypeBounds(
-            upperBounds = setOf(StaticTypeSubstitution(rootType))
-    )
+    // override val defaultTypeBounds = TypeBounds(
+    //        upperBounds = setOf(TypeSubstitution(rootType.completeInfo.holder()))
+    // )
 
     // TODO think through - maybe cache?
-    private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.name to it }.toMap()
+    private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.simpleName to it }.toMap()
 
     private val directSimpleIndex = simpleNames(directs)
     private val templateSimpleIndex = simpleNames(templates)
 
-    private val rootSuper = listOf(SuperType.StaticSuper.EagerStatic(rootType))
-    private val funTypeInfo = TypeInfo("TestFun", emptyList(), "")
-    private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
-
+  //  private val rootSuper = listOf(SuperType.StaticSuper.EagerStatic(rootType))
+  //  private val funTypeInfo = TypeInfo("\$fun", listOf("\$internal"), "")
+    //private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
+/*
     private fun createFunType(paramCount: Int): TypeTemplate {
         return TypeTemplate(
                 info = funTypeInfo.copy(name = funTypeInfo.name + paramCount),
@@ -36,9 +35,9 @@ class RadixTypeRepo(
                 superTypes = rootSuper
         )
     }
-
+*/
     // TODO optimize or remove
-    override val allTypes: Collection<Type>
+    override val allTypes: Collection<DirectType>
         get() = directs.toList()
 
     // TODO optimize or remove
@@ -60,6 +59,6 @@ class RadixTypeRepo(
 
     override fun template(info: MinimalInfo): TypeTemplate? = templates[info]
 
-    override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
+    // override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
 
 }

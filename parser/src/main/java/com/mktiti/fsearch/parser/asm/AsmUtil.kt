@@ -1,5 +1,6 @@
-package com.mktiti.fsearch.parser.util
+package com.mktiti.fsearch.parser.asm
 
+import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.util.cutLast
 
@@ -10,5 +11,7 @@ object AsmUtil {
         val (packageName, simpleName) = splitName.cutLast()
         return MinimalInfo(packageName, simpleName.replace('$', '.'))
     }
+
+    fun parseCompleteStaticName(type: String): CompleteMinInfo.Static = parseName(type).complete()
 
 }

@@ -2,25 +2,34 @@
 
 package com.mktiti.fsearch.core.repo // For easier extension
 
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
-import com.mktiti.fsearch.core.type.Type.NonGenericType
+import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeInfo
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.upperBounds
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
 import com.mktiti.fsearch.core.util.listType
 
 fun createTestRepo(): MutableTypeRepo {
 
+    val rootType = DirectType(
+            minInfo = MinimalInfo(emptyList(), "TestRoot"),
+            superTypes = emptyList(),
+            samType = null,
+            virtual = false
+    )
+
+    val defaultTypeBounds = TypeBounds(
+            upperBounds = setOf(TypeSubstitution(rootType.holder()))
+    )
+
     return SetTypeRepo(
-            funTypeInfo = TypeInfo("TestFun", emptyList(), ""),
-            rootInfo = TypeInfo("TestRoot", emptyList(), "")
+            // funTypeInfo = TypeInfo("TestFun", emptyList(), ""),
+            // rootInfo = TypeInfo("TestRoot", emptyList(), "")
     ).apply {
+
+        this += rootType
 
         val comparable = createTemplate(
             fullName = "Comparable",
@@ -40,15 +49,20 @@ fun createTestRepo(): MutableTypeRepo {
             superTypes = listOf(collection.forceDynamicApply(ParamSubstitution(0)))
         )
 
-        val selfComparable: (DirectType) -> NonGenericType = { self ->
-            comparable.forceStaticApply(self)
+        fun comparableTo(name: String): TypeHolder.Static {
+            return comparable.forceStaticApply(TypeHolder.staticIndirects(
+                    CompleteMinInfo.Static(
+                            base = MinimalInfo(emptyList(), name),
+                            args = emptyList()
+                    )
+            )).holder()
         }
 
-        val int = createSelfRefDirect(
+        val int = createDirect(
             fullName = "Int",
-            superCreators = listOf(
-                { _ -> rootType },
-                selfComparable
+            superTypes = listOf(
+                rootType.holder(),
+                comparableTo("Int")
             )
         )
 
@@ -56,14 +70,17 @@ fun createTestRepo(): MutableTypeRepo {
 
         val char = createDirect("Char", rootType)
 
-        val charSeq = createDirect("CharSequence", list.forceStaticApply(char))
+        val charSeq = createDirect(
+                "CharSequence",
+                list.forceStaticApply(char.holder())
+        )
 
-        val string = createSelfRefDirect(
+        val string = createDirect(
             fullName = "String",
-            superCreators = listOf(
-                { _ -> rootType },
-                selfComparable,
-                { _ -> charSeq }
+            superTypes = listOf(
+                rootType.holder(),
+                comparableTo("String"),
+                charSeq.holder()
             )
         )
 
@@ -96,11 +113,11 @@ fun createTestRepo(): MutableTypeRepo {
             ),
             superTypes = listOf(
                 collection.forceDynamicApply(
-                    DynamicTypeSubstitution(
+                    TypeSubstitution(
                         pair.forceDynamicApply(
                             ParamSubstitution(0),
                             ParamSubstitution(1)
-                        )
+                        ).holder()
                     )
                 )
             )
@@ -123,10 +140,10 @@ fun createTestRepo(): MutableTypeRepo {
             fullName = "OrderedMap",
             typeParams = listOf(
                     TypeParameter("K", upperBounds(
-                            DynamicTypeSubstitution(
+                            TypeSubstitution(
                                     comparable.forceDynamicApply(
-                                            LowerBound(SelfSubstitution)
-                                    )
+                                            BoundedWildcard.Dynamic(SelfSubstitution, LOWER)
+                                    ).holder()
                             )
                     )),
                     TypeParameter("V", defaultTypeBounds)
@@ -138,17 +155,31 @@ fun createTestRepo(): MutableTypeRepo {
             )
         )
 
-        val person = createSelfRefDirect(
+        val person = createDirect(
             fullName = "Person",
-            superCreators = listOf(
-                { _ -> rootType },
-                selfComparable
+            superTypes = listOf(
+                rootType.holder(),
+                comparableTo("Person")
             )
         )
 
         val boss = createDirect("Boss", person)
 
         val ceo = createDirect("Ceo", boss)
+
+        val function = createTemplate(
+                fullName = "Function",
+                typeParams = listOf(
+                        TypeParameter("I", defaultTypeBounds),
+                        TypeParameter("O", defaultTypeBounds)
+                ),
+                superTypes = listOf(rootType),
+                samType = SamType.GenericSam(
+                        explicit = true,
+                        inputs = listOf(ParamSubstitution(0)),
+                        output = ParamSubstitution(1)
+                )
+        )
 
         val collector = createTemplate(
             fullName = "Collector",
@@ -165,7 +196,12 @@ fun createTestRepo(): MutableTypeRepo {
             typeParams = listOf(
                     TypeParameter("T", defaultTypeBounds)
             ),
-            superTypes = listOf(rootType)
+            superTypes = listOf(rootType),
+            samType = SamType.GenericSam(
+                    explicit = true,
+                    inputs = emptyList(),
+                    output = ParamSubstitution(0)
+            )
         )
 
     }

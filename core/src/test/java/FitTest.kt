@@ -1,18 +1,20 @@
 import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
+import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.SemiType
+import com.mktiti.fsearch.core.type.TypeBounds
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.upperBounds
+import com.mktiti.fsearch.core.util.show.JavaTypePrinter
+import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
-import com.mktiti.fsearch.core.util.printFit
-import com.mktiti.fsearch.core.util.printSemiType
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import kotlin.test.assertNotNull
@@ -20,25 +22,30 @@ import kotlin.test.assertNotNull
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class FitTest {
 
-    companion object {
-        init {
-            println("All Test Types")
-            printAll(createTestRepo().allTypes)
+    private val repo = createTestRepo()
+    private val rootType = repo["TestRoot"]!!.holder()
+    private val defaultTypeBounds = TypeBounds(
+            upperBounds = setOf(TypeSubstitution(rootType))
+    )
+    private val resolver: TypeResolver = SingleRepoTypeResolver(repo)
+    private val fitter: QueryFitter = JavaQueryFitter(MapJavaInfoRepo, resolver)
+    private val printer: TypePrint = JavaTypePrinter(MapJavaInfoRepo, resolver)
 
-            println("All Test Type Templates")
-            printAll(createTestRepo().allTemplates)
-        }
+    init {
+        println("All Test Types")
+        printAll(createTestRepo().allTypes)
 
-        private fun printAll(semis: Collection<SemiType>) {
-            semis.forEach(::printSemiType)
-        }
-
-        private fun printAll(vararg semis: SemiType) {
-            printAll(semis.toList())
-        }
+        println("All Test Type Templates")
+        printAll(createTestRepo().allTemplates)
     }
 
-    private val repo = createTestRepo()
+    private fun printAll(semis: Collection<SemiType>) {
+        semis.forEach(printer::printSemiType)
+    }
+
+    private fun printAll(vararg semis: SemiType) {
+        printAll(semis.toList())
+    }
 
     @Test
     fun `test length success query`() {
@@ -69,8 +76,8 @@ class FitTest {
                 )
         )
 
-        printFit(length, query)
-        assertNotNull(fitsQuery(query, length))
+        printer.printFit(fitter, length, query)
+        assertNotNull(fitter.fitsQuery(query, length))
     }
 
     @Test
@@ -87,8 +94,8 @@ class FitTest {
         )
 
         val query = QueryType(
-                inputParameters = listOf(collection.forceStaticApply(int)),
-                output = list.forceStaticApply(int)
+                inputParameters = listOf(collection.forceStaticApply(int.holder())),
+                output = list.forceStaticApply(int.holder())
         )
 
         // <T extends Comparable<? super T>> (Collection<T>) -> List<T>
@@ -100,26 +107,26 @@ class FitTest {
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
                                 TypeParameter("T", upperBounds(
-                                        DynamicTypeSubstitution(
+                                        TypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        LowerBound(SelfSubstitution)
-                                                )
+                                                        BoundedWildcard.Dynamic(SelfSubstitution, LOWER)
+                                                ).holder()
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
-                                "coll" to DynamicTypeSubstitution(
-                                        collection.forceDynamicApply(ParamSubstitution(0)) // Collection<T>
+                                "coll" to TypeSubstitution(
+                                        collection.forceDynamicApply(ParamSubstitution(0)).holder() // Collection<T>
                                 )
                         ),
-                        output = DynamicTypeSubstitution(
-                                list.forceDynamicApply(ParamSubstitution(0)) // List<T>
+                        output = TypeSubstitution(
+                                list.forceDynamicApply(ParamSubstitution(0)).holder() // List<T>
                         )
                 )
         )
 
-        printFit(sort, query)
-        assertNotNull(fitsQuery(query, sort))
+        printer.printFit(fitter, sort, query)
+        assertNotNull(fitter.fitsQuery(query, sort))
     }
 
     @Test
@@ -136,8 +143,8 @@ class FitTest {
         )
 
         val query = QueryType(
-                inputParameters = listOf(collection.forceStaticApply(boss)),
-                output = list.forceStaticApply(boss)
+                inputParameters = listOf(collection.forceStaticApply(boss.holder())),
+                output = list.forceStaticApply(boss.holder())
         )
 
         // <T extends Comparable<? super T>> (Collection<T>) -> List<T>
@@ -149,33 +156,33 @@ class FitTest {
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
                                 TypeParameter("T", upperBounds(
-                                        DynamicTypeSubstitution(
+                                        TypeSubstitution(
                                                 comparable.forceDynamicApply(
-                                                        LowerBound(SelfSubstitution)
-                                                )
+                                                        BoundedWildcard.Dynamic(SelfSubstitution, LOWER)
+                                                ).holder()
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
-                                "coll" to DynamicTypeSubstitution(
-                                        collection.forceDynamicApply(ParamSubstitution(0)) // Collection<T>
+                                "coll" to TypeSubstitution(
+                                        collection.forceDynamicApply(ParamSubstitution(0)).holder() // Collection<T>
                                 )
                         ),
-                        output = DynamicTypeSubstitution(
-                                list.forceDynamicApply(ParamSubstitution(0)) // List<T>
+                        output = TypeSubstitution(
+                                list.forceDynamicApply(ParamSubstitution(0)).holder() // List<T>
                         )
                 )
         )
 
-        printFit(sort, query)
-        assertNotNull(fitsQuery(query, sort))
+        printer.printFit(fitter, sort, query)
+        assertNotNull(fitter.fitsQuery(query, sort))
     }
 
     @Test
     fun `test groupingBy query`() {
         val collector = repo.template("Collector")!!
         val supplier = repo.template("Supplier")!!
-        val function = repo.functionType(1)
+        val function = repo.template("Function")!!
         val list = repo.template("List")!!
         val map = repo.template("Map")!!
         val hashMap = repo.template("HashMap")!!
@@ -194,19 +201,20 @@ class FitTest {
             ceo
         )
 
-        val personList = list.forceStaticApply(person)
-        val bossToPersonMap = hashMap.forceStaticApply(boss, personList)
+        val personList = list.forceStaticApply(person.holder())
+        val bossToPersonMap = hashMap.forceStaticApply(boss.holder(), personList.holder())
 
-        val virtType1 = virtualType("downstreamA", listOf(repo.rootType))
+        val virtType1 = QueryType.virtualType("downstreamA", listOf(rootType.with(resolver)!!))
+        repo += virtType1
 
         // (Person -> Ceo), (() -> HashMap<Boss, List<Person>>), Collector<Person, _, List<Person>> -> Collector<Boss, _, HashMap<Boss, List<Person>>>
         val query = QueryType(
                 inputParameters = listOf(
-                        function.forceStaticApply(person, ceo),
-                        supplier.forceStaticApply(bossToPersonMap),
-                        collector.forceStaticApply(person, virtType1, personList)
+                        function.forceStaticApply(person.holder(), ceo.holder()),
+                        supplier.forceStaticApply(bossToPersonMap.holder()),
+                        collector.forceStaticApply(person.holder(), virtType1.holder(), personList.holder())
                 ),
-                output = collector.forceStaticApply(boss, boss, bossToPersonMap)
+                output = collector.forceStaticApply(boss.holder(), boss.holder(), bossToPersonMap.holder())
         )
 
         // <T, K, D, A, M extends Map<K, D>>
@@ -218,48 +226,48 @@ class FitTest {
                 ),
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
-                                TypeParameter("T", repo.defaultTypeBounds),
-                                TypeParameter("K", repo.defaultTypeBounds),
-                                TypeParameter("D", repo.defaultTypeBounds),
-                                TypeParameter("A", repo.defaultTypeBounds),
+                                TypeParameter("T", defaultTypeBounds),
+                                TypeParameter("K", defaultTypeBounds),
+                                TypeParameter("D", defaultTypeBounds),
+                                TypeParameter("A", defaultTypeBounds),
                                 TypeParameter("M", upperBounds( // M extends Map<K, D>
-                                        DynamicTypeSubstitution(
+                                        TypeSubstitution(
                                                 map.forceDynamicApply(
                                                         ParamSubstitution(1), ParamSubstitution(2)
-                                                )
+                                                ).holder()
                                         )
                                 ))
                         ),
                         inputParameters = listOf(
-                                "classifier" to DynamicTypeSubstitution( // Function<? super T, ? extends K>
+                                "classifier" to TypeSubstitution( // Function<? super T, ? extends K>
                                         function.forceDynamicApply(
-                                                LowerBound(ParamSubstitution(0)),
-                                                UpperBound(ParamSubstitution(1))
-                                        )
+                                                BoundedWildcard.Dynamic(ParamSubstitution(0), LOWER),
+                                                BoundedWildcard.Dynamic(ParamSubstitution(1), UPPER)
+                                        ).holder()
                                 ),
-                                "supplier" to DynamicTypeSubstitution( // Supplier<M>
-                                        supplier.forceDynamicApply(ParamSubstitution(4))
+                                "supplier" to TypeSubstitution( // Supplier<M>
+                                        supplier.forceDynamicApply(ParamSubstitution(4)).holder()
                                 ),
-                                "downstream" to DynamicTypeSubstitution( // Collector<? super T, A, D>
+                                "downstream" to TypeSubstitution( // Collector<? super T, A, D>
                                         collector.forceDynamicApply(
-                                                LowerBound(ParamSubstitution(0)),
+                                                BoundedWildcard.Dynamic(ParamSubstitution(0), LOWER),
                                                 ParamSubstitution(3),
                                                 ParamSubstitution(2)
-                                        )
+                                        ).holder()
                                 )
                         ),
-                        output = DynamicTypeSubstitution( // Collector<T, ?, M>
+                        output = TypeSubstitution( // Collector<T, ?, M>
                                 collector.forceDynamicApply(
                                         ParamSubstitution(0),
-                                        StaticTypeSubstitution(boss),
+                                        TypeSubstitution.unboundedWildcard,
                                         ParamSubstitution(4)
-                                )
+                                ).holder()
                         )
                 )
         )
 
-        printFit(sort, query)
-        assertNotNull(fitsOrderedQuery(query, sort))
+        printer.printOrderedFit(fitter, sort, query)
+        assertNotNull(fitter.fitsOrderedQuery(query, sort))
     }
 
 }

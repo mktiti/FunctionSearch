@@ -52,6 +52,6 @@ sealed class ImParam {
 data class ImSignature(
     val name: String,
     val typeParams: List<ImTypeParam>,
-    val inputs: List<ImParam>,
+    val inputs: List<Pair<String?, ImParam>>,
     val output: ImParam
 )

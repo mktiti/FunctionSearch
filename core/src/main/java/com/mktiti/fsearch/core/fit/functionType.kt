@@ -1,8 +1,10 @@
 package com.mktiti.fsearch.core.fit
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
+import com.mktiti.fsearch.core.type.StaticTypeSubstitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType
+import com.mktiti.fsearch.core.type.TypeHolder
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.util.genericString
 
@@ -52,8 +54,8 @@ sealed class TypeSignature {
             inputParameters: List<Pair<String, NonGenericType>>,
             output: NonGenericType
         ) : this(
-            inputParameters = inputParameters.map { (name, type) -> name to StaticTypeSubstitution(type) },
-            output = StaticTypeSubstitution(output)
+            inputParameters = inputParameters.map { (name, type) -> name to TypeSubstitution(TypeHolder.Static.Direct(type)) },
+            output = TypeSubstitution(TypeHolder.Static.Direct(output))
         )
 
         override val typeParameters: List<TypeParameter>

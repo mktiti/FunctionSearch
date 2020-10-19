@@ -1,13 +1,85 @@
 package com.mktiti.fsearch.core.type
 
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper.LazySat
+//import com.mktiti.fsearch.core.type.SuperType.StaticSuper.LazySat
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
-import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
-import com.mktiti.fsearch.core.util.forceDynamicApply
-import com.mktiti.fsearch.core.util.forceStaticApply
-import com.mktiti.fsearch.util.asConst
 
+/*
+interface DirectSuperType<out T : Type> {
+    val type: T
+}
+ */
+/*
+sealed class SuperType<out T : Type> {
+
+    class Static(override val info: CompleteMinInfo) : SuperType<NonGenericType>()
+    class Dynamic(override val info: CompleteMinInfo) : SuperType<DynamicAppliedType>()
+
+    abstract val info: CompleteMinInfo
+
+    /*
+    sealed class StaticSuper : SuperT<NonGenericType>() {
+
+        /*
+        class Direct(
+                val base: () -> Applicable,
+                private val args: List<NonGenericType>
+        ) : StaticSuper(), DirectSuperType<NonGenericType> {
+
+            override val info: CompleteMinInfo
+                get() = type.info.minimal.complete()
+
+            override val type: StaticAppliedType by lazy {
+                base().forceStaticApply(args)
+            }
+
+        }
+         */
+
+        class Indirect(
+                override val info: CompleteMinInfo
+        ) : StaticSuper()
+
+    }
+
+    sealed class DynamicSuper : SuperT<DynamicAppliedType>() {
+
+        class EagerDynamic(
+                override val type: DynamicAppliedType
+        ) : DynamicSuper() {
+
+            override fun staticApply(args: List<NonGenericType>): StaticSuper? {
+                return LazySat(type.asConst(), args)
+            }
+
+            override fun dynamicApply(args: List<ApplicationParameter>): DynamicSuper? {
+                return LazyDat(type.asConst(), args)
+            }
+
+        }
+
+        class LazyDat(
+                val base: () -> Applicable,
+                private val args: List<ApplicationParameter>
+        ) : DynamicSuper() {
+
+            override val type: DynamicAppliedType by lazy {
+                base().forceDynamicApply(args)
+            }
+
+            override fun staticApply(args: List<NonGenericType>): StaticSuper? {
+                return LazySat(type.asConst(), args)
+            }
+
+            override fun dynamicApply(args: List<ApplicationParameter>): DynamicSuper? {
+                return LazyDat(type.asConst(), args)
+            }
+
+        }
+*/
+}
+
+/*
 sealed class SuperType<out T : Type> {
 
     abstract val type: T
@@ -80,3 +152,4 @@ sealed class SuperType<out T : Type> {
     }
 
 }
+ */

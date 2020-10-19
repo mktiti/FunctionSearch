@@ -1,12 +1,8 @@
 import com.mktiti.fsearch.core.fit.*
-import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.core.repo.createTestRepo
+import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.SuperType.DynamicSuper.EagerDynamic
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper.EagerStatic
-import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
 import org.junit.jupiter.api.Test
@@ -21,31 +17,38 @@ class ApplyTest {
         private fun createSetup(): Triple<TypeRepo, TypeTemplate, TypeTemplate> {
             val repo = createTestRepo()
 
+            val rootType = repo["TestRoot"]!!.holder()
+            val defaultTypeBounds = TypeBounds(
+                    upperBounds = setOf(TypeSubstitution(rootType))
+            )
+
             // A<E>
             val base = TypeTemplate(
-                    info = info("A"),
-                    typeParams = listOf(TypeParameter("E", repo.defaultTypeBounds)),
-                    superTypes = listOf(EagerStatic(repo.rootType))
+                    info = info("A").minimal,
+                    typeParams = listOf(TypeParameter("E", defaultTypeBounds)),
+                    superTypes = listOf(rootType),
+                    samType = null
             )
 
-            val supers = mutableListOf<SuperType<Type>>()
             // Box<T> : A<Box<Box<T>>>
+
+            val boxInfo = info("Box").minimal
+            fun boxOf(param: ApplicationParameter) = boxInfo.dynamicComplete(listOf(param)).holder()
             val box = TypeTemplate(
-                    info = info("Box"),
-                    typeParams = listOf(TypeParameter("T", repo.defaultTypeBounds)),
-                    superTypes = supers
+                    info = boxInfo,
+                    typeParams = listOf(TypeParameter("T", defaultTypeBounds)),
+                    superTypes = listOf(
+                            base.forceDynamicApply(
+                                    TypeSubstitution(boxOf(
+                                            TypeSubstitution(boxOf(ParamSubstitution(0)))
+                                    ))
+                            ).holder()
+                    ),
+                    samType = null
             )
 
-            val innerBox = box.forceDynamicApply(ParamSubstitution(0))
-            val outerBox = box.forceDynamicApply(DynamicTypeSubstitution(innerBox))
-            val sub = DynamicTypeSubstitution(outerBox)
-
-            supers += EagerDynamic(
-                    Type.DynamicAppliedType(
-                            baseType = base,
-                            typeArgMapping = listOf(sub)
-                    )
-            )
+            repo += base
+            repo += box
 
             return Triple(repo, base, box)
         }
@@ -55,31 +58,34 @@ class ApplyTest {
     fun `test exploding application`() {
         val (repo, base, box) = createSetup()
         val strType = repo["String"]!!
-        val strBox = box.forceStaticApply(strType)
+        val strBox = box.forceStaticApply(strType.holder())
 
-        fun nested(box: StaticAppliedType): StaticAppliedType {
-            val aSuper = box.superTypes.first().type as StaticAppliedType
-            return aSuper.typeArgs.first() as StaticAppliedType
+        val resolver: TypeResolver = SingleRepoTypeResolver(repo)
+        val fitter: QueryFitter = JavaQueryFitter(MapJavaInfoRepo, resolver)
+
+        fun nested(currentBox: Type.NonGenericType): Type.NonGenericType {
+            return box.forceStaticApply(currentBox.holder())
         }
 
-        tailrec fun checkArgs(box: StaticAppliedType, goal: Int) {
+        tailrec fun checkArgs(box: CompleteMinInfo.Static, goal: Int) {
+            val checkTarget = box.args.first()
             if (goal == 0) {
-                assertEquals(strType, box.typeArgs.first())
+                assertEquals(strType.completeInfo, checkTarget)
             } else {
-                assertEquals("Box", box.baseType.info.name)
-                checkArgs(box.typeArgs.first() as StaticAppliedType, goal - 1)
+                assertEquals("Box", box.base.simpleName)
+                checkArgs(checkTarget, goal - 1)
             }
         }
 
-        tailrec fun nestedCheck(box: StaticAppliedType, goal: Int, depth: Int = 0) {
+        tailrec fun nestedCheck(box: Type.NonGenericType, goal: Int, depth: Int = 0) {
             if (goal == depth) {
                 return
             }
 
-            checkArgs(box, depth)
+            checkArgs(box.completeInfo, depth)
             nestedCheck(nested(box), goal, depth + 1)
         }
-        nestedCheck(strBox, 10000)
+        nestedCheck(strBox, 10_000)
 
         // fun :: () -> Box<String>
         val funSignature = TypeSignature.DirectSignature(
@@ -92,12 +98,12 @@ class ApplyTest {
                 inputParameters = emptyList(),
                 output = base.forceStaticApply(
                         box.forceStaticApply(
-                                box.forceStaticApply(repo["String"]!!)
-                        )
+                                box.forceStaticApply(repo["String"]!!.holder()).holder()
+                        ).holder()
                 )
         )
 
-        val fitResult = fitsOrderedQuery(
+        val fitResult = fitter.fitsOrderedQuery(
                 query = querySignature,
                 function = FunctionObj(FunctionInfo("fun", "inmem"), funSignature)
         )

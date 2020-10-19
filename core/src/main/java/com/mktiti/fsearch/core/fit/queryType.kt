@@ -1,14 +1,39 @@
 package com.mktiti.fsearch.core.fit
 
-import com.mktiti.fsearch.core.type.SuperType.StaticSuper
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeInfo
+import com.mktiti.fsearch.core.util.forceStaticApply
 
 data class QueryType(
     val inputParameters: List<NonGenericType>,
     val output: NonGenericType
 ) {
+
+    companion object {
+        fun functionType(inputs: List<NonGenericType>, output: NonGenericType, infoRepo: JavaInfoRepo): NonGenericType {
+            val funTemplate = TypeTemplate(
+                    info = infoRepo.funInfo(inputs.size),
+                    typeParams = (0 .. inputs.size).map { TypeParameter(('A' + it).toString(), TypeBounds(emptySet())) },
+                    superTypes = emptyList(),
+                    samType = null,
+                    virtual = true
+            )
+
+            return funTemplate.forceStaticApply(TypeHolder.staticDirects(inputs + output))
+        }
+
+        fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(
+                minInfo = MinimalInfo(
+                        simpleName = name,
+                        packageName = emptyList()
+                ),
+                superTypes = TypeHolder.staticDirects(supers),
+                samType = null,
+                virtual = true
+        )
+     }
 
     val allParams by lazy {
         inputParameters + output
@@ -20,12 +45,4 @@ data class QueryType(
     }
 }
 
-fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(
-    info = TypeInfo(
-            name = name,
-            packageName = emptyList(),
-            artifact = "",
-            virtual = true
-    ),
-    superTypes = supers.map { StaticSuper.EagerStatic(it) }
-)
+

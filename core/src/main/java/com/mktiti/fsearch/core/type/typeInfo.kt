@@ -6,8 +6,7 @@ import java.util.*
 typealias PackageName = List<String>
 
 data class TypeInfo(
-        val name: String,
-        val packageName: PackageName = emptyList(),
+        val minimal: MinimalInfo,
         val artifact: String = "JCLv8",
         val virtual: Boolean = false
 ) {
@@ -17,6 +16,15 @@ data class TypeInfo(
 
         val anyWildcard = TypeInfo("?", emptyList(), "", true)
     }
+
+    constructor(name: String, packageName: PackageName, artifact: String, virtual: Boolean = false) :
+            this(MinimalInfo(packageName, name), artifact, virtual)
+
+    val name: String
+        get() = minimal.simpleName
+
+    val packageName: PackageName
+        get() = minimal.packageName
 
     val fullName
         get() = if (packageName.isNotEmpty()) {

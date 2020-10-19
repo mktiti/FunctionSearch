@@ -2,20 +2,18 @@ package com.mktiti.fsearch.parser.function
 
 import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.DynamicTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.LowerBound
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard.UpperBound
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.util.forceDynamicApply
-import com.mktiti.fsearch.parser.util.anyDirect
-import com.mktiti.fsearch.parser.util.anyTemplate
 
 interface FunctionBuilder {
+
     data class ImplicitThis(
             val info: MinimalInfo,
             val isGeneric: Boolean
@@ -26,36 +24,48 @@ interface FunctionBuilder {
 
 class JavaFunctionBuilder(
         private val javaRepo: JavaRepo,
-        private val typeRepos: Collection<TypeRepo>
+        private val typeResolver: TypeResolver
 ) : FunctionBuilder {
 
-    private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>, selfRef: String?): DynamicTypeSubstitution? {
-        val template = typeRepos.anyTemplate(param.info) ?: return null
+    private fun mapDatParam(param: ImParam.Type, references: List<TypeParameter>, selfRef: String?): TypeSubstitution<*, *>? {
+        val template = typeResolver.template(param.info) ?: return null
         val args: List<ApplicationParameter> = if (param.typeArgs.isEmpty()) {
             template.typeParams.map { StaticTypeSubstitution(javaRepo.objectType) }
         } else {
             param.typeArgs.map { mapParam(it, references, selfRef) ?: return null }
         }
-        return DynamicTypeSubstitution(template.forceDynamicApply(args))
+        return TypeSubstitution(template.forceDynamicApply(args).holder())
+    }
+
+    private fun mapWildcardParam(param: ImParam, references: List<TypeParameter>, selfRef: String?, direction: BoundedWildcard.BoundDirection): BoundedWildcard? {
+        val sub = mapSubstitution(param, references, selfRef) ?: return null
+        return if (sub is TypeSubstitution<*, *>) {
+            when (val holder = sub.holder) {
+                is TypeHolder.Static -> BoundedWildcard.Static(TypeSubstitution(holder), direction)
+                else -> BoundedWildcard.Dynamic(sub, direction)
+            }
+        } else {
+            BoundedWildcard.Dynamic(sub, direction)
+        }
     }
 
     private fun mapParam(param: ImParam, references: List<TypeParameter>, selfRef: String?): ApplicationParameter? {
         return when (param) {
-            ImParam.Wildcard -> Wildcard.Direct
+            ImParam.Wildcard -> TypeSubstitution.unboundedWildcard
             is ImParam.Primitive -> StaticTypeSubstitution(javaRepo.primitive(param.value))
-            is ImParam.UpperWildcard -> UpperBound(mapSubstitution(param.param, references, selfRef) ?: return null)
-            is ImParam.LowerWildcard -> LowerBound(mapSubstitution(param.param, references, selfRef) ?: return null)
-            is ImParam.Array -> DynamicTypeSubstitution(javaRepo.arrayOf(mapParam(param.type, references, selfRef) ?: return null))
+            is ImParam.UpperWildcard -> mapWildcardParam(param.param, references, selfRef, UPPER)
+            is ImParam.LowerWildcard -> mapWildcardParam(param.param, references, selfRef, LOWER)
+            is ImParam.Array -> TypeSubstitution(javaRepo.arrayOf(mapParam(param.type, references, selfRef) ?: return null).holder())
             is ImParam.Type -> {
                 val info = param.info
 
                 if (param.typeArgs.isEmpty()) {
                     // Direct type
-                    val type = typeRepos.anyDirect(info)
+                    val type = typeResolver[info]
                     if (type == null) {
                         mapDatParam(param, references, selfRef)
                     } else {
-                        StaticTypeSubstitution(type)
+                        StaticTypeSubstitution(type.holder())
                     }
                 } else {
                     // Dat
@@ -94,7 +104,7 @@ class JavaFunctionBuilder(
 
     override fun buildFunction(intermediate: ImSignature, implicitThis: FunctionBuilder.ImplicitThis?): TypeSignature? {
         val thisTemplate: TypeTemplate? = if (implicitThis != null && implicitThis.isGeneric) {
-            typeRepos.anyTemplate(implicitThis.info) ?: return null
+            typeResolver.template(implicitThis.info) ?: return null
         } else {
             null
         }
@@ -127,20 +137,20 @@ class JavaFunctionBuilder(
         val allInputs: List<Pair<String, Substitution>> = ArrayList<Pair<String, Substitution>>(intermediate.inputs.size).apply {
             if (implicitThis != null) {
                 val thisParam = if (thisTemplate == null) {
-                    StaticTypeSubstitution(typeRepos.anyDirect(implicitThis.info) ?: return null)
+                    StaticTypeSubstitution(typeResolver[implicitThis.info]?.holder() ?: return null)
                 } else {
                     val applied = thisTemplate.dynamicApply(
                             thisTemplate.typeParams.mapIndexed { i, _ ->
                                 ParamSubstitution(explicitTypeParamCount + i)
                             }
                     ) ?: return null
-                    DynamicTypeSubstitution(applied)
+                    TypeSubstitution(applied.holder())
                 }
 
                 this += ("\$this" to thisParam)
             }
 
-            addAll(intermediate.inputs.mapIndexed { i, p -> "\$$i" to (param(p) ?: return null) })
+            addAll(intermediate.inputs.mapIndexed { i, (name, p) -> (name ?: "arg\$$i") to (param(p) ?: return null) })
         }
 
         return TypeSignature.GenericSignature(

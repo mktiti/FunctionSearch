@@ -1,20 +1,8 @@
 package com.mktiti.fsearch.parser.type
 
 import com.mktiti.fsearch.core.repo.*
-import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.StaticTypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.BoundedWildcard
-import com.mktiti.fsearch.core.type.ApplicationParameter.Wildcard.Direct
-import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.parser.util.JavaTypeParseLog
-import com.mktiti.fsearch.parser.util.anyDirect
-import com.mktiti.fsearch.parser.util.anyTemplate
+import com.mktiti.fsearch.parser.service.JclCollector
 import com.mktiti.fsearch.util.MutablePrefixTree
-import com.mktiti.fsearch.util.PrefixTree
-import com.mktiti.fsearch.util.mapMutablePrefixTree
 
 interface TypeConnector {
 
@@ -22,7 +10,7 @@ interface TypeConnector {
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
             imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
             jclArtifact: String
-    ): JclCollector.JclResult
+    ): JclCollector.Result
 
     fun connectArtifact(
             imDirectTypes: MutablePrefixTree<String, DirectCreator>,
@@ -32,6 +20,8 @@ interface TypeConnector {
     ): TypeRepo
 
 }
+
+/*
 
 class JavaTypeConnector(
         private val infoRepo: JavaInfoRepo,
@@ -102,7 +92,8 @@ private class OneshotConnector(
         val arrayTemplate = TypeTemplate(
                 info = infoRepo.arrayType.full(jclArtifact),
                 superTypes = arraySupers,
-                typeParams = listOf(TypeParameter("X", TypeBounds(emptySet())))
+                typeParams = listOf(TypeParameter("X", TypeBounds(emptySet()))),
+                samType = null
         )
         imTemplateTypes[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TemplateCreator(
                 unfinishedType = arrayTemplate,
@@ -112,7 +103,7 @@ private class OneshotConnector(
                 templateSuperAppender = {}
         )
         PrimitiveType.values().map(infoRepo::primitive).forEach { primitive ->
-            directTypes[primitive.packageName, primitive.simpleName] = DirectType(primitive.full(jclArtifact), emptyList())
+            directTypes[primitive.packageName, primitive.simpleName] = DirectType(primitive.full(jclArtifact), emptyList(), samType = null)
         }
 
         connect()
@@ -321,3 +312,5 @@ private class OneshotConnector(
     }
 
 }
+
+ */

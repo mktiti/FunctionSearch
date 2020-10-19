@@ -1,17 +1,17 @@
 package com.mktiti.fsearch.parser.util
 
 import com.mktiti.fsearch.core.fit.FunctionObj
-import com.mktiti.fsearch.core.fit.fitsQuery
-import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.fit.JavaQueryFitter
+import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.maven.MavenArtifact
 import com.mktiti.fsearch.parser.maven.MavenCollector
 import com.mktiti.fsearch.parser.maven.MavenManager
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
+import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import com.mktiti.fsearch.parser.type.TwoPhaseCollector
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 import java.nio.file.Files
@@ -68,9 +68,11 @@ fun main(args: Array<String>) {
 
     println("==== Loading JCL ====")
     val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
-    val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
-    val (javaRepo, jclRepo) = typeCollector.collectJcl("JCL", jclJarInfo)
-    val jclFunctions = JarFileFunctionCollector(javaRepo).collectFunctions(jclJarInfo, listOf(jclRepo))
+    // val typeCollector = TwoPhaseCollector(MapJavaInfoRepo, log, JarFileInfoCollector(MapJavaInfoRepo))
+    val jclCollector = IndirectJarTypeCollector(MapJavaInfoRepo)
+    val (javaRepo, jclRepo) = jclCollector.collectJcl(jclJarInfo, "JCL")
+    val jclResolver = SingleRepoTypeResolver(jclRepo)
+    val jclFunctions = JarFileFunctionCollector.collectFunctions(jclJarInfo, javaRepo, MapJavaInfoRepo, jclResolver)
 
     printLoadResults(jclRepo, jclFunctions)
 
@@ -80,10 +82,10 @@ fun main(args: Array<String>) {
             "org.apache.commons:commons-math3:3.6.1"
     )
 
-    val mavenCollector = MavenCollector(MavenManager.central, log, MapJavaInfoRepo, javaRepo)
+    val mavenCollector = MavenCollector(MavenManager.central, log, MapJavaInfoRepo)
     val results = testArtifacts.map {
         val artifact = MavenArtifact.parse(it)!!
-        mavenCollector.collectCombined(artifact, listOf(jclRepo)).apply {
+        mavenCollector.collectCombined(artifact, javaRepo, MapJavaInfoRepo, jclResolver).apply {
             printLoadResults(typeRepo, functions)
         }
     }
@@ -91,32 +93,115 @@ fun main(args: Array<String>) {
     val allFunctions = results.flatMap { it.functions } + jclFunctions
     val typeRepos = results.map { it.typeRepo } + jclRepo
 
+    /*
+    typeRepos.flatMap {
+        it.allTypes + it.allTemplates
+    }.forEach {
+        it.samType?.let { sam ->
+            println("${it.info} is a SAM type as ${sam.inputs} -> ${sam.output}")
+        }
+    }
+     */
+
     printLog(log)
 
-    val queryParser: QueryParser = AntlrQueryParser(javaRepo, typeRepos)
+    val typeResolver: TypeResolver = SimpleMultiRepoTypeResolver(typeRepos)
+    val queryParser: QueryParser = AntlrQueryParser(javaRepo, MapJavaInfoRepo, typeResolver)
+
+    val typePrint = JavaTypePrinter(MapJavaInfoRepo, typeResolver)
 
     while (true) {
         print(">")
         val input = readLine() ?: break
         println("Input: $input")
-        try {
-            val query = queryParser.parse(input)
-            println("Parsed as: $query")
-            println("Started searching...")
-            allFunctions.asSequence().forEach { function ->
-                val result = fitsQuery(query, function)
-                if (result != null) {
-                    println("Fits function $function")
-                    println("\tas ${result.funSignature}")
+
+        if (input.startsWith(":")) {
+            val parts = input.split(" ")
+            when (val command = parts[0].drop(1).toLowerCase()) {
+                "info" -> {
+                    val target = parts.getOrNull(1)?.split("::")
+                    val type = target?.getOrNull(0)
+                    val function = target?.getOrNull(1)
+
+                    when {
+                        type == null -> {
+                            println("Missing target")
+                        }
+                        function == null -> {
+                            when (val direct = typeResolver.get(type, allowSimple = true)) {
+                                null -> {
+                                    when (val template = typeResolver.template(type, allowSimple = true)) {
+                                        null -> {
+                                            println("Unknown type '$type'")
+                                        }
+                                        else -> {
+                                            typePrint.printSemiType(template)
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    typePrint.printSemiType(direct)
+                                }
+                            }
+                        }
+                        else -> {
+                            val foundFun = allFunctions.find {
+                                with (it.info) {
+                                    name == function && (fileName == type || fileName.split('.').last() == type)
+                                }
+                            }
+                            if (foundFun != null) {
+                                typePrint.printFun(foundFun)
+                            } else {
+                                println("Function '$type::$function' not found")
+                            }
+                        }
+                    }
+                }
+                "quit" -> {
+                    println("Quitting")
+                    return
+                }
+                else -> {
+                    println("Unknown command '$command'")
                 }
             }
-            println("Search done!")
+        } else {
+            try {
+                val (query, virtuals) = queryParser.parse(input)
+                print("Parsed as: ")
+                typePrint.print(query)
+                println("Started searching...")
 
-        } catch (pce: ParseCancellationException) {
-            System.err.println("Failed to parse query: ${pce.message}")
-        } catch (other: Exception) {
-            System.err.println("Failed to parse query!")
-            other.printStackTrace()
+                val extraResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
+                val fitter = JavaQueryFitter(MapJavaInfoRepo, extraResolver)
+                val extraPrint = JavaTypePrinter(MapJavaInfoRepo, extraResolver)
+
+                allFunctions.asSequence().forEach { function ->
+                    if (function.info.fileName == "java.util.stream.Stream" && function.info.name == "flatMap") {
+                        val a = 0
+                    }
+
+                    val result = fitter.fitsQuery(query, function)
+                    if (result != null) {
+                        print("Fits function ")
+
+                        extraPrint.printFun(function)
+                        extraPrint.printFittingMap(result)
+
+                        // typePrint.printFun(function)
+                        // typePrint.printFittingMap(result)
+                        // println("\tas ${result.funSignature}")
+                    }
+                }
+                println("Search done!")
+
+            } catch (pce: ParseCancellationException) {
+                System.err.println("Failed to parse query: ${pce.message}")
+            } catch (other: Exception) {
+                System.err.println("Failed to parse query!")
+                other.printStackTrace()
+            }
         }
     }
 

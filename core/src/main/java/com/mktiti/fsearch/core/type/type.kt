@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.core.type
 
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
@@ -16,7 +16,7 @@ interface SemiType {
     val virtual: Boolean
     val superTypes: List<TypeHolder<*, *>>
 
-    val samType: SamType<Substitution>?
+    val samType: SamType<*>?
 
     val fullName: String
 
@@ -66,6 +66,7 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
 
         class StaticAppliedType(
                 base: MinimalInfo,
+                private val baseSam: SamType.GenericSam?,
                 override val typeArgs: List<TypeHolder.Static>,
                 override val superTypes: List<TypeHolder.Static>,
                 virtual: Boolean = false
@@ -78,7 +79,9 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
             // baseType.superTypes.map { it.staticApply(typeArgs) }.liftNull() ?:
             // throw TypeApplicationException("Failed to static apply type $baseType with $typeArgs")
 
-            override val samType: DirectSam? = null
+            override val samType: DirectSam? by lazy {
+                baseSam?.staticApply(typeArgs)
+            }
         }
 
         override fun holder(): TypeHolder.Static = TypeHolder.Static.Direct(this)
@@ -100,6 +103,7 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
 
     data class DynamicAppliedType(
             val base: MinimalInfo,
+            private val baseSam: SamType.GenericSam?,
             val typeArgMapping: List<ApplicationParameter>,
             // override val completeInfo: CompleteMinInfo.Dynamic,
             override val superTypes: List<TypeHolder<*, *>>,
@@ -115,9 +119,8 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
         // val typeArgMapping
         //    get() = completeInfo.args
 
-        override val samType: SamType<Substitution>? by lazy {
-            //ty.samType?.dynamicApply(typeArgMapping)
-            null
+        override val samType: SamType.GenericSam? by lazy {
+            baseSam?.dynamicApply(typeArgMapping)
         }
 /*
         override val typeParamString by lazy {
@@ -138,6 +141,7 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
             return typeArgMapping.castIfAllInstance<Substitution>()?.let { subArgs ->
                 return StaticAppliedType(
                         base = info,
+                        baseSam = baseSam,
                         typeArgs = subArgs.map { it.staticApply(typeArgs) ?: return null },
                         superTypes = superTypes.map { it.staticApply(typeArgs) ?: return null },
                         virtual = virtual
@@ -222,7 +226,7 @@ class TypeTemplate(
         override val info: MinimalInfo,
         val typeParams: List<TypeParameter>,
         override val superTypes: List<TypeHolder<*, *>>,
-        override val samType: SamType<Substitution>?,
+        override val samType: SamType.GenericSam?,
         override val virtual: Boolean = false
 ) : TypeApplicable, SemiType {
 
@@ -239,6 +243,7 @@ class TypeTemplate(
     override fun staticApply(typeArgs: List<TypeHolder.Static>): StaticAppliedType? {
         return StaticAppliedType(
                 base = info,
+                baseSam = samType,
                 typeArgs = typeArgs,
                 superTypes = superTypes.map { it.staticApply(typeArgs) ?: return null },
                 virtual = virtual
@@ -249,6 +254,7 @@ class TypeTemplate(
         return DynamicAppliedType(
             //completeInfo = info.dynamicComplete(typeArgs),
             base = info,
+            baseSam = samType,
             typeArgMapping = typeArgs,
             superTypes = superTypes.map { it.dynamicApply(typeArgs) ?: return null },
             virtual = virtual

@@ -36,27 +36,33 @@ class DefaultTypeParser(
         return TypeSignatureParse(signatureCtx, listOf(parentClass) + interfaces)
     }
 
-    override fun parseTemplateSignature(info: MinimalInfo, signature: String, externalTypeParams: List<TypeParameter>): TypeTemplate {
+    override fun parseTemplateSignature(
+            info: MinimalInfo,
+            signature: String,
+            externalTypeParams: List<TypeParameter>,
+            samTypeCreator: (typeParams: List<TypeParameter>) -> SamType.GenericSam?
+    ): TypeTemplate {
         val (signatureCtx, superContexts) = parseTypeSignatureBase(signature)
 
         val externalTpNames = externalTypeParams.map { it.sign }
-        val typeParams = signatureParser.parseTypeParams(signatureCtx.typeParameters(), externalTpNames)
-        val typeParamNames = externalTpNames + typeParams.map { it.sign }
+        val selfTypeParams = signatureParser.parseTypeParams(signatureCtx.typeParameters(), externalTpNames)
+        val typeParamNames = externalTpNames + selfTypeParams.map { it.sign }
 
         val supers = superContexts.map {
             signatureParser.parseDefinedType(it, typeParamNames).holder()
         }
 
+        val typeParams = externalTypeParams + selfTypeParams
         return TypeTemplate(
                 info = info,
-                typeParams = externalTypeParams + typeParams,
+                typeParams = typeParams,
                 superTypes = supers,
                 virtual = false,
-                samType = null
+                samType = samTypeCreator(typeParams)
         )
     }
 
-    override fun parseDirectTypeSignature(info: MinimalInfo, signature: String): Type.NonGenericType.DirectType? {
+    override fun parseDirectTypeSignature(info: MinimalInfo, signature: String, samType: SamType.DirectSam?): Type.NonGenericType.DirectType? {
         val (signatureCtx, superContexts) = parseTypeSignatureBase(signature)
 
         if (signatureCtx.typeParameters()?.isEmpty == false) {
@@ -70,7 +76,7 @@ class DefaultTypeParser(
         return Type.NonGenericType.DirectType(
                 minInfo = info,
                 superTypes = TypeHolder.staticIndirects(supers),
-                samType = null,
+                samType = samType,
                 virtual = false
         )
     }

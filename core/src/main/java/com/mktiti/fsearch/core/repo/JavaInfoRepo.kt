@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.core.repo
 
 import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.PackageName
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.util.EnumMap
 
@@ -18,12 +19,41 @@ interface JavaInfoRepo {
 
     fun isInternal(info: MinimalInfo): Boolean
 
+    fun funInfo(inParamCount: Int): MinimalInfo
+
+    fun ifFunParamCount(info: MinimalInfo): Int?
+
+}
+
+private class FunInfoHandler(
+        private val packageName: PackageName,
+        cacheMax: Int = 10
+) {
+
+    companion object {
+        private const val prefix = "\$Fun_"
+    }
+
+    private val stored: List<MinimalInfo> = (0 .. cacheMax).map(this::createInfo)
+
+    private fun createInfo(inParamCount: Int) = MinimalInfo(packageName, "$prefix$inParamCount", true)
+
+    operator fun get(inParamCount: Int) = stored.getOrElse(inParamCount, this::createInfo)
+
+    fun ifFunParamCount(info: MinimalInfo) = if (info.packageName == packageName && info.simpleName.startsWith(prefix)) {
+        info.simpleName.drop(prefix.length).toIntOrNull()
+    } else {
+        null
+    }
+
 }
 
 object MapJavaInfoRepo : JavaInfoRepo {
 
     private val internalPackage = listOf("\$internal")
     private fun internal(name: String) = MinimalInfo(simpleName = name, packageName = internalPackage, virtual = true)
+
+    private val funInfoHandler = FunInfoHandler(internalPackage)
 
     private val langPackage = MinimalInfo(listOf("java", "lang"), "")
     private fun inLang(name: String) = langPackage.copy(simpleName = name)
@@ -49,4 +79,7 @@ object MapJavaInfoRepo : JavaInfoRepo {
 
     override fun isInternal(info: MinimalInfo) = info.packageName == internalPackage
 
+    override fun funInfo(inParamCount: Int): MinimalInfo = funInfoHandler[inParamCount]
+
+    override fun ifFunParamCount(info: MinimalInfo) = funInfoHandler.ifFunParamCount(info)
 }

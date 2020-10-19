@@ -140,6 +140,8 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
 
         abstract override fun indirect(): Static
 
+        override fun toString() = info.toString()
+
     }
 
     abstract fun indirect(): TypeHolder<I, T>

@@ -37,7 +37,7 @@ class RadixTypeRepo(
     }
 */
     // TODO optimize or remove
-    override val allTypes: Collection<Type<*>>
+    override val allTypes: Collection<DirectType>
         get() = directs.toList()
 
     // TODO optimize or remove

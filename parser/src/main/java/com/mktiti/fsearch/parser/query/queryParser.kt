@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.parser.query
 
 import com.mktiti.fsearch.core.fit.QueryType
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.PrimitiveType
@@ -18,11 +19,12 @@ import org.antlr.v4.runtime.tree.TerminalNode
 typealias VirtParamTable = Map<String, Type.NonGenericType>
 
 interface QueryParser {
-    fun parse(query: String): QueryType
+    fun parse(query: String): Pair<QueryType, List<Type.NonGenericType.DirectType>>
 }
 
 class AntlrQueryParser(
         private val javaRepo: JavaRepo,
+        private val infoRepo: JavaInfoRepo,
         private val typeResolver: TypeResolver
 ) : QueryParser {
 
@@ -61,7 +63,7 @@ class AntlrQueryParser(
 
     private fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
         val query = buildFunSignature(funCtx, paramVirtualTypes)
-        return QueryType.functionType(query.inputParameters, query.output)
+        return QueryType.functionType(query.inputParameters, query.output, infoRepo)
     }
 
     private tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTable): Type.NonGenericType {
@@ -87,7 +89,7 @@ class AntlrQueryParser(
     }
 
     @Throws(TypeException::class)
-    override fun parse(query: String): QueryType {
+    override fun parse(query: String): Pair<QueryType, List<Type.NonGenericType.DirectType>> {
         val lexer = QueryLexer(CharStreams.fromString(query))
         lexer.removeErrorListeners()
         lexer.addErrorListener(ExceptionErrorListener)
@@ -104,7 +106,7 @@ class AntlrQueryParser(
             param to QueryType.virtualType(param, listOf(root))
         }.toMap()
 
-        return buildFunSignature(parseTree.funSignature(), paramVirtualTypes)
+        return buildFunSignature(parseTree.funSignature(), paramVirtualTypes) to paramVirtualTypes.map { it.value }
     }
 
 }

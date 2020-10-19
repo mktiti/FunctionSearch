@@ -6,6 +6,7 @@ import com.mktiti.fsearch.core.fit.SubResult.Continue.Skip
 import com.mktiti.fsearch.core.fit.SubResult.Failure
 import com.mktiti.fsearch.core.fit.SubResult.TypeArgUpdate
 import com.mktiti.fsearch.core.fit.TypeBoundFit.*
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
@@ -17,10 +18,27 @@ import com.mktiti.fsearch.core.util.nList
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.allPermutations
 import com.mktiti.fsearch.util.roll
+import com.mktiti.fsearch.util.safeCutLast
 
 class JavaQueryFitter(
+        private val infoRepo: JavaInfoRepo,
         private val typeResolver: TypeResolver
 ) : QueryFitter, JavaParamFitter {
+
+    companion object {
+        private data class FunArgPairing<S, I>(
+                val paramArg: S,
+                val subArg: I,
+                val variance: InheritanceLogic
+        )
+
+        private fun <S, I> funPairing(sam: SamType<S>, argIns: List<I>, argOut: I): List<FunArgPairing<S, I>> {
+            val inPairs = sam.inputs.zip(argIns) { p, s -> FunArgPairing(p, s, COVARIANCE) }
+            val outPair = FunArgPairing(sam.output, argOut, CONTRAVARIANCE)
+
+            return (inPairs + outPair)
+        }
+    }
 
     private val boundFitter = JavaTypeBoundFitter(this, typeResolver)
 
@@ -32,13 +50,35 @@ class JavaQueryFitter(
             variance: InheritanceLogic
     ): Boolean {
         return if (argPar.info.base == subPar.info.base) {
+            return argPar.info.args.zipIfSameLength(subPar.info.args)?.all { (argParPar, subParPar) ->
+                subStatic(argParPar.holder(), subParPar.holder(), INVARIANCE)
+            } ?: false
+
+            /*
             val resolvedArg = argPar.resolve() ?: return false
             val resolvedSub = subPar.resolve() ?: return false
 
             resolvedArg.typeArgs.zipIfSameLength(resolvedSub.typeArgs)?.all { (argParPar, subParPar) ->
                 subStatic(argParPar, subParPar, INVARIANCE)
             } ?: false
+             */
         } else {
+            val resolvedArg = argPar.resolve() ?: return false
+            resolvedArg.samType?.let { paramSam ->
+                val funParamCount = infoRepo.ifFunParamCount(subPar.info.base) ?: return@let
+                if (funParamCount == paramSam.inputs.size) {
+                    val anyMatches = subPar.info.args.dropLast(1).allPermutations().any { subOrderedIns ->
+                        funPairing(paramSam, subOrderedIns, subPar.info.args.last()).all { (funParArg, funSubArg, variance) ->
+                            subStatic(funParArg, funSubArg.holder(), variance)
+                        }
+                    }
+
+                    if (anyMatches) {
+                        return true
+                    }
+                }
+            }
+
             when (variance) {
                 INVARIANCE -> false
                 COVARIANCE -> {
@@ -47,9 +87,9 @@ class JavaQueryFitter(
                     } ?: false
                 }
                 CONTRAVARIANCE -> {
-                    argPar.resolve()?.superTypes?.asSequence()?.any { superInfo ->
+                    resolvedArg.superTypes.asSequence().any { superInfo ->
                         subStatic(superInfo, subPar, variance)
-                    } ?: false
+                    }
                 }
             }
         }
@@ -78,6 +118,19 @@ class JavaQueryFitter(
         fun Boolean.asResult(): SubResult = if (this) ConstraintsKept else Failure
 
         return if (argPar.info.base == subPar.info.base) {
+            val zipped = argPar.info.args.zipIfSameLength(subPar.info.args) ?: return Failure
+
+            zipped.map { (argParPar, subParPar) ->
+                subAny(argCtx, argParPar, subParPar.holder(), INVARIANCE)
+            }.roll<SubResult, SubResult>(ConstraintsKept) { status, res ->
+                when (res) {
+                    ConstraintsKept -> status to false
+                    Skip -> Skip to false
+                    else -> res to true
+                }
+            }
+
+            /*
             val resolvedArg = argPar.resolve() ?: return Failure
             val resolvedSub = subPar.resolve() ?: return Failure
             val zipped = resolvedArg.typeArgMapping.zipIfSameLength(resolvedSub.typeArgs) ?: return Failure
@@ -91,13 +144,33 @@ class JavaQueryFitter(
                     else -> res to true
                 }
             }
+
+             */
         } else {
-            fun List<SubResult>.rollResult(): SubResult = roll<SubResult, SubResult>(Failure) { _, res ->
+            fun List<SubResult>.rollResult(anyEnough: Boolean): SubResult = roll<SubResult, SubResult>(Failure) { _, res ->
                 res to when (res) {
-                    Failure -> false
-                    ConstraintsKept -> true
-                    Skip -> true
+                    Failure -> !anyEnough
+                    ConstraintsKept -> anyEnough
+                    Skip -> anyEnough
                     is TypeArgUpdate -> true
+                }
+            }
+
+            val resolvedArg = argPar.resolve() ?: return Failure
+            resolvedArg.samType?.let { paramSam ->
+                val funParamCount = infoRepo.ifFunParamCount(subPar.info.base) ?: return@let
+                if (funParamCount == paramSam.inputs.size) {
+                    val (subIns, subOut) = subPar.info.args.safeCutLast() ?: return@let
+                    val result = funPairing(paramSam, subIns, subOut).map { (funParArg, funSubArg, variance) ->
+                        subAny(argCtx, funParArg, funSubArg.holder(), variance)
+                    }.rollResult(anyEnough = false)
+
+                    when (result) {
+                        ConstraintsKept -> return ConstraintsKept
+                        Skip -> return Skip
+                        is TypeArgUpdate -> return result
+                        Failure -> return@let
+                    }
                 }
             }
 
@@ -107,16 +180,15 @@ class JavaQueryFitter(
                     val resolvedSub = subPar.resolve() ?: return Failure
                     resolvedSub.superTypes.asSequence().asIterable().map { superInfo ->
                         subDynamic(argCtx, argPar, superInfo, variance)
-                    }.rollResult()
+                    }.rollResult(anyEnough = true)
                 }
                 CONTRAVARIANCE -> {
-                    val resolvedArg = argPar.resolve() ?: return Failure
                     resolvedArg.superTypes.asSequence().asIterable().map { superType ->
                         when (superType) {
                             is TypeHolder.Static -> subStatic(superType, subPar, variance).asResult()
                             is TypeHolder.Dynamic -> subDynamic(argCtx, superType, subPar, variance)
                         }
-                    }.rollResult()
+                    }.rollResult(anyEnough = true)
                 }
             }
         }

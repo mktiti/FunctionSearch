@@ -1,12 +1,9 @@
 package com.mktiti.fsearch.parser.intermediate
 
 import com.mktiti.fsearch.core.fit.TypeSignature
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.CompleteMinInfo
-import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.TypeTemplate
 import com.mktiti.fsearch.parser.function.FunctionBuilder
 import com.mktiti.fsearch.parser.generated.SignatureParser
 import com.mktiti.fsearch.parser.generated.SignatureParser.ClassTypeSignatureContext
@@ -31,13 +28,24 @@ interface JavaSignatureParser {
 
 interface JavaSignatureTypeParser {
 
-    fun parseTemplateSignature(info: MinimalInfo, signature: String, externalTypeParams: List<TypeParameter>): TypeTemplate
+    fun parseTemplateSignature(
+            info: MinimalInfo,
+            signature: String,
+            externalTypeParams: List<TypeParameter>,
+            samTypeCreator: (typeParams: List<TypeParameter>) -> SamType.GenericSam?
+    ): TypeTemplate
 
-    fun parseDirectTypeSignature(info: MinimalInfo, signature: String): DirectType?
+    fun parseDirectTypeSignature(info: MinimalInfo, signature: String, samType: SamType.DirectSam?): DirectType?
 
 }
 
 interface JavaSignatureFunctionParser {
+
+    fun parseDirectSam(paramNames: List<String>?, signature: String): SamType.DirectSam?
+
+    fun parseGenericSam(paramNames: List<String>?, signature: String, implicitThis: MinimalInfo, implicitThisTps: List<TypeParameter>): SamType.GenericSam?
+
+    fun parseTemplateFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: MinimalInfo, implicitThisTps: List<TypeParameter>): TypeSignature
 
     fun parseTemplateFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: TypeTemplate): TypeSignature
 

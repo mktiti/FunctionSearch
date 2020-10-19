@@ -5,8 +5,6 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution.Companion
-import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.generated.SignatureLexer
@@ -91,7 +89,7 @@ class DefaultFunctionParser(
         )
     }
 
-    private fun parseFunctionBase(name: String, paramNames: List<String>?, signature: String, typeLevelTypeParams: List<TypeParameter>): ParseBase {
+    private fun parseFunctionBase(signature: String, typeLevelTypeParams: List<TypeParameter>): ParseBase {
         val lexer = SignatureLexer(CharStreams.fromString(signature))
         lexer.removeErrorListeners()
         lexer.addErrorListener(ExceptionErrorListener)
@@ -105,60 +103,56 @@ class DefaultFunctionParser(
         val typeParams = typeLevelTypeParams + signatureParser.parseTypeParams(signatureCtx.typeParameters(), typeLevelTpNames)
 
         return ParseBase(signatureCtx, typeParams)
-/*
-        fun <T> List<T>.withNames(): List<Pair<String, T>> = if (paramNames == null) {
-            mapIndexed { i, param -> "\$arg$i" to param }
-        } else {
-            val missingCount = maxOf(0, signatureCtx.javaTypeSignature().size - paramNames.size)
-            val initNames: List<String?> = paramNames + null.repeat(missingCount)
-            zip(initNames).mapIndexed { i, (param, name) ->
-                (name ?: "\$arg$i") to param
-            }
-        }
+    }
 
-        val staticSignature = if (typeParams.isEmpty()) {
-            signatureCtx.javaTypeSignature().withNames().map { (name, param) ->
-                name to (signatureParser.parseStaticJavaType(param).wrap() ?: return@map null)
-            }.liftNull()?.let { inputs ->
-                TypeSignature.DirectSignature(
-                        inputParameters = inputs,
-                        output = parseStaticReturnType(signatureCtx.returnType()) ?: return@let null
+    override fun parseTemplateFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: MinimalInfo, implicitThisTps: List<TypeParameter>): TypeSignature {
+        val parseBase = parseFunctionBase(signature, implicitThisTps)
+        val thisParam = implicitThis.dynamicComplete(implicitThisTps.mapIndexed { i, _ -> Substitution.ParamSubstitution(i) })
+        return parseDynamicArgs(parseBase, paramNames, TypeSubstitution(thisParam.holder()))
+    }
+
+    override fun parseTemplateFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: TypeTemplate): TypeSignature {
+        return parseTemplateFunction(name, paramNames, signature, implicitThis.info, implicitThis.typeParams)
+    }
+
+    override fun parseDirectFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: CompleteMinInfo.Static): TypeSignature {
+        val parseBase = parseFunctionBase(signature, emptyList())
+        return parseStaticArgs(parseBase, paramNames, implicitThis) ?: parseDynamicArgs(parseBase, paramNames, TypeSubstitution(implicitThis.holder()))
+    }
+
+    override fun parseStaticFunction(name: String, paramNames: List<String>?, signature: String): TypeSignature {
+        val parseBase = parseFunctionBase(signature, emptyList())
+        return parseStaticArgs(parseBase, paramNames, null) ?: parseDynamicArgs(parseBase, paramNames, null)
+    }
+
+    override fun parseDirectSam(paramNames: List<String>?, signature: String): SamType.DirectSam? {
+        val parseBase = parseFunctionBase(signature, emptyList())
+
+        return if (parseBase.typeParams.isEmpty()) {
+            parseStaticArgs(parseBase, paramNames, null)?.run {
+                SamType.DirectSam(
+                        explicit = false,
+                        inputs = inputParameters.map { it.second.holder.info.holder() }, // TODO ...
+                        output = output.holder.info.holder()
                 )
             }
         } else {
             null
         }
+    }
 
-        return if (staticSignature != null) {
-            staticSignature
-        } else {
-            val typeParamNames = typeParams.map { it.sign }
-            val inputs = signatureCtx.javaTypeSignature().withNames().map { (name, param) ->
-                name to signatureParser.parseJavaType(param, typeParamNames)
-            }
+    override fun parseGenericSam(paramNames: List<String>?, signature: String, implicitThis: MinimalInfo, implicitThisTps: List<TypeParameter>): SamType.GenericSam? {
+        val parseBase = parseFunctionBase(signature, implicitThisTps)
+        val parsed = parseDynamicArgs(parseBase, paramNames, null)
 
-            TypeSignature.GenericSignature(
-                    typeParameters = typeParams,
-                    inputParameters = inputs,
-                    output = parseReturnType(signatureCtx.returnType(), typeParamNames)
+        return if (parsed.typeParameters.size == implicitThisTps.size) {
+            SamType.GenericSam(
+                    explicit = false,
+                    inputs = parsed.inputParameters.map { it.second },
+                    output = parsed.output
             )
+        } else {
+            null
         }
- */
-    }
-
-    override fun parseTemplateFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: TypeTemplate): TypeSignature {
-        val parseBase = parseFunctionBase(name, paramNames, signature, implicitThis.typeParams)
-        val thisParam = implicitThis.forceDynamicApply(implicitThis.typeParams.mapIndexed { i, _ -> Substitution.ParamSubstitution(i) })
-        return parseDynamicArgs(parseBase, paramNames, TypeSubstitution(thisParam.holder()))
-    }
-
-    override fun parseDirectFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: CompleteMinInfo.Static): TypeSignature {
-        val parseBase = parseFunctionBase(name, paramNames, signature, emptyList())
-        return parseStaticArgs(parseBase, paramNames, implicitThis) ?: parseDynamicArgs(parseBase, paramNames, TypeSubstitution(implicitThis.holder()))
-    }
-
-    override fun parseStaticFunction(name: String, paramNames: List<String>?, signature: String): TypeSignature {
-        val parseBase = parseFunctionBase(name, paramNames, signature, emptyList())
-        return parseStaticArgs(parseBase, paramNames, null) ?: parseDynamicArgs(parseBase, paramNames, null)
     }
 }

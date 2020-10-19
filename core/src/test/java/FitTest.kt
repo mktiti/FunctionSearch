@@ -28,8 +28,8 @@ class FitTest {
             upperBounds = setOf(TypeSubstitution(rootType))
     )
     private val resolver: TypeResolver = SingleRepoTypeResolver(repo)
-    private val fitter: QueryFitter = JavaQueryFitter(resolver)
-    private val printer: TypePrint = JavaTypePrinter(resolver, MapJavaInfoRepo)
+    private val fitter: QueryFitter = JavaQueryFitter(MapJavaInfoRepo, resolver)
+    private val printer: TypePrint = JavaTypePrinter(MapJavaInfoRepo, resolver)
 
     init {
         println("All Test Types")

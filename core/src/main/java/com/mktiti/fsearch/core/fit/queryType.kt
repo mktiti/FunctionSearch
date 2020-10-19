@@ -1,8 +1,10 @@
 package com.mktiti.fsearch.core.fit
 
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.forceStaticApply
 
 data class QueryType(
     val inputParameters: List<NonGenericType>,
@@ -10,21 +12,16 @@ data class QueryType(
 ) {
 
     companion object {
-        private val funTypeMap: MutableMap<Int, TypeTemplate> = mutableMapOf()
-
-        private fun createFunType(paramCount: Int): TypeTemplate {
-            return TypeTemplate(
-                    info = MinimalInfo(packageName = emptyList(), simpleName = "\$QueryFunArg_$paramCount"),
-                    typeParams = (0..paramCount).map { TypeParameter(('A' + it).toString(), TypeBounds(emptySet())) },
+        fun functionType(inputs: List<NonGenericType>, output: NonGenericType, infoRepo: JavaInfoRepo): NonGenericType {
+            val funTemplate = TypeTemplate(
+                    info = infoRepo.funInfo(inputs.size),
+                    typeParams = (0 .. inputs.size).map { TypeParameter(('A' + it).toString(), TypeBounds(emptySet())) },
                     superTypes = emptyList(),
                     samType = null,
                     virtual = true
             )
-        }
 
-        // TODO
-        fun functionType(inputs: List<NonGenericType>, output: NonGenericType): NonGenericType {
-            return funTypeMap.computeIfAbsent(inputs.size, this::createFunType).staticApply(TypeHolder.staticDirects(inputs + output))!!
+            return funTemplate.forceStaticApply(TypeHolder.staticDirects(inputs + output))
         }
 
         fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(

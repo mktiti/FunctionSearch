@@ -6,50 +6,94 @@ import com.mktiti.fsearch.core.fit.SubResult.Continue.Skip
 import com.mktiti.fsearch.core.fit.SubResult.Failure
 import com.mktiti.fsearch.core.fit.SubResult.TypeArgUpdate
 import com.mktiti.fsearch.core.fit.TypeBoundFit.*
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.Type.NonGenericType
+import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.nList
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.allPermutations
 import com.mktiti.fsearch.util.roll
+import com.mktiti.fsearch.util.safeCutLast
 
 class JavaQueryFitter(
-        private val typeResolver: TypeResolver
+        private val infoRepo: JavaInfoRepo,
+        private val typeResolver: TypeResolver,
+        private val infoFitter: InfoFitter = JavaInfoFitter(infoRepo)
 ) : QueryFitter, JavaParamFitter {
 
-    private val boundFitter = JavaTypeBoundFitter(this, typeResolver)
+    companion object {
+        private data class FunArgPairing<S, I>(
+                val paramArg: S,
+                val subArg: I,
+                val variance: InheritanceLogic
+        )
+
+        private fun <S, I> funPairing(sam: SamType<S>, argIns: List<I>, argOut: I): List<FunArgPairing<S, I>> {
+            val inPairs = sam.inputs.zip(argIns) { p, s -> FunArgPairing(p, s, COVARIANCE) }
+            val outPair = FunArgPairing(sam.output, argOut, CONTRAVARIANCE)
+
+            return (inPairs + outPair)
+        }
+    }
+
+    private val boundFitter = JavaTypeBoundFitter(infoRepo, this, typeResolver)
 
     private fun <I : CompleteMinInfo<*>, T : Type<I>> TypeHolder<I, T>.resolve(): T? = with(typeResolver)
+
+    private fun NonGenericType.anySupers(): Sequence<TypeHolder.Static> = SuperUtil.resolveSupers(infoRepo, typeResolver, this)
 
     override fun subStatic(
             argPar: TypeHolder.Static,
             subPar: TypeHolder.Static,
             variance: InheritanceLogic
     ): Boolean {
-        return if (argPar.info.base == subPar.info.base) {
+        return if (infoFitter.fit(argPar, subPar)) {
+            return argPar.info.args.zipIfSameLength(subPar.info.args)?.all { (argParPar, subParPar) ->
+                subStatic(argParPar.holder(), subParPar.holder(), INVARIANCE)
+            } ?: false
+
+            /*
             val resolvedArg = argPar.resolve() ?: return false
             val resolvedSub = subPar.resolve() ?: return false
 
             resolvedArg.typeArgs.zipIfSameLength(resolvedSub.typeArgs)?.all { (argParPar, subParPar) ->
                 subStatic(argParPar, subParPar, INVARIANCE)
             } ?: false
+             */
         } else {
+            val resolvedArg = argPar.resolve() ?: return false
+            resolvedArg.samType?.let { paramSam ->
+                val funParamCount = infoRepo.ifFunParamCount(subPar.info.base) ?: return@let
+                if (funParamCount == paramSam.inputs.size) {
+                    val anyMatches = subPar.info.args.dropLast(1).allPermutations().any { subOrderedIns ->
+                        funPairing(paramSam, subOrderedIns, subPar.info.args.last()).all { (funParArg, funSubArg, variance) ->
+                            subStatic(funParArg, funSubArg.holder(), variance)
+                        }
+                    }
+
+                    if (anyMatches) {
+                        return true
+                    }
+                }
+            }
+
             when (variance) {
                 INVARIANCE -> false
                 COVARIANCE -> {
-                    subPar.resolve()?.superTypes?.asSequence()?.any { superInfo ->
+                    subPar.resolve()?.anySupers()?.any { superInfo ->
                         subStatic(argPar, superInfo, variance)
                     } ?: false
                 }
                 CONTRAVARIANCE -> {
-                    argPar.resolve()?.superTypes?.asSequence()?.any { superInfo ->
+                    resolvedArg.anySupers().any { superInfo ->
                         subStatic(superInfo, subPar, variance)
-                    } ?: false
+                    }
                 }
             }
         }
@@ -77,7 +121,20 @@ class JavaQueryFitter(
     ): SubResult {
         fun Boolean.asResult(): SubResult = if (this) ConstraintsKept else Failure
 
-        return if (argPar.info.base == subPar.info.base) {
+        return if (infoFitter.fit(argPar, subPar)) {
+            val zipped = argPar.info.args.zipIfSameLength(subPar.info.args) ?: return Failure
+
+            zipped.map { (argParPar, subParPar) ->
+                subAny(argCtx, argParPar, subParPar.holder(), INVARIANCE)
+            }.roll<SubResult, SubResult>(ConstraintsKept) { status, res ->
+                when (res) {
+                    ConstraintsKept -> status to false
+                    Skip -> Skip to false
+                    else -> res to true
+                }
+            }
+
+            /*
             val resolvedArg = argPar.resolve() ?: return Failure
             val resolvedSub = subPar.resolve() ?: return Failure
             val zipped = resolvedArg.typeArgMapping.zipIfSameLength(resolvedSub.typeArgs) ?: return Failure
@@ -91,32 +148,50 @@ class JavaQueryFitter(
                     else -> res to true
                 }
             }
+
+             */
         } else {
-            fun List<SubResult>.rollResult(): SubResult = roll<SubResult, SubResult>(Failure) { _, res ->
+            fun List<SubResult>.rollResult(anyEnough: Boolean): SubResult = roll<SubResult, SubResult>(Failure) { _, res ->
                 res to when (res) {
-                    Failure -> false
-                    ConstraintsKept -> true
-                    Skip -> true
+                    Failure -> !anyEnough
+                    ConstraintsKept -> anyEnough
+                    Skip -> anyEnough
                     is TypeArgUpdate -> true
+                }
+            }
+
+            val resolvedArg = argPar.resolve() ?: return Failure
+            resolvedArg.samType?.let { paramSam ->
+                val funParamCount = infoRepo.ifFunParamCount(subPar.info.base) ?: return@let
+                if (funParamCount == paramSam.inputs.size) {
+                    val (subIns, subOut) = subPar.info.args.safeCutLast() ?: return@let
+                    val result = funPairing(paramSam, subIns, subOut).map { (funParArg, funSubArg, variance) ->
+                        subAny(argCtx, funParArg, funSubArg.holder(), variance)
+                    }.rollResult(anyEnough = false)
+
+                    when (result) {
+                        ConstraintsKept -> return ConstraintsKept
+                        Skip -> return Skip
+                        is TypeArgUpdate -> return result
+                        Failure -> return@let
+                    }
                 }
             }
 
             when (variance) {
                 INVARIANCE -> Failure
                 COVARIANCE -> {
-                    val resolvedSub = subPar.resolve() ?: return Failure
-                    resolvedSub.superTypes.asSequence().asIterable().map { superInfo ->
+                    subPar.resolve()?.anySupers()?.asIterable()?.map { superInfo ->
                         subDynamic(argCtx, argPar, superInfo, variance)
-                    }.rollResult()
+                    }?.rollResult(anyEnough = true) ?: Failure
                 }
                 CONTRAVARIANCE -> {
-                    val resolvedArg = argPar.resolve() ?: return Failure
                     resolvedArg.superTypes.asSequence().asIterable().map { superType ->
                         when (superType) {
                             is TypeHolder.Static -> subStatic(superType, subPar, variance).asResult()
                             is TypeHolder.Dynamic -> subDynamic(argCtx, superType, subPar, variance)
                         }
-                    }.rollResult()
+                    }.rollResult(anyEnough = true)
                 }
             }
         }

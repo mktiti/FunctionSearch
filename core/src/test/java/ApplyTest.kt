@@ -1,8 +1,5 @@
 import com.mktiti.fsearch.core.fit.*
-import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
-import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.core.repo.createTestRepo
+import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
@@ -64,7 +61,7 @@ class ApplyTest {
         val strBox = box.forceStaticApply(strType.holder())
 
         val resolver: TypeResolver = SingleRepoTypeResolver(repo)
-        val fitter: QueryFitter = JavaQueryFitter(resolver)
+        val fitter: QueryFitter = JavaQueryFitter(MapJavaInfoRepo, resolver)
 
         fun nested(currentBox: Type.NonGenericType): Type.NonGenericType {
             return box.forceStaticApply(currentBox.holder())

@@ -1,16 +1,16 @@
 package com.mktiti.fsearch.core.fit
 
 import com.mktiti.fsearch.core.fit.TypeBoundFit.*
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.core.type.ApplicationParameter
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.TypeBounds
-import com.mktiti.fsearch.core.type.TypeHolder
 import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.zipIfSameLength
 
 class JavaTypeBoundFitter(
+        private val infoRepo: JavaInfoRepo,
         private val paramFitter: JavaParamFitter,
         private val typeResolver: TypeResolver
 ) {
@@ -18,6 +18,8 @@ class JavaTypeBoundFitter(
     private companion object {
         private fun Boolean.fitOrNot(): TypeBoundFit = if (this) Fit else Unfit
     }
+
+    private fun <I : CompleteMinInfo<*>, T : Type<I>> TypeHolder<I, T>.resolve(): T? = with(typeResolver)
 
     fun fits(typeBounds: TypeBounds, type: TypeHolder.Static): TypeBoundFit =
             typeBounds.upperBounds.asSequence()
@@ -32,13 +34,13 @@ class JavaTypeBoundFitter(
             when (variance) {
                 InheritanceLogic.INVARIANCE -> null
                 InheritanceLogic.COVARIANCE -> {
-                    val resolvedType = type.with(typeResolver) ?: return null
+                    val resolvedType = type.resolve() ?: return null
                     resolvedType.superTypes.asSequence().mapNotNull {
                         commonBase(bound, it, variance)
                     }.firstOrNull()
                 }
                 InheritanceLogic.CONTRAVARIANCE -> {
-                    val resolvedBound = bound.with(typeResolver) ?: return null
+                    val resolvedBound = bound.resolve() ?: return null
                     resolvedBound.superTypes.asSequence().mapNotNull { superType ->
                         when (superType) {
                             is TypeHolder.Static -> null
@@ -54,8 +56,8 @@ class JavaTypeBoundFitter(
         val assumedSelf = upperBound.applySelf(self)
 
         val (boundBase: TypeHolder.Dynamic, typeBase: TypeHolder.Static) = commonBase(assumedSelf, type, InheritanceLogic.COVARIANCE) ?: return Unfit
-        val resolvedBoundBase = boundBase.with(typeResolver) ?: return Unfit
-        val resolvedTypeBase = typeBase.with(typeResolver) ?: return Unfit
+        val resolvedBoundBase = boundBase.resolve() ?: return Unfit
+        val resolvedTypeBase = typeBase.resolve() ?: return Unfit
 
         val paramPairs = resolvedBoundBase.typeArgMapping.zipIfSameLength(resolvedTypeBase.typeArgs) ?: return Unfit
 
@@ -99,8 +101,8 @@ class JavaTypeBoundFitter(
                 when (val holder = upperBound.holder) {
                     is TypeHolder.Dynamic -> fitsDatBound(type, holder, type)
                     is TypeHolder.Static -> {
-                        SuperUtil.anyNgSuper(typeResolver, type) {
-                            it.completeInfo == holder.info
+                        SuperUtil.anyNgSuper(infoRepo, typeResolver, type) {
+                            paramFitter.subStatic(holder, type, InheritanceLogic.COVARIANCE)
                         }.fitOrNot()
                     }
                 }

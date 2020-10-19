@@ -10,7 +10,7 @@ interface TypeRepo {
     // val rootType: DirectType
     // val defaultTypeBounds: TypeBounds
 
-    val allTypes: Collection<Type<*>>
+    val allTypes: Collection<DirectType>
     val allTemplates: Collection<TypeTemplate>
 
     operator fun get(name: String, allowSimple: Boolean = false): DirectType?
@@ -69,7 +69,7 @@ class SetTypeRepo(
     private val types: MutableMap<String, DirectType> = HashMap()
     private val templates: MutableMap<String, TypeTemplate> = HashMap()
 
-    override val allTypes: Collection<Type<*>>
+    override val allTypes: Collection<DirectType>
         get() = types.map { it.value }
 
     override val allTemplates: Collection<TypeTemplate>

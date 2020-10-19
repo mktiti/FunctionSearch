@@ -56,6 +56,16 @@ class FallbackResolver(
         private val fallback: TypeResolver
 ) : TypeResolver {
 
+    companion object {
+        fun withVirtuals(virtualTypes: Map<MinimalInfo, DirectType>, resolver: TypeResolver): FallbackResolver {
+            return FallbackResolver(VirtualTypeRepo(virtualTypes), resolver)
+        }
+
+        fun withVirtuals(virtualTypes: Collection<DirectType>, resolver: TypeResolver): FallbackResolver {
+            return withVirtuals(virtualTypes.map { it.info to it }.toMap(), resolver)
+        }
+    }
+
     private val primary = SingleRepoTypeResolver(repo)
 
     private fun <T : Any> resolve(query: TypeResolver.() -> T?): T? = primary.query() ?: fallback.query()

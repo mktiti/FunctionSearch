@@ -1,35 +1,30 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
+import com.mktiti.fsearch.core.type.Type.NonGenericType
+import sun.security.krb5.internal.APOptions
 
-sealed class SamType<out S : Substitution>(
+sealed class SamType<out P>(
         val explicit: Boolean,
-        val inputs: List<Substitution>,
-        val output: S
+        val inputs: List<P>,
+        val output: P
 ) {
 
     class DirectSam(
             explicit: Boolean,
-            inputs: List<StaticTypeSubstitution>,
-            output: StaticTypeSubstitution
-    ) : SamType<StaticTypeSubstitution>(explicit, inputs, output) {
-
-      //  override fun staticApply(typeArgs: List<NonGenericType>) = this
-        override fun dynamicApply(typeArgs: List<ApplicationParameter>) = this
-
-    }
+            inputs: List<TypeHolder.Static>,
+            output: TypeHolder.Static
+    ) : SamType<TypeHolder.Static>(explicit, inputs, output)
 
     class GenericSam(
             explicit: Boolean,
-            inputs: List<Substitution>,
-            output: Substitution
-    ) : SamType<Substitution>(explicit, inputs, output) {
+            inputs: List<ApplicationParameter>,
+            output: ApplicationParameter
+    ) : SamType<ApplicationParameter>(explicit, inputs, output) {
 
-        override fun dynamicApply(typeArgs: List<ApplicationParameter>): SamType<Substitution>? {
-            fun Substitution.apply(): Substitution? = dynamicApply(typeArgs) as? Substitution
-
-            val appliedIns = inputs.map { it.apply() ?: return null }
-            val appliedOut = output.apply() ?: return null
+        fun dynamicApply(typeArgs: List<ApplicationParameter>): GenericSam? {
+            val appliedIns = inputs.map { it.dynamicApply(typeArgs) ?: return null }
+            val appliedOut = output.dynamicApply(typeArgs) ?: return null
 
             return GenericSam(
                     inputs = appliedIns,
@@ -37,9 +32,11 @@ sealed class SamType<out S : Substitution>(
                     explicit = explicit
             )
         }
-/*
-        override fun staticApply(typeArgs: List<NonGenericType>): DirectSam? {
-            fun Substitution.apply() = staticApply(typeArgs)?.let { StaticTypeSubstitution(it) }
+
+        fun staticApply(typeArgs: List<TypeHolder.Static>): DirectSam? {
+            fun ApplicationParameter.apply(): TypeHolder.Static? {
+                return (this as? Substitution)?.staticApply(typeArgs)
+            }
 
             val appliedIns = inputs.map { it.apply() ?: return null }
             val appliedOut = output.apply() ?: return null
@@ -51,11 +48,9 @@ sealed class SamType<out S : Substitution>(
             )
         }
 
-
- */
     }
 
-    abstract fun dynamicApply(typeArgs: List<ApplicationParameter>): SamType<Substitution>?
+    // abstract fun dynamicApply(typeArgs: List<ApplicationParameter>): SamType<Substitution>?
 
     // abstract fun staticApply(typeArgs: List<NonGenericType>): DirectSam?
 

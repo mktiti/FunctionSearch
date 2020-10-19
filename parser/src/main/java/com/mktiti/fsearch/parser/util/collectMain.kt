@@ -2,7 +2,6 @@ package com.mktiti.fsearch.parser.util
 
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
-import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
@@ -13,7 +12,6 @@ import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import com.sun.xml.internal.ws.api.databinding.MappingInfo
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 import java.nio.file.Files
@@ -95,14 +93,22 @@ fun main(args: Array<String>) {
     val allFunctions = results.flatMap { it.functions } + jclFunctions
     val typeRepos = results.map { it.typeRepo } + jclRepo
 
+    /*
+    typeRepos.flatMap {
+        it.allTypes + it.allTemplates
+    }.forEach {
+        it.samType?.let { sam ->
+            println("${it.info} is a SAM type as ${sam.inputs} -> ${sam.output}")
+        }
+    }
+     */
+
     printLog(log)
 
-    val queryParser: QueryParser = AntlrQueryParser(javaRepo, SimpleMultiRepoTypeResolver(typeRepos))
-
     val typeResolver: TypeResolver = SimpleMultiRepoTypeResolver(typeRepos)
-    val fitter: QueryFitter = JavaQueryFitter(typeResolver)
+    val queryParser: QueryParser = AntlrQueryParser(javaRepo, MapJavaInfoRepo, typeResolver)
 
-    val typePrint = JavaTypePrinter(typeResolver, MapJavaInfoRepo)
+    val typePrint = JavaTypePrinter(MapJavaInfoRepo, typeResolver)
 
     while (true) {
         print(">")
@@ -162,16 +168,29 @@ fun main(args: Array<String>) {
             }
         } else {
             try {
-                val query = queryParser.parse(input)
+                val (query, virtuals) = queryParser.parse(input)
                 print("Parsed as: ")
                 typePrint.print(query)
                 println("Started searching...")
+
+                val extraResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
+                val fitter = JavaQueryFitter(MapJavaInfoRepo, extraResolver)
+                val extraPrint = JavaTypePrinter(MapJavaInfoRepo, extraResolver)
+
                 allFunctions.asSequence().forEach { function ->
+                    if (function.info.fileName == "java.util.stream.Stream" && function.info.name == "flatMap") {
+                        val a = 0
+                    }
+
                     val result = fitter.fitsQuery(query, function)
                     if (result != null) {
                         print("Fits function ")
-                        typePrint.printFun(function)
-                        typePrint.printFittingMap(result)
+
+                        extraPrint.printFun(function)
+                        extraPrint.printFittingMap(result)
+
+                        // typePrint.printFun(function)
+                        // typePrint.printFittingMap(result)
                         // println("\tas ${result.funSignature}")
                     }
                 }

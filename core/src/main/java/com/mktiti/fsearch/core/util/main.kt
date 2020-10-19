@@ -86,9 +86,9 @@ val linkedListType = defaultRepo.createTemplate(
 
 fun main() {
     val resolver: TypeResolver = SingleRepoTypeResolver(defaultRepo)
-    val fitter = JavaQueryFitter(resolver)
+    val fitter = JavaQueryFitter(MapJavaInfoRepo, resolver)
 
-    val printer: TypePrint = JavaTypePrinter(resolver, MapJavaInfoRepo)
+    val printer: TypePrint = JavaTypePrinter(MapJavaInfoRepo, resolver)
 
     printer.printType(objType)
     printer.printType(strType)

@@ -16,8 +16,8 @@ import com.mktiti.fsearch.core.util.SemiVisitor
 import java.io.PrintStream
 
 class JavaTypePrinter(
-        typeResolver: TypeResolver,
         private val infoRepo: JavaInfoRepo,
+        typeResolver: TypeResolver,
         private val stringResolver: TypeStringResolver = JavaTypeStringResolver(infoRepo),
         private val output: PrintStream = System.out
 ) : TypePrint {

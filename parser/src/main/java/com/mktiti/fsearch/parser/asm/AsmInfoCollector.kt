@@ -1,9 +1,12 @@
 package com.mktiti.fsearch.parser.asm
 
+import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
 import com.mktiti.fsearch.parser.intermediate.DefaultTypeParser
+import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureTypeParser
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
 import com.mktiti.fsearch.util.MutablePrefixTree
@@ -11,6 +14,7 @@ import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
+import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
 object AsmInfoCollector {
@@ -103,17 +107,38 @@ private class AsmInfoCollectorVisitor(
 
     private val typeParser: JavaSignatureTypeParser = DefaultTypeParser(infoRepo)
 
+    private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
+
     val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
     val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
 
     // val directInfos: MutablePrefixTree<String, CreatorInfo.Direct> = mapMutablePrefixTree()
     // val templateInfos: MutablePrefixTree<String, CreatorInfo.Template> = mapMutablePrefixTree()
 
+    private sealed class AbstractCount {
+        object NoAbstract : AbstractCount() {
+            override fun plus(newAbstract: OneAbstract) = newAbstract
+        }
+
+        data class OneAbstract(
+                val signature: String
+        ) : AbstractCount() {
+            override fun plus(newAbstract: OneAbstract) = TooMany
+        }
+
+        object TooMany : AbstractCount() {
+            override fun plus(newAbstract: OneAbstract) = TooMany
+        }
+
+        abstract operator fun plus(newAbstract: OneAbstract): AbstractCount
+    }
+
     private data class TypeMeta(
             val info: MinimalInfo,
             val signature: String?,
             val superNames: List<String>,
-            val nestDepth: Int? = null
+            val nestDepth: Int? = null,
+            val abstractCount: AbstractCount = AbstractCount.NoAbstract
     )
 
     private var currentType: TypeMeta? = null
@@ -150,13 +175,14 @@ private class AsmInfoCollectorVisitor(
 
     private fun addDirect(
             info: MinimalInfo,
-            superTypes: List<CompleteMinInfo.Static>
+            superTypes: List<CompleteMinInfo.Static>,
+            samType: SamType.DirectSam?
     ) {
         addDirect(
             DirectType(
                 minInfo = info,
                 superTypes = TypeHolder.staticIndirects(superTypes),
-                samType = null,
+                samType = samType,
                 virtual = false
             )
         )
@@ -169,14 +195,15 @@ private class AsmInfoCollectorVisitor(
     private fun addTemplate(
             info: MinimalInfo,
             superTypes: List<CompleteMinInfo<*>>,
-            typeParams: List<TypeParameter>
+            typeParams: List<TypeParameter>,
+            samType: SamType.GenericSam?
     ) {
         addTemplate(
             TypeTemplate(
                 info = info,
                 superTypes = TypeHolder.anyIndirects(superTypes),
                 typeParams = typeParams,
-                samType = null,
+                samType = samType,
                 virtual = false
             )
         )
@@ -288,6 +315,18 @@ private class AsmInfoCollectorVisitor(
         return null
     }
 
+    override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
+        if ((access and Opcodes.ACC_ABSTRACT) > 0 && (access and Opcodes.ACC_STATIC) == 0) {
+            currentType?.let {
+                currentType = it.copy(
+                        abstractCount = it.abstractCount + AbstractCount.OneAbstract(signature ?: descriptor)
+                )
+            }
+        }
+
+        return null
+    }
+
     override fun visitEnd() {
         currentType?.let {
             createInitials(it)
@@ -296,11 +335,11 @@ private class AsmInfoCollectorVisitor(
     }
 
     private fun createInitials(meta: TypeMeta) {
-        val (info, signature, superNames) = meta
+        val (info, signature, superNames, nestDepth, abstractCount) = meta
 
-        val nestContext: List<TypeParameter> = if (meta.nestDepth != null) {
+        val nestContext: List<TypeParameter> = if (nestDepth != null) {
             val nests = info.simpleName.split(".").dropLast(1)
-            val depth = Integer.min(meta.nestDepth, nests.size)
+            val depth = Integer.min(nestDepth, nests.size)
 
             //val nestPackage: PrefixTree<String, CreatorInfo.Template> = templateInfos.mutableSubtreeSafe(info.packageName)
             val nestPackage: PrefixTree<String, TypeTemplate> = typeTemplates.mutableSubtreeSafe(info.packageName)
@@ -321,10 +360,27 @@ private class AsmInfoCollectorVisitor(
             emptyList()
         }
 
+        fun directSam(): SamType.DirectSam? = when (abstractCount) {
+            is AbstractCount.OneAbstract -> funParser.parseDirectSam(null, abstractCount.signature)
+            else -> null
+        }
+
+        fun genericSam(typeParams: List<TypeParameter>): SamType.GenericSam?  {
+            return when (abstractCount) {
+                is AbstractCount.OneAbstract -> funParser.parseGenericSam(null, abstractCount.signature, info, typeParams)
+                else -> null
+            }
+        }
+
+        if (info.simpleName == "Function") {
+            val a = 0
+        }
+
         if (signature == null && nestContext.isEmpty()) {
             addDirect(
                     info = info,
-                    superTypes = superNames.map(AsmUtil::parseCompleteStaticName)
+                    superTypes = superNames.map(AsmUtil::parseCompleteStaticName),
+                    samType = directSam()
             )
         } else {
 
@@ -334,12 +390,13 @@ private class AsmInfoCollectorVisitor(
                         typeParams = nestContext,
                         superTypes = superNames.map { directSuper ->
                             AsmUtil.parseName(directSuper).complete()
-                        }
+                        },
+                        samType = genericSam(nestContext)
                 )
             } else {
-                when (val direct = typeParser.parseDirectTypeSignature(info, signature)) {
+                when (val direct = typeParser.parseDirectTypeSignature(info, signature, directSam())) {
                     null -> {
-                        addTemplate(typeParser.parseTemplateSignature(info, signature, nestContext))
+                        addTemplate(typeParser.parseTemplateSignature(info, signature, nestContext, ::genericSam))
                     }
                     else -> {
                         addDirect(direct)

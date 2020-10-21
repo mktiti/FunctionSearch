@@ -83,7 +83,7 @@ private class AsmFunctionCollectorVisitor(
 
             val info = context.info
 
-            if (info.nameParts.any { it.first().isDigit() } && !isStatic) {
+            if (info.nameParts.any { it.firstOrNull()?.isDigit() != false } && !isStatic) {
                 // Skip anonymous and local types
                 return null
             }

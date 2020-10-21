@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.parser.maven
+package com.mktiti.fsearch.maven
 
 data class MavenRepoInfo(
         val name: String,

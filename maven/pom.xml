@@ -10,7 +10,7 @@
         <version>0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>core</artifactId>
+    <artifactId>maven</artifactId>
     <version>0.1-SNAPSHOT</version>
 
     <dependencies>
@@ -19,6 +19,33 @@
             <artifactId>util</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>parser</artifactId>
+        </dependency>
+<!--
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-model-builder</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.archiva</groupId>
+            <artifactId>maven2-repository</artifactId>
+            <version>2.2.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.archiva</groupId>
+            <artifactId>archiva-repository-layer</artifactId>
+            <version>2.2.5</version>
+        </dependency>
+-->
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib-jdk8</artifactId>
@@ -54,24 +81,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.6</version>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals> <goal>single</goal> </goals>
-                        <configuration>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <finalName>core</finalName>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.19.1</version>
                 <dependencies>
@@ -90,4 +99,5 @@
         </plugins>
     </build>
 
+    
 </project>

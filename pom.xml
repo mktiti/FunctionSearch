@@ -19,6 +19,8 @@
 
         <antlr.version>4.8-1</antlr.version>
 
+        <maven.libs.version>3.6.3</maven.libs.version>
+
         <junit.version>5.3.1</junit.version>
     </properties>
 
@@ -26,6 +28,7 @@
         <module>util</module>
         <module>core</module>
         <module>parser</module>
+        <module>maven</module>
         <module>backend</module>
     </modules>
 
@@ -70,9 +73,28 @@
 
             <dependency>
                 <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>maven</artifactId>
+                <version>0.1-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
                 <artifactId>backend</artifactId>
                 <version>0.1-SNAPSHOT</version>
             </dependency>
+<!--
+            <dependency>
+                <groupId>org.apache.maven</groupId>
+                <artifactId>maven-model-builder</artifactId>
+                <version>${maven.libs.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.maven</groupId>
+                <artifactId>maven-resolver-provider</artifactId>
+                <version>${maven.libs.version}</version>
+            </dependency>
+-->
 
             <dependency>
                 <groupId>org.slf4j</groupId>

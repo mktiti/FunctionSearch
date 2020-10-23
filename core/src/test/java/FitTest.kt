@@ -204,7 +204,7 @@ class FitTest {
         val personList = list.forceStaticApply(person.holder())
         val bossToPersonMap = hashMap.forceStaticApply(boss.holder(), personList.holder())
 
-        val virtType1 = QueryType.virtualType("downstreamA", listOf(rootType.with(resolver)!!))
+        val virtType1 = QueryType.virtualType("downstreamA", listOf(rootType))
         repo += virtType1
 
         // (Person -> Ceo), (() -> HashMap<Boss, List<Person>>), Collector<Person, _, List<Person>> -> Collector<Boss, _, HashMap<Boss, List<Person>>>

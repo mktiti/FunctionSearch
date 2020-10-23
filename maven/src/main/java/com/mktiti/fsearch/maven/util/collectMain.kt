@@ -168,7 +168,7 @@ fun main(args: Array<String>) {
                 val extraContext = context.withVirtuals(virtuals)
 
                 context.allFunctions.asSequence().forEach { function ->
-                    if (function.info.fileName == "org.apache.commons.collections4.OrderedMap" && function.info.name == "mapIter") {
+                    if (function.info.fileName == "java.util.Collections" && function.info.name == "sort") {
                         val a = 0
                     }
 

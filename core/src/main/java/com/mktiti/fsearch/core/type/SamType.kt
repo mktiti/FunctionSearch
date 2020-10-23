@@ -1,8 +1,6 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.Type.NonGenericType
-import sun.security.krb5.internal.APOptions
 
 sealed class SamType<out P>(
         val explicit: Boolean,

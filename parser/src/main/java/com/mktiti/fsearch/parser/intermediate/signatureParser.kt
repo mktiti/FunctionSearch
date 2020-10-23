@@ -14,15 +14,15 @@ interface JavaSignatureParser {
 
     fun parseDefinedStaticType(param: ClassTypeSignatureContext): CompleteMinInfo.Static?
 
-    fun parseDefinedDynamicType(param: ClassTypeSignatureContext, typeArgs: List<String>): CompleteMinInfo.Dynamic
+    fun parseDefinedDynamicType(param: ClassTypeSignatureContext, typeArgs: List<String>, selfParamName: String?): CompleteMinInfo.Dynamic
 
-    fun parseDefinedType(param: ClassTypeSignatureContext, typeArgs: List<String>): CompleteMinInfo<*>
+    fun parseDefinedType(param: ClassTypeSignatureContext, typeArgs: List<String>, selfParamName: String?): CompleteMinInfo<*>
 
     fun parseTypeParams(paramCtx: TypeParametersContext?, externalTypeParams: List<String>): List<TypeParameter>
 
     fun parseStaticJavaType(param: SignatureParser.JavaTypeSignatureContext): CompleteMinInfo.Static?
 
-    fun parseJavaType(param: SignatureParser.JavaTypeSignatureContext, typeParams: List<String>): Substitution
+    fun parseJavaType(param: SignatureParser.JavaTypeSignatureContext, typeParams: List<String>, selfParamName: String?): Substitution
 
 }
 

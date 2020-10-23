@@ -24,12 +24,12 @@ data class QueryType(
             return funTemplate.forceStaticApply(TypeHolder.staticDirects(inputs + output))
         }
 
-        fun virtualType(name: String, supers: List<NonGenericType>): DirectType = DirectType(
+        fun virtualType(name: String, supers: List<TypeHolder.Static>): DirectType = DirectType(
                 minInfo = MinimalInfo(
                         simpleName = name,
                         packageName = emptyList()
                 ),
-                superTypes = TypeHolder.staticDirects(supers),
+                superTypes = supers,
                 samType = null,
                 virtual = true
         )

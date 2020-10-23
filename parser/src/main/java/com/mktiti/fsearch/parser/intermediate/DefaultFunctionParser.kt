@@ -29,7 +29,7 @@ class DefaultFunctionParser(
     }.wrap()
 
     private fun parseReturnType(value: SignatureParser.ReturnTypeContext, typeParams: List<String>): Substitution {
-        return parseStaticReturnType(value) ?: signatureParser.parseJavaType(value.javaTypeSignature(), typeParams)
+        return parseStaticReturnType(value) ?: signatureParser.parseJavaType(value.javaTypeSignature(), typeParams, selfParamName = null)
     }
 
     private data class ParseBase(
@@ -73,7 +73,7 @@ class DefaultFunctionParser(
         val (signatureCtx, typeParams) = parseBase
         val typeParamNames = typeParams.map { it.sign }
         val inputs = signatureCtx.javaTypeSignature().withNames(signatureCtx, paramNames).map { (name, param) ->
-            name to signatureParser.parseJavaType(param, typeParamNames)
+            name to signatureParser.parseJavaType(param, typeParamNames, selfParamName = null)
         }
 
         val allInputs = if (implicitThis == null) {

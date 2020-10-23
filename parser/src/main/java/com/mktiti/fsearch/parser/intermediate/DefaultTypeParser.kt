@@ -49,7 +49,7 @@ class DefaultTypeParser(
         val typeParamNames = externalTpNames + selfTypeParams.map { it.sign }
 
         val supers = superContexts.map {
-            signatureParser.parseDefinedType(it, typeParamNames).holder()
+            signatureParser.parseDefinedType(it, typeParamNames, selfParamName = null).holder()
         }
 
         val typeParams = externalTypeParams + selfTypeParams

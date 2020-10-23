@@ -1,22 +1,27 @@
 grammar Query;
 
-query   :   funSignature EOF;
+query   :   virtualDeclarations? funSignature EOF;
 
-completeName    :   fullName templateSignature? ARRAY_LITERAL* ;
-fullName    :   FULL_PACKAGE? SIMPLE_NAME ;
+virtualDeclarations :   TEMPLATE_OPEN virtualDeclaration? (ARG_SEP virtualDeclaration)* TEMPLATE_CLOSE ;
+virtualDeclaration  :   SIMPLE_NAME (TYPE_BOUND declarationBounds)? ;
+declarationBounds   :   completeName (ARG_SEP completeName)* ;
+
+completeName        :   fullName templateSignature? ARRAY_LITERAL* ;
+fullName            :   FULL_PACKAGE? SIMPLE_NAME ;
 templateSignature   :   TEMPLATE_OPEN completeName (ARG_SEP completeName)* TEMPLATE_CLOSE ;
 
-funArg  :   completeName | PAREN_OPEN funSignature PAREN_CLOSE ARRAY_LITERAL* ;
+funArg          :   completeName | PAREN_OPEN funSignature PAREN_CLOSE ARRAY_LITERAL* ;
 wrappedFunArg   :   funArg | PAREN_OPEN wrappedFunArg PAREN_CLOSE ;
-inArgs  :   wrappedFunArg (ARG_SEP wrappedFunArg)* | EMPTY_ARG  ;
-outArg  :   wrappedFunArg | EMPTY_ARG  ;
-funSignature :  inArgs ARROW outArg;
+inArgs          :   wrappedFunArg (ARG_SEP wrappedFunArg)* | EMPTY_ARG ;
+outArg          :   wrappedFunArg | EMPTY_ARG ;
+funSignature    :   inArgs ARROW outArg ;
 
 EMPTY_ARG  : PAREN_OPEN PAREN_CLOSE ;
 PAREN_OPEN  : '(' ;
 PAREN_CLOSE  : ')' ;
 ARROW   : ('->' | '=>') ;
 ARG_SEP : ',' ;
+TYPE_BOUND : ':' ;
 
 SIMPLE_NAME :   JavaLetterOrDigit+ ;
 

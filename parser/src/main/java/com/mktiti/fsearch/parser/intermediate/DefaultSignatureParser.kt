@@ -41,8 +41,8 @@ class DefaultSignatureParser(
         return infoRepo.arrayType.staticComplete(listOf(type))
     }
 
-    private fun parseDynamicArray(param: ArrayTypeSignatureContext, typeParams: List<String>): CompleteMinInfo.Dynamic {
-        val type = parseJavaType(param.javaTypeSignature(), typeParams)
+    private fun parseDynamicArray(param: ArrayTypeSignatureContext, typeParams: List<String>, selfParamName: String?): CompleteMinInfo.Dynamic {
+        val type = parseJavaType(param.javaTypeSignature(), typeParams, selfParamName)
         return infoRepo.arrayType.dynamicComplete(listOf(type))
     }
 
@@ -53,18 +53,20 @@ class DefaultSignatureParser(
 
     /** Type params */
     private fun parseTypeParam(param: TypeParameterContext, typeParams: List<String>): TypeParameter {
+        val selfName = param.identifier().text
+
         val interfaceBounds: List<Substitution> = param.interfaceBounds()?.interfaceBound()?.map {
-            TypeSubstitution(parseDefinedType(it.classTypeSignature(), typeParams).holder())
+            TypeSubstitution(parseDefinedType(it.classTypeSignature(), typeParams, selfName).holder())
         } ?: emptyList()
 
         val classBound: Substitution? = param.classBound().referenceTypeSignature()?.let {
-            parseRefType(it, typeParams)
+            parseRefType(it, typeParams, selfName)
         }
 
         val bounds = if (classBound == null) interfaceBounds else (interfaceBounds + classBound)
 
         return TypeParameter(
-                sign = param.identifier().text,
+                sign = selfName,
                 bounds = TypeBounds(bounds.toSet())
         )
     }
@@ -95,17 +97,17 @@ class DefaultSignatureParser(
         }
     }
 
-    private fun parseDynamicTypeArg(param: TypeArgumentContext, typeArgs: List<String>): ApplicationParameter {
+    private fun parseDynamicTypeArg(param: TypeArgumentContext, typeArgs: List<String>, selfParamName: String?): ApplicationParameter {
         return when (val bounded = param.WildcardIndicator()) {
             null -> {
                 if (param.WILDCARD() != null) {
                     TypeSubstitution.unboundedWildcard
                 } else {
-                    parseRefType(param.referenceTypeSignature(), typeArgs)
+                    parseRefType(param.referenceTypeSignature(), typeArgs, selfParamName)
                 }
             }
             else -> {
-                val type = parseRefType(param.referenceTypeSignature(), typeArgs)
+                val type = parseRefType(param.referenceTypeSignature(), typeArgs, selfParamName)
                 val dir = if (bounded.symbol.text == "+") BoundDirection.UPPER else BoundDirection.LOWER
                 BoundedWildcard.Dynamic(type, dir)
             }
@@ -143,10 +145,10 @@ class DefaultSignatureParser(
         )
     }
 
-    override fun parseDefinedDynamicType(param: ClassTypeSignatureContext, typeArgs: List<String>): CompleteMinInfo.Dynamic {
+    override fun parseDefinedDynamicType(param: ClassTypeSignatureContext, typeArgs: List<String>, selfParamName: String?): CompleteMinInfo.Dynamic {
         val (info, args) = parseDefinedTypeBase(param)
 
-        val fullTypeArgs = args.map { parseDynamicTypeArg(it, typeArgs) }
+        val fullTypeArgs = args.map { parseDynamicTypeArg(it, typeArgs, selfParamName) }
 
         return CompleteMinInfo.Dynamic(
                 base = info,
@@ -154,8 +156,8 @@ class DefaultSignatureParser(
         )
     }
 
-    override fun parseDefinedType(param: ClassTypeSignatureContext, typeArgs: List<String>): CompleteMinInfo<*> {
-        return parseDefinedStaticType(param) ?: parseDefinedDynamicType(param, typeArgs)
+    override fun parseDefinedType(param: ClassTypeSignatureContext, typeArgs: List<String>, selfParamName: String?): CompleteMinInfo<*> {
+        return parseDefinedStaticType(param) ?: parseDefinedDynamicType(param, typeArgs, selfParamName)
     }
 
     /** Ref types */
@@ -167,24 +169,29 @@ class DefaultSignatureParser(
         }
     }
 
-    private fun parseDynamicRefType(param: ReferenceTypeSignatureContext, typeParams: List<String>): Substitution {
+    private fun parseDynamicRefType(param: ReferenceTypeSignatureContext, typeParams: List<String>, selfParamName: String?): Substitution {
         return when {
             param.typeVariableSignature() != null -> {
                 val ref = param.typeVariableSignature().identifier().text
-                val index = typeParams.indexOfOrNull(ref) ?: error("Undeclared type arg $ref!")
-                ParamSubstitution(index)
+
+                if (ref == selfParamName) {
+                    Substitution.SelfSubstitution
+                } else {
+                    val index = typeParams.indexOfOrNull(ref) ?: error("Undeclared type arg $ref!")
+                    ParamSubstitution(index)
+                }
             }
             param.arrayTypeSignature() != null -> {
-                TypeSubstitution(parseDynamicArray(param.arrayTypeSignature(), typeParams).holder())
+                TypeSubstitution(parseDynamicArray(param.arrayTypeSignature(), typeParams, selfParamName).holder())
             }
             else -> {
-                TypeSubstitution(parseDefinedDynamicType(param.classTypeSignature(), typeParams).holder())
+                TypeSubstitution(parseDefinedDynamicType(param.classTypeSignature(), typeParams, selfParamName).holder())
             }
         }
     }
 
-    private fun parseRefType(param: ReferenceTypeSignatureContext, typeParams: List<String>): Substitution {
-        return parseStaticRefType(param).wrap() ?: parseDynamicRefType(param, typeParams)
+    private fun parseRefType(param: ReferenceTypeSignatureContext, typeParams: List<String>, selfParamName: String?): Substitution {
+        return parseStaticRefType(param).wrap() ?: parseDynamicRefType(param, typeParams, selfParamName)
     }
 
     /** Java types */
@@ -195,8 +202,8 @@ class DefaultSignatureParser(
         }
     }
 
-    override fun parseJavaType(param: JavaTypeSignatureContext, typeParams: List<String>): Substitution {
-        return parseStaticJavaType(param).wrap() ?: parseDynamicRefType(param.referenceTypeSignature(), typeParams)
+    override fun parseJavaType(param: JavaTypeSignatureContext, typeParams: List<String>, selfParamName: String?): Substitution {
+        return parseStaticJavaType(param).wrap() ?: parseDynamicRefType(param.referenceTypeSignature(), typeParams, selfParamName)
     }
 
 }

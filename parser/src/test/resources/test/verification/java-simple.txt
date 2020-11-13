@@ -1,0 +1,42 @@
+# Syntax: Query '\n' ("-" | (result (, result)*))
+# where result is java string escaped in the format of package.class::function
+
+FtList<FtString>, int -> FtString
+com.mktiti.fsearchtest.FtList::get
+
+FtList<FtString>, Integer -> FtString
+com.mktiti.fsearchtest.FtList::get
+
+FtList<a>, int -> a
+com.mktiti.fsearchtest.FtList::get
+
+<a : FtPerson> FtList<a>, int -> a
+com.mktiti.fsearchtest.FtList::get
+
+<a : FtComp<a>> FtCollection<a> -> a
+com.mktiti.fsearchtest.FtCollUtil::min,com.mktiti.fsearchtest.FtCollUtil::max
+
+FtCollection<a>, FtComparator<a> -> a
+com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+
+FtComparator<a>, FtCollection<a> -> a
+com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+
+FtCollection<FtBoss>, FtComparator<FtPerson> -> FtBoss
+com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+
+FtCollection<FtCeo>, FtComparator<FtPerson> -> FtCeo
+com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+
+FtCollection<FtCeo>, FtComparator<FtBoss> -> FtCeo
+com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+
+FtCollection<FtCeo> -> FtCollection<FtList<FtCeo>>
+com.mktiti.fsearchtest.FtCollUtil::permutations
+
+FtList<FtCeo> -> FtCollection<FtList<FtCeo>>
+com.mktiti.fsearchtest.FtCollUtil::permutations
+
+FtMap<FtString, int> -> FtCollection<FtList<FtPair<FtString, int>>>
+com.mktiti.fsearchtest.FtCollUtil::permutations
+

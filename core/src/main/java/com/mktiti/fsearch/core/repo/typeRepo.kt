@@ -79,11 +79,11 @@ class SetTypeRepo : MutableTypeRepo {
     override fun template(info: MinimalInfo): TypeTemplate? = template(info.toString())
 
     override fun plusAssign(type: DirectType) {
-        types[type.info.simpleName] = type
+        types[type.info.fullName] = type
     }
 
     override fun plusAssign(template: TypeTemplate) {
-        templates[template.info.simpleName] = template
+        templates[template.info.fullName] = template
     }
 
 }

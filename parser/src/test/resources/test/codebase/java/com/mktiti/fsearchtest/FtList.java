@@ -6,9 +6,9 @@ public interface FtList<T> extends FtCollection<T> {
 
     T last();
 
-    T get();
+    T get(int index);
 
-    FtOptional<T> safeGet();
+    FtOptional<T> safeGet(int index);
 
     <R> FtList<R> map(FtFunction<? super T, ? extends R> mapper);
 

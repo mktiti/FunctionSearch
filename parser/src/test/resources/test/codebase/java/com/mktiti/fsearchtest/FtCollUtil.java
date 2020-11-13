@@ -2,19 +2,19 @@ package com.mktiti.fsearchtest;
 
 public interface FtCollUtil {
 
-    static <T extends FtComp<T>> T max(FtList<T> list) {
+    static <T extends FtComp<T>> T max(FtCollection<T> list) {
         return null;
     }
 
-    static <T extends FtComp<T>> T min(FtList<T> list) {
+    static <T extends FtComp<T>> T min(FtCollection<T> list) {
         return null;
     }
 
-    static <T> T max(FtList<T> list, FtComparator<? super T> comparator) {
+    static <T> T maxWc(FtCollection<T> list, FtComparator<? super T> comparator) {
         return null;
     }
 
-    static <T> T min(FtList<T> list, FtComparator<? super T> comparator) {
+    static <T> T minWc(FtCollection<T> list, FtComparator<? super T> comparator) {
         return null;
     }
 

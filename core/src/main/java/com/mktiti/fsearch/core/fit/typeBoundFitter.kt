@@ -1,16 +1,13 @@
 package com.mktiti.fsearch.core.fit
 
 import com.mktiti.fsearch.core.fit.TypeBoundFit.*
-import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.zipIfSameLength
 
 class JavaTypeBoundFitter(
-        private val infoRepo: JavaInfoRepo,
         private val paramFitter: JavaParamFitter,
         private val typeResolver: TypeResolver
 ) {
@@ -100,11 +97,7 @@ class JavaTypeBoundFitter(
             is TypeSubstitution<*, *> -> {
                 when (val holder = upperBound.holder) {
                     is TypeHolder.Dynamic -> fitsDatBound(type, holder, type)
-                    is TypeHolder.Static -> {
-                        SuperUtil.anyNgSuper(infoRepo, typeResolver, type) {
-                            paramFitter.subStatic(holder, type, InheritanceLogic.COVARIANCE)
-                        }.fitOrNot()
-                    }
+                    is TypeHolder.Static -> paramFitter.subStatic(holder, type, InheritanceLogic.COVARIANCE).fitOrNot()
                 }
             }
         }

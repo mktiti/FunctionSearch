@@ -48,13 +48,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.itranswarp</groupId>
-            <artifactId>compiler</artifactId>
-            <version>1.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-test-junit</artifactId>
         </dependency>

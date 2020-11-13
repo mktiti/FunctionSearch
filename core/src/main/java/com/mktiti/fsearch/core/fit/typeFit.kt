@@ -42,7 +42,7 @@ class JavaQueryFitter(
         }
     }
 
-    private val boundFitter = JavaTypeBoundFitter(infoRepo, this, typeResolver)
+    private val boundFitter = JavaTypeBoundFitter(this, typeResolver)
 
     private fun <I : CompleteMinInfo<*>, T : Type<I>> TypeHolder<I, T>.resolve(): T? = with(typeResolver)
 

@@ -11,31 +11,12 @@ class RadixTypeRepo(
         private val templates: PrefixTree<String, TypeTemplate>
 ) : TypeRepo {
 
-    // override val rootType: DirectType
-    //    get() = javaRepo.objectType
-
-    // override val defaultTypeBounds = TypeBounds(
-    //        upperBounds = setOf(TypeSubstitution(rootType.completeInfo.holder()))
-    // )
-
     // TODO think through - maybe cache?
     private fun <T : SemiType> simpleNames(data: PrefixTree<String, T>) = data.map { it.info.simpleName to it }.toMap()
 
     private val directSimpleIndex = simpleNames(directs)
     private val templateSimpleIndex = simpleNames(templates)
 
-  //  private val rootSuper = listOf(SuperType.StaticSuper.EagerStatic(rootType))
-  //  private val funTypeInfo = TypeInfo("\$fun", listOf("\$internal"), "")
-    //private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
-/*
-    private fun createFunType(paramCount: Int): TypeTemplate {
-        return TypeTemplate(
-                info = funTypeInfo.copy(name = funTypeInfo.name + paramCount),
-                typeParams = (0..paramCount).map { typeParam(('A' + it).toString()) },
-                superTypes = rootSuper
-        )
-    }
-*/
     // TODO optimize or remove
     override val allTypes: Collection<DirectType>
         get() = directs.toList()
@@ -58,7 +39,5 @@ class RadixTypeRepo(
             = templates[name.split(".")] ?: bySimple(name, allowSimple, templateSimpleIndex::get)
 
     override fun template(info: MinimalInfo): TypeTemplate? = templates[info]
-
-    // override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
 
 }

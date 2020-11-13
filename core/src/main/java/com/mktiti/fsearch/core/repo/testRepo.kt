@@ -9,7 +9,6 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDi
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
-import com.mktiti.fsearch.core.util.listType
 
 fun createTestRepo(): MutableTypeRepo {
 
@@ -24,10 +23,7 @@ fun createTestRepo(): MutableTypeRepo {
             upperBounds = setOf(TypeSubstitution(rootType.holder()))
     )
 
-    return SetTypeRepo(
-            // funTypeInfo = TypeInfo("TestFun", emptyList(), ""),
-            // rootInfo = TypeInfo("TestRoot", emptyList(), "")
-    ).apply {
+    return SetTypeRepo().apply {
 
         this += rootType
 
@@ -87,13 +83,13 @@ fun createTestRepo(): MutableTypeRepo {
         val linkedList = createTemplate(
             fullName = "LinkedList",
             typeParams = listOf(TypeParameter("T", defaultTypeBounds)),
-            superTypes = listOf(listType.forceDynamicApply(ParamSubstitution(0)))
+            superTypes = listOf(list.forceDynamicApply(ParamSubstitution(0)))
         )
 
         val arrayList = createTemplate(
             fullName = "ArrayList",
             typeParams = listOf(TypeParameter("T", defaultTypeBounds)),
-            superTypes = listOf(listType.forceDynamicApply(ParamSubstitution(0)))
+            superTypes = listOf(list.forceDynamicApply(ParamSubstitution(0)))
         )
 
         val pair = createTemplate(

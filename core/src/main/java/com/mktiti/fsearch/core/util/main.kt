@@ -3,88 +3,77 @@ package com.mktiti.fsearch.core.util
 import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.TypePrint
 
-val defaultRepo: MutableTypeRepo = SetTypeRepo(
-        /*rootInfo = TypeInfo(
-                name = "Object",
-                packageName = emptyList(),
-                artifact = "JCLv8"
-        ),
-        funTypeInfo = TypeInfo(
-                name = "\$Fn",
-                packageName = emptyList(),
-                artifact = "JCLv8"
-        )*/
-)
-
-val objType = defaultRepo.createDirect("Object")
-
-val defaultTypeBounds = TypeBounds(
-    upperBounds = setOf(TypeSubstitution(objType.holder()))
-)
-
-val charSeqType = defaultRepo.createDirect("CharSequence", objType)
-val strType = defaultRepo.createDirect("String", charSeqType)
-val intType = defaultRepo.createDirect("Integer", objType)
-val fozType = defaultRepo.createDirect("Foo", objType)
-
-val int64Type = defaultRepo.createDirect("Int64", intType)
-
-val collectionType = defaultRepo.createTemplate(
-    fullName = "Collection",
-    typeParams = listOf(defaultRepo.typeParam("E", defaultTypeBounds)),
-    superTypes = listOf(objType)
-)
-
-val supplierType = defaultRepo.createTemplate(
-    fullName = "Supplier",
-    typeParams = listOf(defaultRepo.typeParam("S", defaultTypeBounds)),
-    superTypes = listOf(objType),
-    samType = SamType.GenericSam(
-            explicit = true,
-            inputs = emptyList(),
-            output = ParamSubstitution(0)
-    )
-)
-
-val refType = defaultRepo.createTemplate(
-    fullName = "Reference",
-    typeParams = listOf(defaultRepo.typeParam("R", defaultTypeBounds)),
-    superTypes = listOf(
-            objType,
-        supplierType.forceDynamicApply(ParamSubstitution(0))
-    )
-)
-
-val pairType = defaultRepo.createTemplate(
-    fullName = "Pair",
-    typeParams = listOf(defaultRepo.typeParam("F", defaultTypeBounds), defaultRepo.typeParam("S", defaultTypeBounds)),
-    superTypes = listOf(objType)
-)
-
-val listType = defaultRepo.createTemplate(
-    fullName = "List",
-    typeParams = listOf(defaultRepo.typeParam("T", defaultTypeBounds)),
-    superTypes = listOf(
-        collectionType.forceDynamicApply(ParamSubstitution(0))
-    )
-)
-
-val linkedListType = defaultRepo.createTemplate(
-    fullName = "LinkedList",
-    typeParams = listOf(defaultRepo.typeParam("E", defaultTypeBounds)),
-    superTypes = listOf(
-        listType.forceDynamicApply(ParamSubstitution(0))
-    )
-)
-
 fun main() {
+    val defaultRepo: MutableTypeRepo = SetTypeRepo()
+
+    val objType = defaultRepo.createDirect("Object")
+
+    val defaultTypeBounds = TypeBounds(
+            upperBounds = setOf(TypeSubstitution(objType.holder()))
+    )
+
+    val charSeqType = defaultRepo.createDirect("CharSequence", objType)
+    val strType = defaultRepo.createDirect("String", charSeqType)
+    val intType = defaultRepo.createDirect("Integer", objType)
+    val fozType = defaultRepo.createDirect("Foo", objType)
+
+    val int64Type = defaultRepo.createDirect("Int64", intType)
+
+    val collectionType = defaultRepo.createTemplate(
+            fullName = "Collection",
+            typeParams = listOf(defaultRepo.typeParam("E", defaultTypeBounds)),
+            superTypes = listOf(objType)
+    )
+
+    val supplierType = defaultRepo.createTemplate(
+            fullName = "Supplier",
+            typeParams = listOf(defaultRepo.typeParam("S", defaultTypeBounds)),
+            superTypes = listOf(objType),
+            samType = SamType.GenericSam(
+                    explicit = true,
+                    inputs = emptyList(),
+                    output = ParamSubstitution(0)
+            )
+    )
+
+    val refType = defaultRepo.createTemplate(
+            fullName = "Reference",
+            typeParams = listOf(defaultRepo.typeParam("R", defaultTypeBounds)),
+            superTypes = listOf(
+                    objType,
+                    supplierType.forceDynamicApply(ParamSubstitution(0))
+            )
+    )
+
+    val pairType = defaultRepo.createTemplate(
+            fullName = "Pair",
+            typeParams = listOf(defaultRepo.typeParam("F", defaultTypeBounds), defaultRepo.typeParam("S", defaultTypeBounds)),
+            superTypes = listOf(objType)
+    )
+
+    val listType = defaultRepo.createTemplate(
+            fullName = "List",
+            typeParams = listOf(defaultRepo.typeParam("T", defaultTypeBounds)),
+            superTypes = listOf(
+                    collectionType.forceDynamicApply(ParamSubstitution(0))
+            )
+    )
+
+    val linkedListType = defaultRepo.createTemplate(
+            fullName = "LinkedList",
+            typeParams = listOf(defaultRepo.typeParam("E", defaultTypeBounds)),
+            superTypes = listOf(
+                    listType.forceDynamicApply(ParamSubstitution(0))
+            )
+    )
+
     val resolver: TypeResolver = SingleRepoTypeResolver(defaultRepo)
     val fitter = JavaQueryFitter(MapJavaInfoRepo, resolver)
 

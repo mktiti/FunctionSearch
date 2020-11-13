@@ -7,9 +7,6 @@ import kotlin.collections.set
 
 interface TypeRepo {
 
-    // val rootType: DirectType
-    // val defaultTypeBounds: TypeBounds
-
     val allTypes: Collection<DirectType>
     val allTemplates: Collection<TypeTemplate>
 
@@ -20,8 +17,6 @@ interface TypeRepo {
     fun template(name: String, allowSimple: Boolean = false): TypeTemplate?
 
     fun template(info: MinimalInfo): TypeTemplate?
-
-    // fun functionType(paramCount: Int): TypeTemplate
 
     fun typeParam(sign: String, bounds: TypeBounds): TypeParameter = TypeParameter(sign, bounds)
 
@@ -56,15 +51,7 @@ interface MutableTypeRepo : TypeRepo {
 
 }
 
-class SetTypeRepo(
-        // rootInfo: TypeInfo//,
-        //private val funTypeInfo: TypeInfo
-) : MutableTypeRepo {
-
-    // override val rootType = DirectType(rootInfo.minimal, superTypes = emptyList(), samType = null, virtual = false)
-    // override val defaultTypeBounds = TypeBounds(
-    //        upperBounds = setOf(TypeSubstitution(rootType.completeInfo.holder()))
-    // )
+class SetTypeRepo : MutableTypeRepo {
 
     private val types: MutableMap<String, DirectType> = HashMap()
     private val templates: MutableMap<String, TypeTemplate> = HashMap()
@@ -75,21 +62,6 @@ class SetTypeRepo(
     override val allTemplates: Collection<TypeTemplate>
         get() = templates.map { it.value }
 
-    // private val rootSuper = listOf(EagerStatic(rootType))
-    // private val funTypeCache: MutableMap<Int, TypeTemplate> = HashMap()
-
-    // init {
-    //    this += rootType
-    // }
-/*
-    private fun createFunType(paramCount: Int): TypeTemplate {
-        return TypeTemplate(
-                info = funTypeInfo.copy(name = funTypeInfo.name + paramCount),
-                typeParams = (0..paramCount).map { typeParam(('A' + it).toString()) },
-                superTypes = rootSuper
-        )
-    }
-*/
     override fun get(name: String, allowSimple: Boolean): DirectType? = types[name] ?: if (allowSimple && !name.contains(".")) {
         types.values.find { it.info.simpleName == name }
     } else {
@@ -105,8 +77,6 @@ class SetTypeRepo(
     }
 
     override fun template(info: MinimalInfo): TypeTemplate? = template(info.toString())
-
-    // override fun functionType(paramCount: Int): TypeTemplate = funTypeCache.computeIfAbsent(paramCount, this::createFunType)
 
     override fun plusAssign(type: DirectType) {
         types[type.info.simpleName] = type

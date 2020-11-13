@@ -5,14 +5,13 @@ import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.type.CompleteMinInfo
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.TypeTemplate
 import com.mktiti.fsearch.parser.function.FunctionBuilder
-import com.mktiti.fsearch.parser.function.FunctionParser
 import com.mktiti.fsearch.parser.function.JavaFunctionBuilder
 import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
-import com.mktiti.fsearch.util.map
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -55,7 +54,6 @@ private class AsmFunctionCollectorVisitor(
 
     private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
 
-    // private lateinit var currentType: FunctionBuilder.ImplicitThis
     private lateinit var context: ContextInfo<*>
 
     private val collectedMethods: MutableList<FunctionObj> = ArrayList()
@@ -64,12 +62,6 @@ private class AsmFunctionCollectorVisitor(
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         val info = AsmUtil.parseName(name)
-/*
-        currentType = FunctionBuilder.ImplicitThis(
-                info = info,
-                isGeneric = (signature != null || info.nameParts.isNotEmpty()) && dependencyResolver.template(info) != null
-        )
- */
 
         context = when (val template = dependencyResolver.template(info)) {
             null -> ContextInfo.Direct(info, info.complete())
@@ -88,7 +80,6 @@ private class AsmFunctionCollectorVisitor(
                 return null
             }
 
-            //println("\t\tMethod visited: $name :: ${signature ?: descriptor} throws $exceptions")
             try {
                 val toParse = signature ?: descriptor
                 val parsedSignature = if (isStatic) {
@@ -107,18 +98,6 @@ private class AsmFunctionCollectorVisitor(
                         signature = parsedSignature
                 )
 
-                /*
-                val parsed = FunctionParser.parseFunction(name, signature ?: descriptor)
-                val parsedSignature = funBuilder.buildFunction(parsed, isStatic.map(onTrue = null, onFalse = currentType))
-                if (parsedSignature == null) {
-                    println("Failed to parse method ${currentType.info} $name :: ${signature ?: descriptor} throws $exceptions")
-                } else {
-                    collectedMethods += FunctionObj(
-                            info = FunctionInfo(name, currentType.info.toString()),
-                            signature = parsedSignature
-                    )
-                }
-                 */
             } catch (e: NotImplementedError) {
                 System.err.println("Failed to parse $info $name :: ${signature ?: descriptor}")
                 e.printStackTrace()

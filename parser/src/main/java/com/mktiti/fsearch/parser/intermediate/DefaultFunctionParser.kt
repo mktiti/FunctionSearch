@@ -5,7 +5,6 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
-import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.generated.SignatureLexer
 import com.mktiti.fsearch.parser.generated.SignatureParser

@@ -134,22 +134,6 @@ class JavaQueryFitter(
                 }
             }
 
-            /*
-            val resolvedArg = argPar.resolve() ?: return Failure
-            val resolvedSub = subPar.resolve() ?: return Failure
-            val zipped = resolvedArg.typeArgMapping.zipIfSameLength(resolvedSub.typeArgs) ?: return Failure
-
-            zipped.map { (argParPar, subParPar) ->
-                subAny(argCtx, argParPar, subParPar, INVARIANCE)
-            }.roll<SubResult, SubResult>(ConstraintsKept) { status, res ->
-                when (res) {
-                    ConstraintsKept -> status to false
-                    Skip -> Skip to false
-                    else -> res to true
-                }
-            }
-
-             */
         } else {
             fun List<SubResult>.rollResult(anyEnough: Boolean): SubResult = roll<SubResult, SubResult>(Failure) { _, res ->
                 res to when (res) {

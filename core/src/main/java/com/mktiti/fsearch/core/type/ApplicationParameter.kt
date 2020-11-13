@@ -113,56 +113,7 @@ sealed class ApplicationParameter {
         abstract override fun applySelf(self: TypeHolder.Static): Substitution
 
     }
-        /*
-        sealed class TypeSubstitution<out T : Type<*>, out I : CompleteMinInfo<*>>(
-            val type: I
-        ) : Substitution() {
 
-            companion object {
-                fun wrap(info: CompleteMinInfo<*>): TypeSubstitution<*, *> = when (info) {
-                    is CompleteMinInfo.Static -> StaticTypeSubstitution(info)
-                    is CompleteMinInfo.Dynamic -> DynamicTypeSubstitution(info)
-                }
-
-                /*
-                fun wrap(type: Type): TypeSubstitution<*, *> = when (type) {
-                    is NonGenericType -> StaticTypeSubstitution(type)
-                    is DynamicAppliedType -> DynamicTypeSubstitution(type)
-                }
-                 */
-            }
-
-            class DynamicTypeSubstitution(type: CompleteMinInfo.Dynamic) : TypeSubstitution<DynamicAppliedType, CompleteMinInfo.Dynamic>(type) {
-                override fun staticApply(typeArgs: List<CompleteMinInfo.Static>) = type.staticApply(typeArgs)
-
-                override fun dynamicApply(typeParams: List<ApplicationParameter>): DynamicTypeSubstitution? {
-                    return type.dynamicApply(typeParams)?.let { DynamicTypeSubstitution(it) }
-                }
-
-                override fun applySelf(self: TypeHolder.Static) = DynamicTypeSubstitution(type.applySelf(self))
-            }
-
-            class StaticTypeSubstitution(type: CompleteMinInfo.Static) : TypeSubstitution<NonGenericType, CompleteMinInfo.Static>(type) {
-                override fun staticApply(typeArgs: List<CompleteMinInfo.Static>) = type
-
-                override fun dynamicApply(typeParams: List<ApplicationParameter>): StaticTypeSubstitution = this
-            }
-
-            override fun applySelf(self: TypeHolder.Static) = this
-
-            override fun toString() = type.toString()
-
-        }
-
-        abstract fun staticApply(typeArgs: List<CompleteMinInfo.Static>): CompleteMinInfo.Static?
-
-        abstract override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
-
-        abstract override fun applySelf(self: TypeHolder.Static): Substitution
-
-    }
-
-         */
     abstract fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 
     abstract fun applySelf(self: TypeHolder.Static): ApplicationParameter

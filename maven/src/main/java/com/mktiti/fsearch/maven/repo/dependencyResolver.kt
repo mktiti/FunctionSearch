@@ -9,7 +9,9 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.xpath.XPath
 import javax.xml.xpath.XPathConstants
+import javax.xml.xpath.XPathExpression
 import javax.xml.xpath.XPathFactory
 
 interface DependencyResolver {
@@ -28,10 +30,17 @@ object PrimitiveDependencyResolver : DependencyResolver {
             val scope: String
     )
 
-    private val propertiesXpath = XPathFactory.newInstance().newXPath().compile("/project/properties")
-    private val dependenciesXpath = XPathFactory.newInstance().newXPath().compile("/project/dependencies/dependency")
-
     private fun NodeList.toList(): List<Node> = (0 until length).map { item(it) }
+
+    private val propertiesXpath: XPathExpression
+    private val dependenciesXpath: XPathExpression
+
+    init {
+        val xPath = XPathFactory.newInstance().newXPath()
+
+        propertiesXpath = xPath.compile("/project/properties")
+        dependenciesXpath = xPath.compile("/project/dependencies/dependency")
+    }
 
     // TODO very primitive
     private tailrec fun escapeValue(value: String, properties: Map<String, String>): String? {

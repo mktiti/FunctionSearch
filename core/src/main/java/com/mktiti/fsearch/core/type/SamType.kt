@@ -48,8 +48,4 @@ sealed class SamType<out P>(
 
     }
 
-    // abstract fun dynamicApply(typeArgs: List<ApplicationParameter>): SamType<Substitution>?
-
-    // abstract fun staticApply(typeArgs: List<NonGenericType>): DirectSam?
-
 }

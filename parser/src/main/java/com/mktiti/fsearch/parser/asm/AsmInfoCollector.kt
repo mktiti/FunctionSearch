@@ -26,80 +26,6 @@ object AsmInfoCollector {
     }
 
 }
-/*
-private class ImTransformer(
-        private val infoRepo: JavaInfoRepo,
-        private val typeParams: List<String>
-) {
-
-    private fun transformStaticTypeBase(info: MinimalInfo, args: List<ApplicationParameter>): StaticTypeSubstitution? {
-        val completeInfo: CompleteMinInfo.Static = if (args.isEmpty()) {
-            info.complete()
-        } else {
-            val staticArgInfos = args.map {
-                when (it) {
-                    is TypeSubstitution<*, *> -> {
-                        when (val holder = it.holder) {
-                            is TypeHolder.Static -> holder.info
-                            is TypeHolder.Dynamic -> null
-                        }
-                    }
-                    else -> null
-                }
-            }.liftNull() ?: return null
-
-            info.staticComplete(staticArgInfos)
-        }
-        return TypeSubstitution(completeInfo.holder())
-    }
-
-    private fun transformTypeBase(info: MinimalInfo, args: List<ImParam>): TypeSubstitution<*, *>? {
-        val mappedArgs = args.map(this::transformDynamicArg).liftNull() ?: return null
-        return transformStaticTypeBase(info, mappedArgs) ?: TypeSubstitution(info.dynamicComplete(mappedArgs).holder())
-    }
-
-    fun transformType(imType: ImParam.Type): TypeSubstitution<*, *>? = transformTypeBase(imType.info, imType.typeArgs)
-
-    fun transformStaticType(imType: ImParam.Type): StaticTypeSubstitution? {
-        val mappedArgs = imType.typeArgs.map(this::transformDynamicArg).liftNull() ?: return null
-        return transformStaticTypeBase(imType.info, mappedArgs)
-    }
-
-    private fun transformArray(array: ImParam.Array): TypeSubstitution<*, *>? {
-        return transformTypeBase(infoRepo.arrayType, listOf(array.type))
-    }
-
-    private fun transformWildcard(wildcardParam: ImParam, direction: BoundDirection): BoundedWildcard? {
-        return when (val param = transformDynamicArg(wildcardParam)) {
-            is TypeSubstitution<*, *> -> {
-                when (val holder = param.holder) {
-                    is TypeHolder.Static -> BoundedWildcard.Static(TypeSubstitution(holder), direction)
-                    else -> BoundedWildcard.Dynamic(param, direction)
-                }
-            }
-            is Substitution -> BoundedWildcard.Dynamic(param, direction)
-            else -> null
-        }
-    }
-
-    private fun transformDynamicArg(imParam: ImParam): ApplicationParameter? {
-        fun infoType(getter: JavaInfoRepo.() -> MinimalInfo) = TypeSubstitution(infoRepo.getter().complete().holder())
-
-        return when (imParam) {
-            ImParam.Wildcard -> TypeSubstitution.unboundedWildcard
-            is ImParam.UpperWildcard -> transformWildcard(imParam.param, UPPER)
-            is ImParam.LowerWildcard -> transformWildcard(imParam.param, LOWER)
-            is ImParam.Primitive -> infoType { primitive(imParam.value) }
-            is ImParam.Array -> transformArray(imParam)
-            is ImParam.Type -> transformType(imParam)
-            is ImParam.TypeParamRef -> ParamSubstitution(typeParams.withIndex().find { it.value == imParam.sign }?.index ?: error("Invalid type param sub."))
-            ImParam.Void -> infoType { voidType }
-        }
-    }
-
-}
-
- */
 
 private class AsmInfoCollectorVisitor(
         private val infoRepo: JavaInfoRepo
@@ -111,9 +37,6 @@ private class AsmInfoCollectorVisitor(
 
     val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
     val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
-
-    // val directInfos: MutablePrefixTree<String, CreatorInfo.Direct> = mapMutablePrefixTree()
-    // val templateInfos: MutablePrefixTree<String, CreatorInfo.Template> = mapMutablePrefixTree()
 
     private sealed class AbstractCount {
         object NoAbstract : AbstractCount() {
@@ -142,32 +65,6 @@ private class AsmInfoCollectorVisitor(
     )
 
     private var currentType: TypeMeta? = null
-
-    /*
-    private fun addDirect(
-            info: MinimalInfo,
-            superTypes: List<CompleteMinInfo.Static>
-    ) {
-        directInfos.mutableSubtreeSafe(info.packageName)[info.simpleName] = CreatorInfo.Direct(
-                info = info,
-                directSupers = superTypes
-        )
-    }
-
-    private fun addTemplate(
-            info: MinimalInfo,
-            typeParams: List<TypeParamInfo>,
-            directSupers: List<CompleteMinInfo.Static>,
-            datSupers: List<CompleteMinInfo.Dynamic>
-    ) {
-        templateInfos.mutableSubtreeSafe(info.packageName)[info.simpleName] = CreatorInfo.Template(
-                info = info,
-                typeParams = typeParams,
-                directSupers = directSupers,
-                datSupers = datSupers
-        )
-    }
-    */
 
     private fun addDirect(type: DirectType) {
         directTypes.mutableSubtreeSafe(type.info.packageName)[type.info.simpleName] = type
@@ -209,82 +106,7 @@ private class AsmInfoCollectorVisitor(
         )
     }
 
-    /*
-    private fun addUnfinishedDirect(
-            info: TypeInfo,
-            superCount: Int,
-            directSupers: List<MinimalInfo>,
-            templateSupers: MutableList<DatCreator>
-    ) {
-        val supers: MutableList<SuperType.StaticSuper> = ArrayList(superCount)
-        val created = DirectType(info, supers)
-
-        loadedDirects.mutableSubtreeSafe(info.packageName)[info.name] = DirectCreator(
-                unfinishedType = created,
-                addNonGenericSuper = { superType -> supers += SuperType.StaticSuper.EagerStatic(superType) },
-                templateSupers = templateSupers,
-                directSupers = directSupers
-        )
-    }
-
-    private fun addUnfinishedTemplate(
-            info: TypeInfo,
-            superCount: Int,
-            typeParams: List<String>,
-            directSupers: List<MinimalInfo>,
-            templateSupers: MutableList<DatCreator>
-    ) {
-        val supers: MutableList<SuperType<Type>> = ArrayList(superCount)
-        val created = TypeTemplate(info, typeParams.map { TypeParameter(it, TypeBounds(emptySet())) }, supers)
-
-        loadedTemplates.mutableSubtreeSafe(info.packageName)[info.name] = TemplateCreator(
-                unfinishedType = created,
-                directSuperAppender = { superType -> supers += SuperType.StaticSuper.EagerStatic(superType) },
-                templateSuperAppender = { superType -> supers += SuperType.DynamicSuper.EagerDynamic(superType) },
-                templateSupers = templateSupers,
-                directSupers = directSupers
-        )
-    }
-
-
-    private fun transformArg(imParam: ImParam, typeParams: List<String>): TypeArgCreator {
-        return when (imParam) {
-            ImParam.Wildcard -> TypeArgCreator.Wildcard
-            is ImParam.Type -> {
-                if (imParam.typeArgs.isEmpty()) {
-                    TypeArgCreator.Direct(imParam.info)
-                } else {
-                    TypeArgCreator.Dat(
-                            DatCreator(
-                                    template = imParam.info,
-                                    args = imParam.typeArgs.map { transformArg(it, typeParams) }
-                            )
-                    )
-                }
-            }
-            is ImParam.TypeParamRef -> TypeArgCreator.Param(
-                    typeParams.withIndex().find { it.value == imParam.sign }?.index ?: error("ASD")
-            )
-            is ImParam.Array -> TypeArgCreator.Dat(DatCreator(
-                    template = infoRepo.arrayType,
-                    args = listOf(transformArg(imParam.type, typeParams))
-            ))
-            is ImParam.Primitive -> TypeArgCreator.Direct(infoRepo.primitive(imParam.value))
-            is ImParam.UpperWildcard -> TypeArgCreator.UpperWildcard(transformArg(imParam.param, typeParams))
-            is ImParam.LowerWildcard -> {
-                println("Lower wildcard (? super ...) should not be possible in type declaration")
-                TypeArgCreator.Wildcard
-            }
-            ImParam.Void -> TypeArgCreator.Direct(infoRepo.voidType)
-        }
-    }
-     */
-
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
-        // if (access and Opcodes.ACC_PUBLIC == 0) {
-        //    return
-        // }
-
         val info = AsmUtil.parseName(name)
 
         val lastName = info.simpleName.split('.').last()
@@ -347,15 +169,10 @@ private class AsmInfoCollectorVisitor(
     private fun createInitials(meta: TypeMeta) {
         val (info, signature, superNames, nestDepth, abstractCount) = meta
 
-        if (info.simpleName == "LocalCache.EntryIterator") {
-            val a = 0;
-        }
-
         val nestContext: List<TypeParameter> = if (nestDepth != null) {
             val nests = info.simpleName.split(".").dropLast(1)
             val depth = Integer.min(nestDepth, nests.size)
 
-            //val nestPackage: PrefixTree<String, CreatorInfo.Template> = templateInfos.mutableSubtreeSafe(info.packageName)
             val nestPackage: PrefixTree<String, TypeTemplate> = typeTemplates.mutableSubtreeSafe(info.packageName)
 
             val affectingNests = nests.takeLast(depth)
@@ -413,49 +230,6 @@ private class AsmInfoCollectorVisitor(
                     }
                 }
             }
-
-            /*
-            val type = if (signature == null) {
-                ParsedType.Template(
-                        typeParams = nestContext,
-                        superTypes = superNames.map { ImParam.Type(AsmUtil.parseName(it), emptyList()) }
-                )
-            } else {
-                TypeParser.parseType(signature)
-            }
-
-            val (ds, ts) = type.supersTypes.partition { it.typeArgs.isEmpty() }
-            val directSupers: List<CompleteMinInfo.Static> = ds.map { it.info.complete() }
-
-            when (type) {
-                is ParsedType.Direct -> {
-                    val transformer = ImTransformer(infoRepo, emptyList())
-                    val templateSupers: List<CompleteMinInfo.Static> = ts.map { imSuper ->
-                        transformer.transformStaticType(imSuper)?.holder?.info
-                    }.liftNull() ?: error("Direct type '$info' has non-static supertypes (raw usage?)")
-
-                    addDirect(
-                            info = info,
-                            superTypes = directSupers + templateSupers
-                    )
-                }
-                is ParsedType.Template -> {
-                    val paramNames = type.typeParams.map { it.sign }
-                    val transformer = ImTransformer(infoRepo, paramNames)
-
-                    val datSupers: List<CompleteMinInfo.Dynamic> = ts.map { imSuper ->
-                        transformer.transformType(imSuper)?.holder?.info
-                    }.liftNull()?.castIfAllInstance()!!
-
-                    addTemplate(
-                            info = info,
-                            typeParams = type.typeParams,
-                            directSupers = directSupers,
-                            datSupers = datSupers
-                    )
-                }
-            }
-             */
         }
     }
 

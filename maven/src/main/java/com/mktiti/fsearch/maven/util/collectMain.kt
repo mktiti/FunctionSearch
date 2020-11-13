@@ -12,7 +12,6 @@ import com.mktiti.fsearch.maven.ArtifactRepo
 import com.mktiti.fsearch.maven.MavenArtifact
 import com.mktiti.fsearch.maven.MavenCollector
 import com.mktiti.fsearch.maven.SimpleArtifactRepo
-import com.mktiti.fsearch.maven.repo.MavenManager
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
@@ -23,6 +22,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.stream.Collectors
 import kotlin.streams.toList
 
 fun printLoadResults(typeRepo: TypeRepo, functions: Collection<FunctionObj>) {
@@ -167,6 +167,15 @@ fun main(args: Array<String>) {
 
                 val extraContext = context.withVirtuals(virtuals)
 
+                context.allFunctions.parallelStream().map { function ->
+                    extraContext.fitter.fitsQuery(query, function)?.let { function to it }
+                }.filter { it != null }.collect(Collectors.toList()).filterNotNull().forEach { (function, result) ->
+                    print("Fits function ")
+                    extraContext.typePrint.printFun(function)
+                    extraContext.typePrint.printFittingMap(result)
+                }
+
+                /*
                 context.allFunctions.asSequence().forEach { function ->
                     if (function.info.fileName == "java.util.Collections" && function.info.name == "sort") {
                         val a = 0
@@ -184,6 +193,7 @@ fun main(args: Array<String>) {
                         // println("\tas ${result.funSignature}")
                     }
                 }
+                 */
                 println("Search done!")
 
             } catch (pce: ParseCancellationException) {

@@ -1,6 +1,5 @@
 package com.mktiti.fsearch.parser.asm
 
-import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
@@ -16,6 +15,7 @@ import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
+import kotlin.math.max
 
 object AsmInfoCollector {
 
@@ -302,6 +302,16 @@ private class AsmInfoCollectorVisitor(
         currentType = TypeMeta(info, signature, superNames)
     }
 
+    override fun visitInnerClass(name: String?, outerName: String?, innerName: String?, access: Int) {
+        // TODO
+        currentType?.let { current ->
+            val parsedName = AsmUtil.parseName(name ?: return)
+            if (parsedName == current.info) {
+                currentType = current.copy(nestDepth = max(current.nestDepth ?: 0, 1))
+            }
+        }
+    }
+
     override fun visitField(access: Int, name: String, descriptor: String?, signature: String?, value: Any?): FieldVisitor? {
         if (name.startsWith("this$")) {
             val depth = name.removePrefix("this$").toIntOrNull()?.let { it + 1 } ?: return null
@@ -336,6 +346,10 @@ private class AsmInfoCollectorVisitor(
 
     private fun createInitials(meta: TypeMeta) {
         val (info, signature, superNames, nestDepth, abstractCount) = meta
+
+        if (info.simpleName == "LocalCache.EntryIterator") {
+            val a = 0;
+        }
 
         val nestContext: List<TypeParameter> = if (nestDepth != null) {
             val nests = info.simpleName.split(".").dropLast(1)
@@ -372,10 +386,6 @@ private class AsmInfoCollectorVisitor(
             }
         }
 
-        if (info.simpleName == "Function") {
-            val a = 0
-        }
-
         if (signature == null && nestContext.isEmpty()) {
             addDirect(
                     info = info,
@@ -394,7 +404,7 @@ private class AsmInfoCollectorVisitor(
                         samType = genericSam(nestContext)
                 )
             } else {
-                when (val direct = typeParser.parseDirectTypeSignature(info, signature, directSam())) {
+                when (val direct = typeParser.parseDirectTypeSignature(info, signature, /*TODO*/ try {directSam()}catch(e: Exception){null})) {
                     null -> {
                         addTemplate(typeParser.parseTemplateSignature(info, signature, nestContext, ::genericSam))
                     }

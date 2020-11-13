@@ -10,7 +10,6 @@ import com.mktiti.fsearch.util.EnumMap
 import com.mktiti.fsearch.util.PrefixTree
 
 class RadixJavaRepo(
-        artifact: String,
         infoRepo: JavaInfoRepo,
         directs: PrefixTree<String, DirectType>
 ) : JavaRepo {

@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
-import com.mktiti.fsearch.core.util.castIfAllInstance
+import com.mktiti.fsearch.util.castIfAllInstance
 
 interface StaticApplicable {
     fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static?

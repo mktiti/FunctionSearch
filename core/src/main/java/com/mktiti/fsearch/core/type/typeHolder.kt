@@ -3,7 +3,7 @@ package com.mktiti.fsearch.core.type
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
-import com.mktiti.fsearch.core.util.castIfAllInstance
+import com.mktiti.fsearch.util.castIfAllInstance
 
 sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApplicable, WeakDynamicApplicable {
 

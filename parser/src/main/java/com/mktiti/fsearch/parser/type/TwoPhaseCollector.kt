@@ -42,9 +42,8 @@ class IndirectJarTypeCollector(
         }
 
         val javaRepo = RadixJavaRepo(
-                artifact = name,
-                directs = directs,
-                infoRepo = infoRepo
+                infoRepo = infoRepo,
+                directs = directs
         )
 
         val typeRepo = RadixTypeRepo(

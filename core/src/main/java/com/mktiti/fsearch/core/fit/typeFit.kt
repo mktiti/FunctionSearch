@@ -15,11 +15,11 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString
-import com.mktiti.fsearch.core.util.nList
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.allPermutations
 import com.mktiti.fsearch.util.roll
 import com.mktiti.fsearch.util.safeCutLast
+import java.util.*
 
 class JavaQueryFitter(
         private val infoRepo: JavaInfoRepo,
@@ -312,7 +312,7 @@ class JavaQueryFitter(
         constructor(query: QueryType, function: FunctionObj) : this(
                 funCtx = SignatureContext.fromTypeSignature(function.signature),
                 query = query,
-                varianceCtx = nList(COVARIANCE, query.inputParameters.size) + CONTRAVARIANCE
+                varianceCtx = Collections.nCopies(query.inputParameters.size, COVARIANCE) + CONTRAVARIANCE
         )
 
         fun transform(update: TypeArgUpdate, skippable: Set<Int>): MatchingContext? {

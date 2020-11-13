@@ -5,7 +5,7 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
-import com.mktiti.fsearch.core.util.castIfAllInstance
+import com.mktiti.fsearch.util.castIfAllInstance
 import com.mktiti.fsearch.core.util.genericString
 import java.util.*
 

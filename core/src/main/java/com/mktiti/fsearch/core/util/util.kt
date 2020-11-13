@@ -2,8 +2,6 @@
 
 package com.mktiti.fsearch.core.util
 
-fun <T> identity(x: T): T = x
-
 inline fun <T> Boolean.elseNull(onTrue: () -> T): T? = if (this) onTrue() else null
 
 fun <A, B> List<A>.zipIfSameLength(other: List<B>): List<Pair<A, B>>? = (size == other.size).elseNull { zip(other) }
@@ -18,18 +16,6 @@ fun <T : Any> List<T?>.liftNull(): List<T>? {
     } else {
         null
     }
-}
-
-inline fun <K, V, reified S> Map<K, V>.castIfAllValuesInstance(): Map<K, S>? = mapValues {
-    if (it is S) {
-        it
-    } else {
-        return null
-    }
-}
-
-inline fun <reified S> Collection<*>.castIfAllInstance(): List<S>? = map {
-    if (it is S) it else return null
 }
 
 typealias NodeVisitor<T> = (node: TreeNode<T>, depth: Int, hasMoreSiblings: Boolean) -> Unit
@@ -61,5 +47,3 @@ inline fun <T> doWhile(code: () -> T?): T {
         }
     }
 }
-
-fun <T> nList(value: T, size: Int): List<T> = MutableList(size) { value }

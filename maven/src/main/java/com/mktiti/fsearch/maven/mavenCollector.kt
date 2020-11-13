@@ -1,12 +1,14 @@
 package com.mktiti.fsearch.maven
 
-import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.repo.FallbackResolver
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.core.repo.JavaRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
-import com.mktiti.fsearch.parser.service.CombinedCollector
+import com.mktiti.fsearch.parser.service.JarTypeCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import com.mktiti.fsearch.parser.service.JarTypeCollector
 import java.io.File
 
 class MavenCollector(

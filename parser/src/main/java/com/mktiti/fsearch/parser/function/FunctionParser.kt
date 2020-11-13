@@ -1,10 +1,10 @@
 package com.mktiti.fsearch.parser.function
 
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.generated.SignatureLexer
 import com.mktiti.fsearch.parser.generated.SignatureParser
 import com.mktiti.fsearch.parser.generated.SignatureParser.*
-import com.mktiti.fsearch.core.type.MinimalInfo
-import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream

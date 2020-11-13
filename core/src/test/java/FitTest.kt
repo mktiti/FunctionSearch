@@ -11,10 +11,10 @@ import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.core.type.TypeBounds
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.type.upperBounds
-import com.mktiti.fsearch.core.util.show.JavaTypePrinter
-import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
+import com.mktiti.fsearch.core.util.show.JavaTypePrinter
+import com.mktiti.fsearch.core.util.show.TypePrint
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import kotlin.test.assertNotNull

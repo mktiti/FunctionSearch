@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.core.type
 
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.core.util.zipIfSameLength

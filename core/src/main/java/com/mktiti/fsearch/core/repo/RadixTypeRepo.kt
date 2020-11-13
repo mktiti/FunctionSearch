@@ -1,12 +1,14 @@
 package com.mktiti.fsearch.core.repo
 
-import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.type.TypeTemplate
+import com.mktiti.fsearch.core.type.get
 import com.mktiti.fsearch.core.util.elseNull
 import com.mktiti.fsearch.util.PrefixTree
 
 class RadixTypeRepo(
-        private val javaRepo: JavaRepo,
         private val directs: PrefixTree<String, DirectType>,
         private val templates: PrefixTree<String, TypeTemplate>
 ) : TypeRepo {

@@ -9,7 +9,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.xpath.XPath
 import javax.xml.xpath.XPathConstants
 import javax.xml.xpath.XPathExpression
 import javax.xml.xpath.XPathFactory

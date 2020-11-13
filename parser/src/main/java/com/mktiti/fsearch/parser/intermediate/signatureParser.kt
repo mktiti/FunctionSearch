@@ -4,11 +4,9 @@ import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.parser.function.FunctionBuilder
 import com.mktiti.fsearch.parser.generated.SignatureParser
 import com.mktiti.fsearch.parser.generated.SignatureParser.ClassTypeSignatureContext
 import com.mktiti.fsearch.parser.generated.SignatureParser.TypeParametersContext
-import com.mktiti.fsearch.parser.type.CreatorInfo
 
 interface JavaSignatureParser {
 

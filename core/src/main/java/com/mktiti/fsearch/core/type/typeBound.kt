@@ -1,9 +1,7 @@
 package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 
 data class TypeBounds(
     val upperBounds: Set<Substitution>

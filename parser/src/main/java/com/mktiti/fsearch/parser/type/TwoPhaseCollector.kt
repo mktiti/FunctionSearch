@@ -18,7 +18,6 @@ class IndirectJarTypeCollector(
     override fun collectArtifact(info: JarFileInfoCollector.JarInfo, javaRepo: JavaRepo, dependencyResolver: TypeResolver): TypeRepo {
         val (directs, templates) = infoCollector.collectInitial(info)
         return RadixTypeRepo(
-                javaRepo = javaRepo,
                 directs = directs,
                 templates = templates
         )
@@ -49,7 +48,6 @@ class IndirectJarTypeCollector(
         )
 
         val typeRepo = RadixTypeRepo(
-                javaRepo = javaRepo,
                 directs = directs,
                 templates = templates
         )

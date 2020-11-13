@@ -28,7 +28,7 @@ object AsmInfoCollector {
 }
 
 private class AsmInfoCollectorVisitor(
-        private val infoRepo: JavaInfoRepo
+        infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
 
     private val typeParser: JavaSignatureTypeParser = DefaultTypeParser(infoRepo)

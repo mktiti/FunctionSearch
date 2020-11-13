@@ -9,9 +9,9 @@ import com.mktiti.fsearch.core.fit.TypeBoundFit.*
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString

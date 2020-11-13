@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.parser.type
 
-import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.repo.JavaRepo
+import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.parser.service.JclCollector
 import com.mktiti.fsearch.util.MutablePrefixTree
 

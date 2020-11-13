@@ -1,20 +1,5 @@
 package com.mktiti.fsearch.parser.type
 
-import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.type.ApplicationParameter
-import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
-import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.parser.function.FunctionParser
-import com.mktiti.fsearch.parser.function.ImParam
-import com.mktiti.fsearch.parser.function.ImTypeParam
-import com.mktiti.fsearch.parser.generated.SignatureLexer
-import com.mktiti.fsearch.parser.generated.SignatureParser
-import com.mktiti.fsearch.parser.util.ExceptionErrorListener
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-
 /*
 class TypeParser(
         private val infoRepo: JavaInfoRepo

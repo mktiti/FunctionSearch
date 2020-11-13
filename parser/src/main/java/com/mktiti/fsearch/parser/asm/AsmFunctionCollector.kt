@@ -3,13 +3,10 @@ package com.mktiti.fsearch.parser.asm
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.TypeTemplate
-import com.mktiti.fsearch.parser.function.FunctionBuilder
-import com.mktiti.fsearch.parser.function.JavaFunctionBuilder
 import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
 import org.objectweb.asm.ClassVisitor
@@ -18,9 +15,8 @@ import org.objectweb.asm.Opcodes
 
 object AsmFunctionCollector {
 
-    fun collect(javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver, load: AsmCollectorView.() -> Unit): Collection<FunctionObj> {
-        val funBuilder = JavaFunctionBuilder(javaRepo, dependencyResolver)
-        val visitor = AsmFunctionCollectorVisitor(funBuilder, dependencyResolver, infoRepo)
+    fun collect(infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver, load: AsmCollectorView.() -> Unit): Collection<FunctionObj> {
+        val visitor = AsmFunctionCollectorVisitor(dependencyResolver, infoRepo)
         DefaultAsmCollectorView(visitor).load()
         return visitor.methods
     }
@@ -28,7 +24,6 @@ object AsmFunctionCollector {
 }
 
 private class AsmFunctionCollectorVisitor(
-        private val funBuilder: FunctionBuilder,
         private val dependencyResolver: TypeResolver,
         infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {

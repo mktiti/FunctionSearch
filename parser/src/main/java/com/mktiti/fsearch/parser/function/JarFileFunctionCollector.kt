@@ -12,7 +12,7 @@ import java.util.zip.ZipFile
 object JarFileFunctionCollector : FunctionCollector<JarFileInfoCollector.JarInfo> {
 
     override fun collectFunctions(info: JarFileInfoCollector.JarInfo, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): Collection<FunctionObj> {
-        return AsmFunctionCollector.collect(javaRepo, infoRepo, dependencyResolver) {
+        return AsmFunctionCollector.collect(infoRepo, dependencyResolver) {
             info.paths.forEach { jarPath ->
                 ZipFile(jarPath.toFile()).use { jar ->
                     val entries = jar.entries().toList()

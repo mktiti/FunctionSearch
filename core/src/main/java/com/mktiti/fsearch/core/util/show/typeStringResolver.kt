@@ -2,7 +2,6 @@ package com.mktiti.fsearch.core.util.show
 
 import com.mktiti.fsearch.core.fit.FittingMap
 import com.mktiti.fsearch.core.fit.FunctionObj
-import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.fit.QueryType
 import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.SemiType

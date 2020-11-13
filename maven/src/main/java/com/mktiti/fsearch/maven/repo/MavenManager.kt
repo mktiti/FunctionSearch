@@ -1,6 +1,8 @@
 package com.mktiti.fsearch.maven.repo
 
-import com.mktiti.fsearch.maven.*
+import com.mktiti.fsearch.maven.ArtifactRepo
+import com.mktiti.fsearch.maven.MavenArtifact
+import com.mktiti.fsearch.maven.MavenRepoInfo
 import java.io.*
 import java.net.URL
 import java.nio.channels.Channels

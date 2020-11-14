@@ -1,8 +1,15 @@
 # Syntax: Query '\n' ("-" | (result (, result)*))
 # where result is java string escaped in the format of package.class::function
+# Empty lines and lines staring with '#' are ignored
 
 FtList<FtString>, int -> FtString
 com.mktiti.fsearchtest.FtList::get
+
+FtCollection<FtString>, int -> FtString
+-
+
+FtCollection<a>, int -> a
+-
 
 FtList<FtString>, Integer -> FtString
 com.mktiti.fsearchtest.FtList::get

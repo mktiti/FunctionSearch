@@ -24,24 +24,19 @@ class QueryIntegrationTest {
 
         private fun parseEntry(queryLine: String, resultLine: String) = VerificationEntry(
                 query = queryLine,
-                results = resultLine.split(',').map { result ->
-                    val parts = result.split("::")
-                    FunctionInfo(
-                            fileName = parts[0].trim(),
-                            name = parts[1].trim()
-                    )
-                }.toSet()
+                results = when (val trimmedRes = resultLine.trim()) {
+                    "-" -> emptySet()
+                    else -> {
+                        trimmedRes.split(',').map { result ->
+                            val parts = result.split("::")
+                            FunctionInfo(
+                                    fileName = parts[0].trim(),
+                                    name = parts[1].trim()
+                            )
+                        }.toSet()
+                    }
+                }
         )
-
-        fun readResource(resource: String): List<VerificationEntry> {
-            return QueryIntegrationTest::class.java.getResource(resource).readText().lines().map {
-                it.trimStart()
-            }.filter {
-                !it.startsWith("#") && it.isNotEmpty()
-            }.chunked(2).map { (q, r) ->
-                parseEntry(q, r)
-            }
-        }
 
         private fun testResource(resource: String): List<VerificationEntry> {
             return QueryIntegrationTest::class.java.getResource(resource).readText().lines().map {

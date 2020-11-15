@@ -8,10 +8,11 @@ import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.JavaTypeStringResolver
 import com.mktiti.fsearch.core.util.show.TypePrint
-import com.mktiti.fsearch.maven.ArtifactRepo
-import com.mktiti.fsearch.maven.MavenArtifact
-import com.mktiti.fsearch.maven.MavenCollector
-import com.mktiti.fsearch.maven.SimpleArtifactRepo
+import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
+import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
+import com.mktiti.fsearch.modules.ArtifactId
+import com.mktiti.fsearch.modules.DomainRepo
+import com.mktiti.fsearch.modules.SimpleDomainRepo
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
@@ -49,28 +50,19 @@ fun printLog(log: InMemTypeParseLog) {
 private data class QueryContext(
         val infoRepo: JavaInfoRepo,
         val javaRepo: JavaRepo,
-        val allRepos: Collection<ArtifactRepo>,
-        val resolver: TypeResolver = SimpleMultiRepoTypeResolver(allRepos.map { it.typeRepo })
+        val artifacts: Set<ArtifactId>,
+        val domain: DomainRepo
 ) {
 
-    val allFunctions: Collection<FunctionObj> = allRepos.flatMap { it.functions }
-    val queryParser: QueryParser = AntlrQueryParser(javaRepo, infoRepo, resolver)
-    val fitter: QueryFitter = JavaQueryFitter(infoRepo, resolver)
-    val typePrint: TypePrint = JavaTypePrinter(infoRepo, resolver)
-
-    private fun setRepos(repos: Collection<ArtifactRepo>): QueryContext = copy(
-            allRepos = repos,
-            resolver = SimpleMultiRepoTypeResolver(repos.map { it.typeRepo })
-    )
-
-    operator fun plus(repo: ArtifactRepo) = setRepos(allRepos + repo)
-
-    operator fun plus(repos: Collection<ArtifactRepo>) = setRepos(allRepos + repos)
-
-    operator fun minus(info: MavenArtifact) = setRepos(allRepos.filter { it.info != info })
+    val queryParser: QueryParser = AntlrQueryParser(javaRepo, infoRepo, domain.typeResolver)
+    val fitter: QueryFitter = JavaQueryFitter(infoRepo, domain.typeResolver)
+    val typePrint: TypePrint = JavaTypePrinter(infoRepo, domain.typeResolver)
 
     fun withVirtuals(virtuals: Collection<DirectType>) = copy(
-            resolver = FallbackResolver.withVirtuals(virtuals, resolver)
+            domain = SimpleDomainRepo(
+                    typeResolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver),
+                    functions = domain.functions
+            )
     )
 
 }
@@ -113,15 +105,23 @@ fun main(args: Array<String>) {
 
     printLog(log)
 
-    val jclArtifactRepo = SimpleArtifactRepo(
-            info = MavenArtifact(group = listOf("openjdk"), name = "jcl", version = System.getProperty("java.version")),
-            typeRepo = jclRepo,
-            functions = jclFunctions
+    val jclArtifactRepo = SimpleDomainRepo(jclResolver, jclFunctions)
+
+    val mavenManager = MavenMapArtifactManager(
+            typeCollector = JarFileInfoCollector(MapJavaInfoRepo),
+            funCollector = JarFileFunctionCollector,
+            infoRepo = MapJavaInfoRepo,
+            javaRepo = javaRepo,
+            baseResolver = jclResolver,
+            mavenFetcher = ExternalMavenFetcher()
     )
 
-    val mavenCollector = MavenCollector(MapJavaInfoRepo)
-
-    var context = QueryContext(MapJavaInfoRepo, javaRepo, listOf(jclArtifactRepo))
+    var context = QueryContext(
+            infoRepo = MapJavaInfoRepo,
+            javaRepo = javaRepo,
+            artifacts = emptySet(),
+            domain = jclArtifactRepo
+    )
 
     while (true) {
         print(">")
@@ -132,7 +132,7 @@ fun main(args: Array<String>) {
             val parts = input.split(" ")
             when (val command = parts[0].drop(1).toLowerCase()) {
                 "info" -> {
-                    printInfo(parts.drop(1), context.resolver, context.allFunctions)
+                    printInfo(parts.drop(1), context.domain.typeResolver, context.domain.functions)
                 }
                 "quit" -> {
                     println("Quitting")
@@ -140,17 +140,26 @@ fun main(args: Array<String>) {
                 }
                 "load" -> {
                     val artifact = parts.getOrNull(1)?.let {
-                        MavenArtifact.parse(it)
+                        ArtifactId.parse(it)
                     }
                     if (artifact == null) {
                         println("Failed to parse artifact info!")
                     } else {
-                        mavenCollector.collectCombined(artifact, javaRepo, MapJavaInfoRepo, jclResolver).apply {
-                            forEach {
-                                printLoadResults(it.typeRepo, it.functions)
-                            }
+                        if (artifact !in context.artifacts) {
+                            val combined = context.artifacts + artifact
+                            val loaded = mavenManager.getWithDependencies(combined)
 
-                            context += this
+                            println("Loaded artifact $artifact")
+
+                            context = context.copy(
+                                    artifacts = combined,
+                                    domain = SimpleDomainRepo(
+                                            typeResolver = FallbackResolver(loaded.typeResolver, jclResolver),
+                                            functions = loaded.functions + jclFunctions
+                                    )
+                            )
+                        } else {
+                            println("Artifact $artifact already loaded")
                         }
                     }
                 }
@@ -167,7 +176,7 @@ fun main(args: Array<String>) {
 
                 val extraContext = context.withVirtuals(virtuals)
 
-                context.allFunctions.parallelStream().map { function ->
+                context.domain.functions.parallelStream().map { function ->
                     extraContext.fitter.fitsQuery(query, function)?.let { function to it }
                 }.filter { it != null }.collect(Collectors.toList()).filterNotNull().forEach { (function, result) ->
                     print("Fits function ")

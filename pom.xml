@@ -28,6 +28,7 @@
         <module>util</module>
         <module>core</module>
         <module>parser</module>
+        <module>modules</module>
         <module>maven</module>
         <module>backend</module>
     </modules>
@@ -68,6 +69,12 @@
             <dependency>
                 <groupId>com.mktiti.signature-search</groupId>
                 <artifactId>parser</artifactId>
+                <version>0.1-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>modules</artifactId>
                 <version>0.1-SNAPSHOT</version>
             </dependency>
 

@@ -52,7 +52,7 @@ class SingleRepoTypeResolver(
 }
 
 class FallbackResolver(
-        repo: TypeRepo,
+        private val primary: TypeResolver,
         private val fallback: TypeResolver
 ) : TypeResolver {
 
@@ -66,7 +66,7 @@ class FallbackResolver(
         }
     }
 
-    private val primary = SingleRepoTypeResolver(repo)
+    constructor(primary: TypeRepo, fallback: TypeResolver) : this(SingleRepoTypeResolver(primary), fallback)
 
     private fun <T : Any> resolve(query: TypeResolver.() -> T?): T? = primary.query() ?: fallback.query()
 
@@ -80,11 +80,11 @@ class FallbackResolver(
 
 }
 
-class SimpleMultiRepoTypeResolver(
-        private val repos: Collection<TypeRepo>
+class SimpleCombiningTypeResolver(
+        private val resolvers: Collection<TypeResolver>
 ) : TypeResolver {
 
-    private fun <T : Any> first(query: (TypeRepo) -> T?): T? = repos.asSequence().mapNotNull(query).firstOrNull()
+    private fun <T : Any> first(query: (TypeResolver) -> T?): T? = resolvers.asSequence().mapNotNull(query).firstOrNull()
 
     override fun get(info: MinimalInfo) = first { it[info] }
 

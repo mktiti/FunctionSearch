@@ -1,18 +1,16 @@
 package com.mktiti.fsearch.maven.repo
 
-import com.mktiti.fsearch.maven.ArtifactRepo
-import com.mktiti.fsearch.maven.MavenArtifact
+import com.mktiti.fsearch.maven.util.MockPomHandler
+import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.util.cutLast
 import java.io.File
 import java.io.IOException
-import java.nio.charset.StandardCharsets
 
 class ExternalMavenFetcher(
         private val basePath: File = tempDir("fsearch-external-maven-")
-) : RepoArtifactFetch {
+) : MavenFetcher {
 
     companion object {
-        private const val pomTemplateLoc = "/test-pom.xml"
 
         private val mavenCommand = listOf("mvn",  "dependency:copy-dependencies", "-DmarkersDirectory=\$markers", "-DoutputDirectory=\$repo", "-Dmdep.prependGroupId")
 
@@ -27,11 +25,10 @@ class ExternalMavenFetcher(
                 acc.replaceFirst(k, v)
             }
         }
+
     }
 
-    private val pomTemplate = ExternalMavenFetcher::class.java.getResource(pomTemplateLoc).readText()
-
-    private fun parseFilename(full: String): MavenArtifact? {
+    private fun parseFilename(full: String): ArtifactId? {
         val dashParts = full.removeSuffix(".jar").split('-')
         if (dashParts.size < 2) return null
 
@@ -41,7 +38,7 @@ class ExternalMavenFetcher(
             null
         } else {
             val (group, name) = periodParts.cutLast()
-            MavenArtifact(
+            ArtifactId(
                     group = group,
                     name = name,
                     version = version
@@ -49,21 +46,16 @@ class ExternalMavenFetcher(
         }
     }
 
-    override fun fetchArtifactWithDeps(info: MavenArtifact, transform: (MavenArtifact, File) -> ArtifactRepo): Map<MavenArtifact, ArtifactRepo>? {
+    override fun <R> runOnArtifactWithDeps(artifacts: Collection<ArtifactId>, transform: (files: Map<ArtifactId, File>) -> R): R? {
         return try {
             val combined = tempDir(prefix = "combined-", directory = basePath.absoluteFile)
             val project = tempDir(prefix = "project-", directory = combined.absoluteFile)
             val repo = tempDir(prefix = "repo-", directory = combined.absoluteFile)
             val markers = tempDir(prefix = "markers-", directory = combined.absoluteFile)
 
-            val pomFile = project.resolve("pom.xml")
-            val pomContent = pomTemplate.replaceAllFirsts(
-                "\$groupId" to info.group.joinToString(separator = "."),
-                "\$artifactId" to info.name,
-                "\$version" to info.version
-            )
-
-            pomFile.absoluteFile.writeText(pomContent, StandardCharsets.UTF_8)
+            project.resolve("pom.xml").outputStream().use { out ->
+                MockPomHandler.createMockPom(artifacts, out)
+            }
 
             val command = mavenCommand.map {
                 it.replaceAllFirsts(
@@ -86,14 +78,13 @@ class ExternalMavenFetcher(
             try {
                 if (process.waitFor() == 0) {
                     println(">>> External maven process finished")
-                    repo.listFiles()?.mapNotNull { file ->
-                        if (file.extension == "jar") {
-                            val depInfo = parseFilename(file.nameWithoutExtension) ?: return@mapNotNull null
-                            depInfo to transform(depInfo, file)
-                        } else {
-                            null
-                        }
-                    }?.toMap()
+                    val files = (repo.listFiles() ?: return null).filter { file ->
+                        file.extension == "jar"
+                    }.mapNotNull { file ->
+                        (parseFilename(file.nameWithoutExtension) ?: return@mapNotNull null) to file
+                    }.toMap()
+
+                    transform(files)
                 } else {
                     return null
                 }

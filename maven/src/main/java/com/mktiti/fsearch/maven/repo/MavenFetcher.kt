@@ -11,4 +11,10 @@ interface MavenFetcher {
         transform(files[artifact] ?: return@runOnArtifactWithDeps null)
     }
 
+    fun <R> runOnJavadocWithDeps(artifacts: Collection<ArtifactId>, transform: (files: Map<ArtifactId, File>) -> R): R?
+
+    fun <R> runOnJavadoc(artifact: ArtifactId, transform: (file: File) -> R): R? = runOnArtifactWithDeps(listOf(artifact)) { files ->
+        transform(files[artifact] ?: return@runOnArtifactWithDeps null)
+    }
+
 }

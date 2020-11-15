@@ -1,13 +1,18 @@
 package com.mktiti.fsearch.parser.integrationtest
 
+import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.function.DirectoryFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.type.DirectoryInfoCollector
+import com.mktiti.fsearch.util.cutLast
+import com.mktiti.fsearch.util.orElse
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Paths
@@ -27,11 +32,26 @@ class QueryIntegrationTest {
                 results = when (val trimmedRes = resultLine.trim()) {
                     "-" -> emptySet()
                     else -> {
-                        trimmedRes.split(',').map { result ->
-                            val parts = result.split("::")
+                        trimmedRes.split(';').map { result ->
+                            val (fileAndName, sig) = result.split('(')
+                            val (file, name) = fileAndName.split(regex = "\\.|(::)".toRegex()).cutLast()
+                            val (filePackage, fileName) = file.cutLast()
+                            val isStatic = fileAndName.contains("::")
+
+                            val params = sig.dropLast(1).split(',').map { param ->
+                                PrimitiveType.fromNameSafe(param)?.let {
+                                    FunIdParam.Type(MapJavaInfoRepo.primitive(it))
+                                }.orElse {
+                                    val (pack, type) = param.split('.').cutLast()
+                                    FunIdParam.Type(MinimalInfo(pack, type))
+                                }
+                            }
+
                             FunctionInfo(
-                                    fileName = parts[0].trim(),
-                                    name = parts[1].trim()
+                                    file = MinimalInfo(filePackage, fileName),
+                                    name = name,
+                                    isStatic = isStatic,
+                                    paramTypes = params
                             )
                         }.toSet()
                     }

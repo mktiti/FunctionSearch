@@ -11,6 +11,13 @@ import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.TypePrint
 
 fun main() {
+    fun funInfo(name: String, className: String) = FunctionInfo(
+            file = MinimalInfo(listOf("org", "test"), className),
+            name = name,
+            isStatic = true,
+            paramTypes = emptyList()
+    )
+
     val defaultRepo: MutableTypeRepo = SetTypeRepo()
 
     val objType = defaultRepo.createDirect("Object")
@@ -192,7 +199,7 @@ fun main() {
     printer.printType(bazType.forceStaticApply(intType.holder(), objType.holder()))
 
     val maxFun = FunctionObj(
-            info = FunctionInfo("max", "Math"),
+            info = funInfo("max", "Math"),
             signature = TypeSignature.DirectSignature(
                     inputParameters = listOf("a" to intType, "b" to intType),
                     output = intType
@@ -201,7 +208,7 @@ fun main() {
     println(maxFun)
 
     val lengthFun = FunctionObj(
-            info = FunctionInfo("length", "String"),
+            info = funInfo("length", "String"),
             signature = TypeSignature.DirectSignature(
                     inputParameters = listOf("string" to charSeqType),
                     output = int64Type
@@ -226,7 +233,7 @@ fun main() {
     )
 
     val mapFun = FunctionObj(
-            info = FunctionInfo("map", "List"),
+            info = funInfo("map", "List"),
             signature = TypeSignature.GenericSignature(
                     typeParameters = listOf(
                             defaultRepo.typeParam("T", defaultTypeBounds),
@@ -306,9 +313,9 @@ fun main() {
     printer.printType(bossType)
 
     val sortedFun = FunctionObj(
-            info = FunctionInfo(
+            info = funInfo(
                     name = "sorted",
-                    fileName = ""
+                    className = "Collection"
             ),
             signature = TypeSignature.GenericSignature(
                     typeParameters = listOf(

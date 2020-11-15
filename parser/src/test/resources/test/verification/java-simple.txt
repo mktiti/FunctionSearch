@@ -3,7 +3,7 @@
 # Empty lines and lines staring with '#' are ignored
 
 FtList<FtString>, int -> FtString
-com.mktiti.fsearchtest.FtList::get
+com.mktiti.fsearchtest.FtList.get(int)
 
 FtCollection<FtString>, int -> FtString
 -
@@ -12,38 +12,38 @@ FtCollection<a>, int -> a
 -
 
 FtList<FtString>, Integer -> FtString
-com.mktiti.fsearchtest.FtList::get
+com.mktiti.fsearchtest.FtList.get(int)
 
 FtList<a>, int -> a
-com.mktiti.fsearchtest.FtList::get
+com.mktiti.fsearchtest.FtList.get(int)
 
 <a : FtPerson> FtList<a>, int -> a
-com.mktiti.fsearchtest.FtList::get
+com.mktiti.fsearchtest.FtList.get(int)
 
 <a : FtComp<a>> FtCollection<a> -> a
-com.mktiti.fsearchtest.FtCollUtil::min,com.mktiti.fsearchtest.FtCollUtil::max
+com.mktiti.fsearchtest.FtCollUtil::min(com.mktiti.fsearchtest.FtCollection);com.mktiti.fsearchtest.FtCollUtil::max(com.mktiti.fsearchtest.FtCollection)
 
 FtCollection<a>, FtComparator<a> -> a
-com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtComparator<a>, FtCollection<a> -> a
-com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtCollection<FtBoss>, FtComparator<FtPerson> -> FtBoss
-com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtCollection<FtCeo>, FtComparator<FtPerson> -> FtCeo
-com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtCollection<FtCeo>, FtComparator<FtBoss> -> FtCeo
-com.mktiti.fsearchtest.FtCollUtil::minWc,com.mktiti.fsearchtest.FtCollUtil::maxWc
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtCollection<FtCeo> -> FtCollection<FtList<FtCeo>>
-com.mktiti.fsearchtest.FtCollUtil::permutations
+com.mktiti.fsearchtest.FtCollUtil::permutations(com.mktiti.fsearchtest.FtCollection)
 
 FtList<FtCeo> -> FtCollection<FtList<FtCeo>>
-com.mktiti.fsearchtest.FtCollUtil::permutations
+com.mktiti.fsearchtest.FtCollUtil::permutations(com.mktiti.fsearchtest.FtCollection)
 
 FtMap<FtString, int> -> FtCollection<FtList<FtPair<FtString, int>>>
-com.mktiti.fsearchtest.FtCollUtil::permutations
+com.mktiti.fsearchtest.FtCollUtil::permutations(com.mktiti.fsearchtest.FtCollection)
 

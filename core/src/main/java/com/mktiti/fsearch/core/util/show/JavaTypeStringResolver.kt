@@ -107,9 +107,11 @@ class JavaTypeStringResolver(
             }
         }
         function.info.apply {
-            if (fileName.isNotBlank()) {
-                append(fileName)
+            append(file.fullName)
+            if (isStatic) {
                 append("::")
+            } else {
+                append(".")
             }
             append(name)
         }

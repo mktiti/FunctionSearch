@@ -10,9 +10,11 @@ import com.mktiti.fsearch.core.util.show.JavaTypeStringResolver
 import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
 import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
+import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.DomainRepo
 import com.mktiti.fsearch.modules.SimpleDomainRepo
+import com.mktiti.fsearch.modules.javadoc.DocStore
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
@@ -51,7 +53,8 @@ private data class QueryContext(
         val infoRepo: JavaInfoRepo,
         val javaRepo: JavaRepo,
         val artifacts: Set<ArtifactId>,
-        val domain: DomainRepo
+        val domain: DomainRepo,
+        val docStore: DocStore
 ) {
 
     val queryParser: QueryParser = AntlrQueryParser(javaRepo, infoRepo, domain.typeResolver)
@@ -116,11 +119,17 @@ fun main(args: Array<String>) {
             mavenFetcher = ExternalMavenFetcher()
     )
 
+    val mavenJavadocManager = MavenMapJavadocManager(
+            infoRepo = MapJavaInfoRepo,
+            mavenFetcher = ExternalMavenFetcher()
+    )
+
     var context = QueryContext(
             infoRepo = MapJavaInfoRepo,
             javaRepo = javaRepo,
             artifacts = emptySet(),
-            domain = jclArtifactRepo
+            domain = jclArtifactRepo,
+            docStore = DocStore.nop()
     )
 
     while (true) {
@@ -151,12 +160,14 @@ fun main(args: Array<String>) {
 
                             println("Loaded artifact $artifact")
 
+                            val docStore = mavenJavadocManager.forDomain(combined)
+
                             context = context.copy(
                                     artifacts = combined,
                                     domain = SimpleDomainRepo(
                                             typeResolver = FallbackResolver(loaded.typeResolver, jclResolver),
                                             functions = loaded.functions + jclFunctions
-                                    )
+                                    ), docStore = docStore
                             )
                         } else {
                             println("Artifact $artifact already loaded")
@@ -182,6 +193,12 @@ fun main(args: Array<String>) {
                     print("Fits function ")
                     extraContext.typePrint.printFun(function)
                     extraContext.typePrint.printFittingMap(result)
+                    context.docStore[function.info]?.let {
+                        println()
+                        println("===> Doc:")
+                        println(it.longInfo)
+                        println()
+                    }
                 }
 
                 /*
@@ -255,7 +272,7 @@ private fun printInfo(command: List<String>, typeResolver: TypeResolver, allFunc
         else -> {
             val foundFun = allFunctions.find {
                 with (it.info) {
-                    name == function && (fileName == type || fileName.split('.').last() == type)
+                    name == function && (file.fullName == type || file.simpleName == type)
                 }
             }
             if (foundFun != null) {

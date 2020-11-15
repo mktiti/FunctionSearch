@@ -52,6 +52,13 @@ class ApplyTest {
 
             return Triple(repo, base, box)
         }
+
+        private fun funInfo(name: String, className: String) = FunctionInfo(
+                file = MinimalInfo(listOf("org", "test"), className),
+                name = name,
+                isStatic = true,
+                paramTypes = emptyList()
+        )
     }
 
     @Test
@@ -105,7 +112,7 @@ class ApplyTest {
 
         val fitResult = fitter.fitsOrderedQuery(
                 query = querySignature,
-                function = FunctionObj(FunctionInfo("fun", "inmem"), funSignature)
+                function = FunctionObj(funInfo("fun", "inmem"), funSignature)
         )
 
         assertNotNull(fitResult)

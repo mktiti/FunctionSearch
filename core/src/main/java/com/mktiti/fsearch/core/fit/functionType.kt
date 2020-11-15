@@ -8,11 +8,6 @@ import com.mktiti.fsearch.core.type.TypeHolder
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.util.genericString
 
-data class FunctionInfo(
-    val name: String,
-    val fileName: String
-)
-
 sealed class TypeSignature {
 
     abstract val typeParameters: List<TypeParameter>
@@ -78,6 +73,20 @@ class FunctionObj(
         val signature: TypeSignature
 ) {
 
-    override fun toString() = "fun ${signature.genericString} ${info.fileName}::${info.name}${signature.typeString}"
+    override fun toString() = buildString {
+        append("fun")
+        if (signature.genericString.isEmpty()) {
+            append(signature.genericString)
+            append(" ")
+        }
+        append(info.file.fullName)
+        if (info.isStatic) {
+            append("::")
+        } else {
+            append(".")
+        }
+        append(info.name)
+        append(signature.typeString)
+    }
 
 }

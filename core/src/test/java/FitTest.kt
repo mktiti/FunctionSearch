@@ -3,14 +3,11 @@ import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.repo.createTestRepo
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.LOWER
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.UPPER
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
-import com.mktiti.fsearch.core.type.SemiType
-import com.mktiti.fsearch.core.type.TypeBounds
-import com.mktiti.fsearch.core.type.TypeParameter
-import com.mktiti.fsearch.core.type.upperBounds
 import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.core.util.forceStaticApply
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
@@ -21,6 +18,15 @@ import kotlin.test.assertNotNull
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class FitTest {
+
+    private companion object {
+        private fun funInfo(name: String, className: String) = FunctionInfo(
+                file = MinimalInfo(listOf("org", "test"), className),
+                name = name,
+                isStatic = true,
+                paramTypes = emptyList()
+        )
+    }
 
     private val repo = createTestRepo()
     private val rootType = repo["TestRoot"]!!.holder()
@@ -66,9 +72,9 @@ class FitTest {
         )
 
         val length = FunctionObj(
-                info = FunctionInfo(
+                info = funInfo(
                         name = "length",
-                        fileName = "Str"
+                        className = "Str"
                 ),
                 signature = TypeSignature.DirectSignature(
                         inputParameters = listOf("str" to charSeq),
@@ -100,9 +106,9 @@ class FitTest {
 
         // <T extends Comparable<? super T>> (Collection<T>) -> List<T>
         val sort = FunctionObj(
-                info = FunctionInfo(
+                info = funInfo(
                         name = "sort",
-                        fileName = "Collections"
+                        className = "Collections"
                 ),
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
@@ -149,9 +155,9 @@ class FitTest {
 
         // <T extends Comparable<? super T>> (Collection<T>) -> List<T>
         val sort = FunctionObj(
-                info = FunctionInfo(
+                info = funInfo(
                         name = "sort",
-                        fileName = "Collections"
+                        className = "Collections"
                 ),
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(
@@ -220,9 +226,9 @@ class FitTest {
         // <T, K, D, A, M extends Map<K, D>>
         // Collector<T, ?, M> groupingBy(Function<? super T, ? extends K> classifier, Supplier<M> mapFactory, Collector<? super T, A, D> downstream)
         val sort = FunctionObj(
-                info = FunctionInfo(
+                info = funInfo(
                         name = "groupingBy",
-                        fileName = "Collectors"
+                        className = "Collectors"
                 ),
                 signature = TypeSignature.GenericSignature(
                         typeParameters = listOf(

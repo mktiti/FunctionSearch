@@ -104,10 +104,20 @@ private class AsmFunctionCollectorVisitor(
                             }
                         }
 
-                        collectedMethods += FunctionObj(
-                                info = FunctionInfo(name, info.toString()),
-                                signature = parsedSignature
-                        )
+                        val typeParams = (when (this) {
+                            is ContextInfo.Direct -> emptyList()
+                            is ContextInfo.Template -> thisType.typeParams
+                        } + parsedSignature.typeParameters).map { it.sign }
+
+                        val funInfo = FunctionInfo.fromSignature(
+                                file = info,
+                                name = name,
+                                signature = parsedSignature,
+                                isStatic = isStatic,
+                                typeParams = typeParams
+                        ) ?: error("Cannot create function info! ($info::$name)")
+
+                        collectedMethods += FunctionObj(funInfo, parsedSignature)
                     } catch (e: NotImplementedError) {
                         System.err.println("Failed to parse $info $name :: ${signature ?: descriptor}")
                         e.printStackTrace()

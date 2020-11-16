@@ -2,15 +2,14 @@ package com.mktiti.fsearch.maven.util
 
 import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunctionInfo
-import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.type.MinimalInfo
-import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
 import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.util.cutLast
-import com.mktiti.fsearch.util.orElse
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.File
 import java.io.InputStream
@@ -34,28 +33,9 @@ class JarHtmlJavadocParser(
         }
     }
 
-    private fun parseParam(param: String): FunIdParam {
-        if (param.endsWith("...") || param.endsWith("[]")) {
-            // TODO
-            return FunIdParam.Type(infoRepo.arrayType)
-        }
-
-        return PrimitiveType.fromNameSafe(param)?.let {
-            FunIdParam.Type(infoRepo.primitive(it))
-        }.orElse {
-            val parsed: FunIdParam = if ('.' !in param && param.all { it.isDigit() || it.isUpperCase() }) {
-                FunIdParam.TypeParam(param)
-            } else {
-                val (pack, type) = param.split('.').cutLast()
-                FunIdParam.Type(MinimalInfo(pack, type))
-            }
-
-            parsed
-        }
-    }
-    private fun parseParenedFunSignature(signature: String): Pair<String, List<FunIdParam>> {
+    private fun parseParenFunSignature(signature: String): Pair<String, List<FunIdParam>> {
         val (name, ins) = signature.split('(')
-        val params = ins.dropLast(1).split(',').map { parseParam(it) }
+        val params = ins.dropLast(1).split(',').map { FunHeaderParser.parseParam(infoRepo, it) }
 
         return name to params
     }
@@ -65,7 +45,7 @@ class JarHtmlJavadocParser(
         val params: List<FunIdParam> = if (ins == "-") {
             emptyList()
         } else {
-            ins.split('-').filter { it.isNotEmpty() }.map { parseParam(it) }
+            ins.split('-').filter { it.isNotEmpty() }.map { FunHeaderParser.parseParam(infoRepo, it) }
         }
 
         return name to params
@@ -73,17 +53,52 @@ class JarHtmlJavadocParser(
 
     private fun parseFunSignature(signature: String): Pair<String, List<FunIdParam>> {
         return if ('(' in signature) {
-            parseParenedFunSignature(signature)
+            parseParenFunSignature(signature)
         } else {
             parseDottedFunSignature(signature)
         }
     }
 
-    private fun parseFile(file: MinimalInfo, input: InputStream): List<Pair<FunctionInfo, FunctionDoc>> {
-        val document = input.bufferedReader().use {
-            Jsoup.parse(it.readText())
+    private fun parseMethodHeaders(file: MinimalInfo, document: Document): Map<FunctionInfo, FunctionDoc> {
+        val methodSummary = (
+                document.selectFirst("[name='method_summary']") ?:
+                document.selectFirst("[name='method.summary']") ?:
+                document.getElementById("method.summary")
+        )?.parent()?.selectFirst("table>tbody")
+
+        if (methodSummary == null) {
+            println("No method summary table found ($file)")
+            return emptyMap()
         }
 
+        return methodSummary.children().drop(1).mapNotNull {
+            val (sigElem, descElem) = when (it.childrenSize()) {
+                2 -> {
+                    val sigDesc = it.child(1).children()
+                    sigDesc[0] to sigDesc.getOrNull(1)
+                }
+                3 -> it.child(1) to it.child(2)
+                else -> return@mapNotNull null
+            }
+
+            val static = it.child(0).wholeText().split("\\W+".toRegex()).contains("static")
+
+            val (name, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
+            val shortInfo = descElem?.wholeText()
+
+            FunctionInfo(
+                    file = file,
+                    name = name,
+                    isStatic = static,
+                    paramTypes = signature
+            ) to FunctionDoc(
+                    paramNames = paramNames,
+                    shortInfo = shortInfo
+            )
+        }.toMap()
+    }
+
+    private fun parseMethodDetails(file: MinimalInfo, document: Document): Map<FunctionInfo, String> {
         val methodDetails = (
                 document.selectFirst("[name='method_detail']") ?:
                 document.selectFirst("[name='method.detail']") ?:
@@ -92,7 +107,7 @@ class JarHtmlJavadocParser(
 
         if (methodDetails == null) {
             println("No method detail elem found ($file)")
-            return emptyList()
+            return emptyMap()
         }
 
         data class MethodGroup(
@@ -138,18 +153,25 @@ class JarHtmlJavadocParser(
 
                 val fullDetails = detail.children().drop(2).joinToString("\n") { it.wholeText() }
 
-                val doc = FunctionDoc(
-                        link = null,
-                        paramNames = null,
-                        shortInfo = null,
-                        longInfo = fullDetails
-                )
-
-                info to doc
+                info to fullDetails
             } catch (e: Exception) {
                 e.printStackTrace()
                 null
             }
+        }.toMap()
+    }
+
+    private fun parseFile(file: MinimalInfo, input: InputStream): List<Pair<FunctionInfo, FunctionDoc>> {
+        val document = input.bufferedReader().use {
+            Jsoup.parse(it.readText())
+        }
+
+        val methodInfos = parseMethodHeaders(file, document)
+        val details = parseMethodDetails(file, document)
+
+        return (methodInfos.keys + details.keys).map { info ->
+            val data = methodInfos[info] ?: FunctionDoc()
+            info to (details[info]?.let { data.copy(longInfo = it) } ?: data)
         }
     }
 

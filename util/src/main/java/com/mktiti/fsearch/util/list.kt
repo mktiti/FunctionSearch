@@ -25,6 +25,8 @@ fun <T> List<T>.safeCutLast(): Pair<List<T>, T>? = if (isEmpty()) {
 
 fun <T> List<T>.cutLast(): Pair<List<T>, T> = safeCutLast()!!
 
+fun <T> Collection<T>.singleOrNull(): T? = if (size == 1) first() else null
+
 fun <T> Collection<T>.allPermutations(): List<List<T>> {
     // TODO - quick and dirty
     fun List<T>.allPermutationsInner(): List<List<T>> {

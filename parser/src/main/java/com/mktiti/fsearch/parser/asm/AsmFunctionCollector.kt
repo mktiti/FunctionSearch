@@ -44,7 +44,7 @@ private class AsmFunParamNamesVisitor(
 
 private class AsmFunctionCollectorVisitor(
         private val dependencyResolver: TypeResolver,
-        infoRepo: JavaInfoRepo
+        private val infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
 
     private sealed class ContextInfo<T>(
@@ -114,7 +114,8 @@ private class AsmFunctionCollectorVisitor(
                                 name = name,
                                 signature = parsedSignature,
                                 isStatic = isStatic,
-                                typeParams = typeParams
+                                typeParams = typeParams,
+                                infoRepo = infoRepo
                         ) ?: error("Cannot create function info! ($info::$name)")
 
                         collectedMethods += FunctionObj(funInfo, parsedSignature)

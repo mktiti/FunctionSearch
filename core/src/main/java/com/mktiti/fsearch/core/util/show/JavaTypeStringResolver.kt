@@ -127,7 +127,7 @@ class JavaTypeStringResolver(
             } else {
                 inputParameters.mapIndexed { i, inParam ->
                     val (setName, param) = inParam
-                    val name = if (setName.startsWith("\\$")) {
+                    val name = if (setName.startsWith("\$")) {
                         doc.paramNames?.getOrNull(i) ?: setName
                     } else {
                         setName

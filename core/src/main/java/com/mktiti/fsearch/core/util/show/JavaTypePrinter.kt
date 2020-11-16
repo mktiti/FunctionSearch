@@ -4,6 +4,7 @@ import com.mktiti.fsearch.core.fit.FittingMap
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.fit.QueryType
+import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.SemiType
@@ -18,7 +19,8 @@ import java.io.PrintStream
 class JavaTypePrinter(
         private val infoRepo: JavaInfoRepo,
         typeResolver: TypeResolver,
-        private val stringResolver: TypeStringResolver = JavaTypeStringResolver(infoRepo),
+        docStore: DocStore = DocStore.nop(),
+        private val stringResolver: TypeStringResolver = JavaTypeStringResolver(infoRepo, docStore),
         private val output: PrintStream = System.out
 ) : TypePrint {
 

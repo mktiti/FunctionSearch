@@ -3,6 +3,7 @@ package com.mktiti.fsearch.core.util.show
 import com.mktiti.fsearch.core.fit.FittingMap
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.QueryType
+import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection
@@ -10,7 +11,8 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.util.genericString
 
 class JavaTypeStringResolver(
-        private val infoRepo: JavaInfoRepo
+        private val infoRepo: JavaInfoRepo,
+        private val docStore: DocStore
 ) : TypeStringResolver {
 
     private fun resolveName(info: MinimalInfo, typeArgs: String?): String {
@@ -99,6 +101,8 @@ class JavaTypeStringResolver(
     }
 
     override fun resolveFun(function: FunctionObj): String = buildString {
+        val doc = docStore.getOrEmpty(function.info)
+
         append("fun ")
         function.signature.apply {
             if (typeParameters.isNotEmpty()) {
@@ -121,7 +125,15 @@ class JavaTypeStringResolver(
             val ins = if (inputParameters.isEmpty()) {
                 "(() -> "
             } else {
-                inputParameters.joinToString(prefix = "(", separator = ", ", postfix = ") -> ") { (name, param) ->
+                inputParameters.mapIndexed { i, inParam ->
+                    val (setName, param) = inParam
+                    val name = if (setName.startsWith("\\$")) {
+                        doc.paramNames?.getOrNull(i) ?: setName
+                    } else {
+                        setName
+                    }
+                    name to param
+                }.joinToString(prefix = "(", separator = ", ", postfix = ") -> ") { (name, param) ->
                     name + ": " + resolveMapSub(param, typeParams)
                 }
             }

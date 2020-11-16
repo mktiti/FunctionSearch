@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.modules.javadoc
+package com.mktiti.fsearch.core.javadoc
 
 import com.mktiti.fsearch.core.fit.FunctionInfo
 

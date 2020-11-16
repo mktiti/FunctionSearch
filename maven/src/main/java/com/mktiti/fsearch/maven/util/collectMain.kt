@@ -3,10 +3,10 @@ package com.mktiti.fsearch.maven.util
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
+import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
-import com.mktiti.fsearch.core.util.show.JavaTypeStringResolver
 import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
 import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
@@ -14,7 +14,6 @@ import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.DomainRepo
 import com.mktiti.fsearch.modules.SimpleDomainRepo
-import com.mktiti.fsearch.modules.javadoc.DocStore
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
@@ -59,7 +58,7 @@ private data class QueryContext(
 
     val queryParser: QueryParser = AntlrQueryParser(javaRepo, infoRepo, domain.typeResolver)
     val fitter: QueryFitter = JavaQueryFitter(infoRepo, domain.typeResolver)
-    val typePrint: TypePrint = JavaTypePrinter(infoRepo, domain.typeResolver)
+    val typePrint: TypePrint = JavaTypePrinter(infoRepo, domain.typeResolver, docStore)
 
     fun withVirtuals(virtuals: Collection<DirectType>) = copy(
             domain = SimpleDomainRepo(
@@ -141,7 +140,7 @@ fun main(args: Array<String>) {
             val parts = input.split(" ")
             when (val command = parts[0].drop(1).toLowerCase()) {
                 "info" -> {
-                    printInfo(parts.drop(1), context.domain.typeResolver, context.domain.functions)
+                    printInfo(parts.drop(1), context)
                 }
                 "quit" -> {
                     println("Quitting")
@@ -233,50 +232,42 @@ fun main(args: Array<String>) {
 
 }
 
-private fun printInfo(command: List<String>, typeResolver: TypeResolver, allFunctions: Collection<FunctionObj>) {
+private fun printInfo(command: List<String>, context: QueryContext) {
     val target = command.getOrNull(0)?.split("::")
     val type = target?.getOrNull(0)
     val function = target?.getOrNull(1)
 
-    val typeStringResolver = JavaTypeStringResolver(
-            MapJavaInfoRepo
-    )
-
-    val typePrint = JavaTypePrinter(
-            infoRepo = MapJavaInfoRepo,
-            typeResolver = typeResolver,
-            stringResolver = typeStringResolver
-    )
+    val resolver = context.domain.typeResolver
 
     when {
         type == null -> {
             println("Missing target")
         }
         function == null -> {
-            when (val direct = typeResolver.get(type, allowSimple = true)) {
+            when (val direct = resolver.get(type, allowSimple = true)) {
                 null -> {
-                    when (val template = typeResolver.template(type, allowSimple = true)) {
+                    when (val template = resolver.template(type, allowSimple = true)) {
                         null -> {
                             println("Unknown type '$type'")
                         }
                         else -> {
-                            typePrint.printSemiType(template)
+                            context.typePrint.printSemiType(template)
                         }
                     }
                 }
                 else -> {
-                    typePrint.printSemiType(direct)
+                    context.typePrint.printSemiType(direct)
                 }
             }
         }
         else -> {
-            val foundFun = allFunctions.find {
+            val foundFun = context.domain.functions.find {
                 with (it.info) {
                     name == function && (file.fullName == type || file.simpleName == type)
                 }
             }
             if (foundFun != null) {
-                typePrint.printFun(foundFun)
+                context.typePrint.printFun(foundFun)
             } else {
                 println("Function '$type::$function' not found")
             }

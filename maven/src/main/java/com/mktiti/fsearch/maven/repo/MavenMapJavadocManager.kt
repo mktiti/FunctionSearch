@@ -4,8 +4,8 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
 import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.modules.javadoc.DocStore
-import com.mktiti.fsearch.modules.javadoc.SimpleMultiDocStore
+import com.mktiti.fsearch.core.javadoc.DocStore
+import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
 import com.mktiti.fsearch.util.orElse
 import java.io.File
 

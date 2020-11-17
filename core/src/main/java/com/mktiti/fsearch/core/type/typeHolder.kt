@@ -95,6 +95,9 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
 
         }
 
+        override val typeParamCount: Int
+            get() = info.args.map { it.typeParamCount }.max() ?: 0
+
         override fun staticApply(typeArgs: List<Static>): Static? {
             return info.staticApply(typeArgs) ?: return null
         }
@@ -132,6 +135,9 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
 
         }
 
+        override val typeParamCount: Int
+            get() = 0
+
         override fun staticApply(typeArgs: List<Static>): Static = this
 
         override fun applySelf(self: Static): TypeHolder<*, *> = this
@@ -143,6 +149,8 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
         override fun toString() = info.toString()
 
     }
+
+    abstract val typeParamCount: Int
 
     abstract fun indirect(): TypeHolder<I, T>
 

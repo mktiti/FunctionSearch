@@ -16,12 +16,39 @@
     <dependencies>
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
             <artifactId>core</artifactId>
         </dependency>
 
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
             <artifactId>parser</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>modules</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>maven</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>2.2.0.RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-kotlin</artifactId>
+            <version>2.9.9</version>
         </dependency>
 
         <dependency>
@@ -37,6 +64,41 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jvmTarget>1.8</jvmTarget>
+                    <compilerPlugins>
+                        <plugin>spring</plugin>
+                    </compilerPlugins>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-allopen</artifactId>
+                        <version>${kotlin.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
 

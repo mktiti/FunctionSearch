@@ -6,13 +6,14 @@ import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
+import com.mktiti.fsearch.modules.DocManager
 import com.mktiti.fsearch.util.orElse
 import java.io.File
 
 class MavenMapJavadocManager(
         infoRepo: JavaInfoRepo,
         private val mavenFetcher: MavenFetcher
-) {
+) : DocManager {
 
     private val docParser = JarHtmlJavadocParser(infoRepo)
     private val stored = mutableMapOf<ArtifactId, DocStore>()
@@ -23,7 +24,7 @@ class MavenMapJavadocManager(
         }
     }
 
-    fun forDomain(artifacts: Set<ArtifactId>): DocStore {
+    override fun forArtifacts(artifacts: Set<ArtifactId>): DocStore {
         val stores = artifacts.map { stored[it] }.liftNull().orElse {
             mavenFetcher.runOnJavadocWithDeps(artifacts) { files ->
                 artifacts.map { artifact ->

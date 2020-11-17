@@ -1,12 +1,9 @@
 package com.mktiti.fsearch.core.repo
 
-import com.mktiti.fsearch.core.type.CompleteMinInfo
+import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.CompleteMinInfo.Static.Companion.holders
-import com.mktiti.fsearch.core.type.MinimalInfo
-import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.core.type.TypeTemplate
 
 interface TypeResolver {
 
@@ -36,6 +33,8 @@ interface TypeResolver {
         is CompleteMinInfo.Dynamic -> get(info)
     }
 
+    fun allSemis(): Sequence<SemiType>
+
 }
 
 class SingleRepoTypeResolver(
@@ -49,6 +48,11 @@ class SingleRepoTypeResolver(
     override fun get(name: String, allowSimple: Boolean): DirectType? = repo[name, allowSimple]
 
     override fun template(name: String, allowSimple: Boolean): TypeTemplate? = repo.template(name, allowSimple)
+
+    override fun allSemis(): Sequence<SemiType> {
+        return repo.allTypes.asSequence() + repo.allTemplates.asSequence()
+    }
+
 }
 
 class FallbackResolver(
@@ -57,11 +61,15 @@ class FallbackResolver(
 ) : TypeResolver {
 
     companion object {
-        fun withVirtuals(virtualTypes: Map<MinimalInfo, DirectType>, resolver: TypeResolver): FallbackResolver {
-            return FallbackResolver(VirtualTypeRepo(virtualTypes), resolver)
+        fun withVirtuals(virtualTypes: Map<MinimalInfo, DirectType>, resolver: TypeResolver): TypeResolver {
+            return if (virtualTypes.isEmpty()) {
+                resolver
+            } else {
+                FallbackResolver(VirtualTypeRepo(virtualTypes), resolver)
+            }
         }
 
-        fun withVirtuals(virtualTypes: Collection<DirectType>, resolver: TypeResolver): FallbackResolver {
+        fun withVirtuals(virtualTypes: Collection<DirectType>, resolver: TypeResolver): TypeResolver {
             return withVirtuals(virtualTypes.map { it.info to it }.toMap(), resolver)
         }
     }
@@ -78,6 +86,8 @@ class FallbackResolver(
 
     override fun template(name: String, allowSimple: Boolean): TypeTemplate? = resolve { template(name, allowSimple) }
 
+    override fun allSemis(): Sequence<SemiType> = primary.allSemis() + fallback.allSemis()
+
 }
 
 class SimpleCombiningTypeResolver(
@@ -93,5 +103,9 @@ class SimpleCombiningTypeResolver(
     override fun get(name: String, allowSimple: Boolean) = first { it[name, allowSimple] }
 
     override fun template(name: String, allowSimple: Boolean) = first { it.template(name, allowSimple) }
+
+    override fun allSemis(): Sequence<SemiType> {
+        return resolvers.asSequence().flatMap { it.allSemis() }
+    }
 
 }

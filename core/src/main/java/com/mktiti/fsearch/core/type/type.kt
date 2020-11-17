@@ -16,6 +16,7 @@ interface SemiType {
     val superTypes: List<TypeHolder<*, *>>
 
     val samType: SamType<*>?
+    val typeParamCount: Int
 
     val fullName: String
 
@@ -34,6 +35,9 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
         abstract override val superTypes: List<TypeHolder.Static>
 
         abstract override val samType: DirectSam?
+
+        override val typeParamCount: Int
+            get() = 0
 
         abstract val typeArgs: List<TypeHolder.Static>
 
@@ -83,6 +87,9 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
         override val samType: SamType.GenericSam? by lazy {
             baseSam?.dynamicApply(typeArgMapping)
         }
+
+        override val typeParamCount: Int
+            get() = typeArgMapping.map { it.typeParamCount }.max() ?: 0
 
         override val staticApplicable: Boolean
             get() = typeArgMapping.filterIsInstance<BoundedWildcard>().none()
@@ -153,6 +160,9 @@ class TypeTemplate(
 
     override val staticApplicable: Boolean
         get() = true
+
+    override val typeParamCount: Int
+        get() = typeParams.size
 
     override fun staticApply(typeArgs: List<TypeHolder.Static>): StaticAppliedType? {
         return StaticAppliedType(

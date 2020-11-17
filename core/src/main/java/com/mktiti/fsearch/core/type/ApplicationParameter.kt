@@ -28,6 +28,9 @@ sealed class ApplicationParameter {
                 direction: BoundDirection
         ) : BoundedWildcard(direction) {
 
+            override val typeParamCount: Int
+                get() = 0
+
             override fun dynamicApply(typeParams: List<ApplicationParameter>): Static = this
 
             override fun applySelf(self: TypeHolder.Static): Static = this
@@ -38,6 +41,9 @@ sealed class ApplicationParameter {
                 override val param: Substitution,
                 direction: BoundDirection
         ) : BoundedWildcard(direction) {
+
+            override val typeParamCount: Int
+                get() = param.typeParamCount
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): BoundedWildcard? {
                 return when (val applied = param.dynamicApply(typeParams)) {
@@ -61,6 +67,10 @@ sealed class ApplicationParameter {
     sealed class Substitution : ApplicationParameter(), StaticApplicable {
 
         data class ParamSubstitution(val param: Int) : Substitution() {
+
+            override val typeParamCount: Int
+                get() = param + 1
+
             override fun staticApply(typeArgs: List<TypeHolder.Static>) = typeArgs.getOrNull(param)
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter? {
@@ -73,6 +83,10 @@ sealed class ApplicationParameter {
         }
 
         object SelfSubstitution : Substitution() {
+
+            override val typeParamCount: Int
+                get() = 0
+
             override fun staticApply(typeArgs: List<TypeHolder.Static>): Nothing? = null
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>) = this
@@ -89,6 +103,9 @@ sealed class ApplicationParameter {
             companion object {
                 val unboundedWildcard: StaticTypeSubstitution = TypeSubstitution(TypeHolder.anyWildcard)
             }
+
+            override val typeParamCount: Int
+                get() = holder.typeParamCount
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): TypeSubstitution<*, *>? {
                 return when (holder) {
@@ -113,6 +130,8 @@ sealed class ApplicationParameter {
         abstract override fun applySelf(self: TypeHolder.Static): Substitution
 
     }
+
+    abstract val typeParamCount: Int
 
     abstract fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter?
 

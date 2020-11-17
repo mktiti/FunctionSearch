@@ -159,7 +159,7 @@ fun main(args: Array<String>) {
 
                             println("Loaded artifact $artifact")
 
-                            val docStore = mavenJavadocManager.forDomain(combined)
+                            val docStore = mavenJavadocManager.forArtifacts(combined)
 
                             context = context.copy(
                                     artifacts = combined,

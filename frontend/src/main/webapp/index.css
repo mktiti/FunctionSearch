@@ -1,0 +1,124 @@
+body {
+    background: #2a2a2e;
+    font-family: helvetica, serif;
+}
+
+#search-wrapper {
+    width: 700px;
+    max-height: 48px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 150px;
+    display: flex;
+    position: relative;
+}
+
+#search-bar {
+    font-size: 15px;
+    background: #38383d;
+    color: #f9f9fa;
+    font-family: monospace;
+    padding: 0;
+    padding-inline-start: 15px;
+    padding-inline-end: 48px;
+    width: 100%;
+    height: 48px;
+    border: solid 1px #5f5f63;
+    border-radius: 3px;
+}
+
+#search-bar:active, #search-bar:focus, #search-bar:focus-within {
+    border: 1px solid #45a1ff;
+    box-shadow: 0 0 2px 3px #324e6d;
+}
+
+#search-submit {
+    position: absolute;
+    height: 100%;
+    width: 48px;
+    inset-inline-end: 0;
+    background: none;
+    background-size: 16px 16px;
+    color: #ababae;
+    border: 0;
+    border-radius: 0 3px 3px 0;
+}
+
+#search-submit:hover {
+    background-color: rgba(12, 12, 13, 0.1);
+    cursor: pointer;
+}
+
+#result-wrap {
+    width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+}
+
+#result-wrap>.hide {
+    display: none;
+}
+
+#result-error {
+    font-weight: bold;
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #dc0000;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+#result-load {
+    font-weight: bold;
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #37a100;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+#result-ok {
+    color: #e7e7e7;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+#result-title {
+    font-weight: bold;
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.result-item {
+    border: solid 1px #5f5f63;
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 7px;
+}
+
+.result-item>.file, .result-item>.header {
+    font-family: monospace;
+    font-size: 15px;
+    margin-bottom: 5px;
+}
+
+.result-item>.file {
+    font-weight: bold;
+}
+
+.result-item>.header {
+    color: #abb7ff;
+}
+
+.result-item:active,.result-item:hover {
+    border-color: #45a1ff;
+}
+
+.result-item.item-min {
+    cursor: pointer;
+}
+
+.result-item.item-min>.long-info {
+    display: none;
+}

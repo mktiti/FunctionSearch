@@ -46,7 +46,7 @@ class BasicSearchHandler(
 
                 QueryFitResult(
                         file = info.file.fullName,
-                        isStatic = info.isStatic,
+                        static = info.isStatic,
                         doc = FunDocDto(
                                 shortInfo = doc.shortInfo,
                                 details = doc.longInfo

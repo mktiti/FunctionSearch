@@ -40,6 +40,13 @@
         </dependency>
 
         <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>frontend</artifactId>
+            <version>0.1-SNAPSHOT</version>
+            <type>zip</type>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>2.2.0.RELEASE</version>
@@ -113,6 +120,27 @@
                 <configuration>
                     <finalName>backend</finalName>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-frontend</id>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/classes/static/</outputDirectory>
+                            <includeGroupIds>com.mktiti.signature-search</includeGroupIds>
+                            <includeArtifactIds>frontend</includeArtifactIds>
+                            <excludeTypes>pom</excludeTypes>
+                            <excludeTransitive>true</excludeTransitive>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

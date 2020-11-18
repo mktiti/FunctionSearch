@@ -3,7 +3,6 @@ package com.mktiti.fsearch.backend
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.core.util.show.JavaTypeStringResolver
 import com.mktiti.fsearch.modules.*
 
 interface ContextManager {

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JvmSearch</title>
+
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+
+<div id="search-wrapper">
+        <input id="search-bar" maxlength="256" type="search" autocomplete="off" placeholder="Search for functions" title="Search for function">
+        <button id="search-submit" class="fa fa-search" aria-label="Search" title="Search"></button>
+</div>
+
+<div id="result-wrap">
+    <div id="result-ok" class="hide">
+        <div id="result-title">Search results</div>
+        <div id="result-list">
+            <!--<div class="result-item item-min">
+                <div class="file">java.util.Comparator</div>
+                <div class="header">static fun compare(java.util.List&lt;int&gt; list, int test): int</div>
+                <div class="short-info">This method does something idunno</div>
+                <div class="long-info">Here i detain the information about
+                this method
+
+                Partameters:
+                    list the list duh
+                    test the test
+                    return target
+                Throw:
+                    some stupid esception</div>
+            </div>-->
+        </div>
+    </div>
+    <div id="result-error" class="hide">Error occured...</div>
+    <div id="result-load" class="hide">Searching for functions...</div>
+</div>
+
+</body>
+<script src="js/lib/kotlin.js"></script>
+<script src="js/lib/kotlinx-serialization-kotlinx-serialization-core-jsLegacy.js"></script>
+<script src="js/lib/kotlinx-serialization-kotlinx-serialization-json-jsLegacy.js"></script>
+<script src="js/frontend.js"></script>
+</html>

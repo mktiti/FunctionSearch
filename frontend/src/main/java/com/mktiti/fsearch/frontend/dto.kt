@@ -1,48 +1,51 @@
-package com.mktiti.fsearch.backend.api
+package com.mktiti.fsearch.frontend
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.mktiti.fsearch.backend.ContextId
-import com.mktiti.fsearch.modules.ArtifactId
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
+val dtoJson = Json {
+    classDiscriminator = "type"
+}
+
+@Serializable
 data class ArtifactIdDto(
         val group: String,
         val name: String,
         val version: String
-) {
+)
 
-    fun toId() = ArtifactId(group.split('.'), name, version)
-
-}
-
+@Serializable
 data class QueryCtxDto(
         val artifacts: List<ArtifactIdDto>
-) {
+)
 
-    fun toId() = ContextId(artifacts.map { it.toId() }.toSet())
-
-}
-
+@Serializable
 data class HintRequestDto(
         val context: QueryCtxDto,
         val name: String
 )
 
+@Serializable
 data class QueryRequestDto(
         val context: QueryCtxDto,
         val query: String
 )
 
+@Serializable
 data class TypeHint(
         val file: String,
         val typeParamCount: Int
 )
 
+@Serializable
 data class FunDocDto(
         val shortInfo: String?,
         val details: String?
 )
 
 // TODO Fitting result
+@Serializable
 data class QueryFitResult(
         val file: String,
         val funName: String,
@@ -51,25 +54,27 @@ data class QueryFitResult(
         val doc: FunDocDto
 )
 
-@JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
-        property = "type"
-)
+@Serializable
 sealed class QueryResult {
 
     abstract val query: String
 
+
+    @Serializable
     sealed class Error : QueryResult() {
 
         abstract override val query: String
         abstract val message: String
 
+        @Serializable
+        @SerialName("QueryResult\$Error\$InternalError")
         class InternalError(
                 override val query: String,
                 override val message: String
         ) : Error()
 
+        @Serializable
+        @SerialName("QueryResult\$Error\$Query")
         class Query(
                 override val query: String,
                 override val message: String
@@ -77,6 +82,8 @@ sealed class QueryResult {
 
     }
 
+    @Serializable
+    @SerialName("QueryResult\$Success")
     class Success(
             override val query: String,
             val results: List<QueryFitResult>

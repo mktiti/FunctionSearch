@@ -13,9 +13,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <kotlin.version>1.3.70</kotlin.version>
+        <kotlin.version>1.4.0</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
+        <serialization.version>1.0.1</serialization.version>
 
         <antlr.version>4.8-1</antlr.version>
 
@@ -31,6 +32,7 @@
         <module>modules</module>
         <module>maven</module>
         <module>backend</module>
+        <module>frontend</module>
     </modules>
 
     <packaging>
@@ -82,6 +84,13 @@
                 <groupId>com.mktiti.signature-search</groupId>
                 <artifactId>maven</artifactId>
                 <version>0.1-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>frontend</artifactId>
+                <version>0.1-SNAPSHOT</version>
+                <type>zip</type>
             </dependency>
 
             <dependency>
@@ -146,31 +155,6 @@
         <pluginManagement>
             <plugins>
                 <plugin>
-                    <groupId>org.jetbrains.kotlin</groupId>
-                    <artifactId>kotlin-maven-plugin</artifactId>
-                    <version>${kotlin.version}</version>
-                    <executions>
-                        <execution>
-                            <id>compile</id>
-                            <phase>compile</phase>
-                            <goals>
-                                <goal>compile</goal>
-                            </goals>
-                        </execution>
-                        <execution>
-                            <id>test-compile</id>
-                            <phase>test-compile</phase>
-                            <goals>
-                                <goal>test-compile</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                    <configuration>
-                        <jvmTarget>1.8</jvmTarget>
-                    </configuration>
-                </plugin>
-
-                <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.0.0-M4</version>
 
@@ -233,12 +217,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
     </build>
 
 </project>

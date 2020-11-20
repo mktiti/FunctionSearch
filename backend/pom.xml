@@ -43,6 +43,7 @@
             <groupId>com.mktiti.signature-search</groupId>
             <artifactId>frontend</artifactId>
             <version>0.1-SNAPSHOT</version>
+            <scope>runtime</scope>
             <type>zip</type>
         </dependency>
 

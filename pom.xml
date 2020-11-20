@@ -152,6 +152,8 @@
     </dependencyManagement>
 
     <build>
+        <defaultGoal>package spring-boot:run</defaultGoal>
+
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -222,6 +224,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>2.2.5.RELEASE</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>

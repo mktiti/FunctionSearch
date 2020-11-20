@@ -11,6 +11,7 @@ import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
 import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.maven.util.printLoadResults
 import com.mktiti.fsearch.maven.util.printLog
+import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.SimpleDomainRepo
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
@@ -91,6 +92,12 @@ object ContextManagerStore {
                 artifactManager = mavenManager,
                 docManager = mavenJavadocManager
         )
+
+        // Force load apache commons and guava
+        contextManager.context(setOf(
+                ArtifactId(listOf("org", "apache", "commons"), "commons-lang3", "3.11"),
+                ArtifactId(listOf("com", "google", "guava"), "guava", "30.0-jre")
+        ))
     }
 
 }

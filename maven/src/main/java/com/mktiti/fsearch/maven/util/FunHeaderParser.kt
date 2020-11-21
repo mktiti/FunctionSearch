@@ -46,6 +46,10 @@ object FunHeaderParser {
         val name = parts.getOrNull(0) ?: return null
         val inParen = parts.getOrNull(1)?.dropLast(1) ?: return null
 
+        val withoutAnnotations = inParen.split("\\s+".toRegex()).filterNot {
+            it.startsWith("@")
+        }.joinToString(prefix = "", separator = " ", postfix = "")
+
         data class NestAcc(
                 val nest: Int = 0,
                 val topLevel: List<Char> = emptyList()
@@ -57,7 +61,7 @@ object FunHeaderParser {
             fun onOther(c: Char) = if (nest == 0) copy(topLevel = topLevel + c) else this
         }
 
-        val topLevel = inParen.toCharArray().fold(NestAcc()) { acc, c ->
+        val topLevel = withoutAnnotations.toCharArray().fold(NestAcc()) { acc, c ->
             when (c) {
                 '<' -> acc.onOpen()
                 '>' -> acc.onClose()

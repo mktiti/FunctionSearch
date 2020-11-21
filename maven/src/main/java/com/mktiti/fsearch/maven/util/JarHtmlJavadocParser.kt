@@ -7,12 +7,14 @@ import com.mktiti.fsearch.core.javadoc.FunctionDoc
 import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.cutLast
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.File
 import java.io.InputStream
+import java.util.*
 import java.util.zip.ZipFile
 
 // TODO - very much experimental
@@ -25,7 +27,13 @@ class JarHtmlJavadocParser(
                 "package-use",
                 "package-summary",
                 "package-tree",
-                "package-frame"
+                "package-frame",
+                "compact1-package-frame",
+                "compact1-package-summary",
+                "compact2-package-frame",
+                "compact2-package-summary",
+                "compact3-package-frame",
+                "compact3-package-summary",
         )
 
         private fun Element.firstAttr(vararg names: String): String? {
@@ -59,7 +67,31 @@ class JarHtmlJavadocParser(
         }
     }
 
-    private fun parseMethodHeaders(file: MinimalInfo, document: Document): Map<FunctionInfo, FunctionDoc> {
+    private data class IncompleteFunId(
+            val name: String,
+            val params: List<FunIdParam>,
+            val static: Boolean
+    ) {
+
+        override fun equals(other: Any?): Boolean {
+            return if (other is IncompleteFunId) {
+                if (name != other.name || static != other.static) {
+                    false
+                } else {
+                    params.zipIfSameLength(other.params)?.all { (a, b) ->
+                        FunIdParam.equals(a, b, allowSimpleName = true)
+                    } ?: false
+                }
+            } else {
+                false
+            }
+        }
+
+        override fun hashCode() = Objects.hash(name, static)
+
+    }
+
+    private fun parseMethodHeaders(file: MinimalInfo, document: Document): Map<IncompleteFunId, FunctionDoc> {
         val methodSummary = (
                 document.selectFirst("[name='method_summary']") ?:
                 document.selectFirst("[name='method.summary']") ?:
@@ -86,11 +118,10 @@ class JarHtmlJavadocParser(
             val (name, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
             val shortInfo = descElem?.wholeText()
 
-            FunctionInfo(
-                    file = file,
-                    name = name,
-                    isStatic = static,
-                    paramTypes = signature
+            IncompleteFunId(
+                    name = name.replace("\\p{C}".toRegex(), ""),
+                    static = static,
+                    params = signature
             ) to FunctionDoc(
                     paramNames = paramNames,
                     shortInfo = shortInfo
@@ -98,7 +129,12 @@ class JarHtmlJavadocParser(
         }.toMap()
     }
 
-    private fun parseMethodDetails(file: MinimalInfo, document: Document): Map<FunctionInfo, String> {
+    private data class DetailData(
+            val signature: List<FunIdParam>,
+            val detail: String
+    )
+
+    private fun parseMethodDetails(file: MinimalInfo, document: Document): Map<IncompleteFunId, DetailData> {
         val methodDetails = (
                 document.selectFirst("[name='method_detail']") ?:
                 document.selectFirst("[name='method.detail']") ?:
@@ -144,16 +180,15 @@ class JarHtmlJavadocParser(
                 val detail = detailElem.child(0)
                 val isStatic = detail.child(1).wholeText().split("\\W+".toRegex()).contains("static")
 
-                val info = FunctionInfo(
-                        file = file,
-                        name = name,
-                        isStatic = isStatic,
-                        paramTypes = params
+                val info = IncompleteFunId(
+                        name = name.replace("\\p{C}".toRegex(), ""),
+                        static = isStatic,
+                        params = params
                 )
 
                 val fullDetails = detail.children().drop(2).joinToString("\n") { it.wholeText() }
 
-                info to fullDetails
+                info to DetailData(params, fullDetails)
             } catch (e: Exception) {
                 e.printStackTrace()
                 null
@@ -169,9 +204,19 @@ class JarHtmlJavadocParser(
         val methodInfos = parseMethodHeaders(file, document)
         val details = parseMethodDetails(file, document)
 
-        return (methodInfos.keys + details.keys).map { info ->
-            val data = methodInfos[info] ?: FunctionDoc()
-            info to (details[info]?.let { data.copy(longInfo = it) } ?: data)
+        return methodInfos.mapNotNull { (id, doc) ->
+            val data = details[id] ?: return@mapNotNull null
+
+            val info = FunctionInfo(
+                    file = file,
+                    isStatic = id.static,
+                    name = id.name,
+                    paramTypes = data.signature
+            )
+
+            val longInfo = doc.shortInfo?.let { data.detail.removePrefix(it) } ?: data.detail
+
+            info to doc.copy(longInfo = longInfo)
         }
     }
 
@@ -202,7 +247,7 @@ class JarHtmlJavadocParser(
                             parseFile(info, jar.getInputStream(entry))
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            emptyList<Pair<FunctionInfo, FunctionDoc>>()
+                            emptyList()
                         }
                     }.flatten().toMap()
 

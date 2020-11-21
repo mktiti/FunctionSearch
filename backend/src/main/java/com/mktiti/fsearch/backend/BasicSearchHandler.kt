@@ -7,7 +7,8 @@ import com.mktiti.fsearch.core.util.TypeException
 import kotlin.streams.toList
 
 class BasicSearchHandler(
-        private val contextManager: ContextManager
+        private val contextManager: ContextManager,
+        private val fitPresenter: FitPresenter
 ) : SearchHandler {
 
     override fun typeHint(contextId: QueryCtxDto, namePart: String): List<TypeHint> {
@@ -40,20 +41,8 @@ class BasicSearchHandler(
                 fitter.fitsQuery(queryRes.query, function)?.let {
                     function to it
                 }
-            }.toList().filterNotNull().map { (function, _) ->
-                val info = function.info
-                val doc = docStore.getOrEmpty(info)
-
-                QueryFitResult(
-                        file = info.file.fullName,
-                        static = info.isStatic,
-                        doc = FunDocDto(
-                                shortInfo = doc.shortInfo,
-                                details = doc.longInfo
-                        ),
-                        funName = info.name,
-                        header = stringResolver.resolveFun(function)
-                )
+            }.toList().filterNotNull().map { (function, fit) ->
+                fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
             }
 
             QueryResult.Success(query, results)

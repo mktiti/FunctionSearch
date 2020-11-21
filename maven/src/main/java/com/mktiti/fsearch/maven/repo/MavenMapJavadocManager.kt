@@ -12,7 +12,8 @@ import java.io.File
 
 class MavenMapJavadocManager(
         infoRepo: JavaInfoRepo,
-        private val mavenFetcher: MavenFetcher
+        private val mavenFetcher: MavenFetcher,
+        private val jclDocs: DocStore = DocStore.nop()
 ) : DocManager {
 
     private val docParser = JarHtmlJavadocParser(infoRepo)
@@ -38,7 +39,7 @@ class MavenMapJavadocManager(
             } ?: error("Failed to load javadoc for $artifacts")
         }
 
-        return SimpleMultiDocStore(stores)
+        return SimpleMultiDocStore(stores + jclDocs)
     }
 
 }

@@ -11,17 +11,43 @@ import com.mktiti.fsearch.core.util.liftNull
 
 sealed class FunIdParam {
 
+    companion object {
+        fun equals(a: FunIdParam, b: FunIdParam, allowSimpleName: Boolean = false): Boolean = if (allowSimpleName) {
+            a.equalsAllowSimple(b)
+        } else {
+            a == b
+        }
+    }
+
     data class Type(
             val info: MinimalInfo
-    ) : FunIdParam()
+    ) : FunIdParam() {
+
+        override fun equalsAllowSimple(other: FunIdParam)
+                = other is Type && info.simpleName == other.info.simpleName &&
+                  (info.packageName == other.info.packageName || info.packageName.isEmpty() || other.info.packageName.isEmpty())
+
+    }
 
     data class Array(
             val arg: FunIdParam
-    ) : FunIdParam()
+    ) : FunIdParam() {
+
+        override fun equalsAllowSimple(other: FunIdParam)
+                = other is Array && arg.equalsAllowSimple(other.arg)
+
+    }
 
     data class TypeParam(
             val sign: String
-    ) : FunIdParam()
+    ) : FunIdParam() {
+
+        override fun equalsAllowSimple(other: FunIdParam)
+                = other is TypeParam && sign == other.sign
+
+    }
+
+    protected abstract fun equalsAllowSimple(other: FunIdParam): Boolean
 
 }
 

@@ -4,11 +4,13 @@ package com.mktiti.fsearch.backend.spring
 
 import com.mktiti.fsearch.backend.ContextManager
 import com.mktiti.fsearch.backend.SimpleMapContextManager
+import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
 import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
 import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
+import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
 import com.mktiti.fsearch.maven.util.printLoadResults
 import com.mktiti.fsearch.maven.util.printLog
 import com.mktiti.fsearch.modules.ArtifactId
@@ -32,24 +34,26 @@ object ContextManagerStore {
     lateinit var contextManager: ContextManager
 
     fun init(args: List<String>) {
-        val libPath = args.getOrElse(0) {
-            println("Using Java home's lib directory as JCL base")
-            when (val home = System.getProperty("java.home")) {
-                null -> {
-                    System.err.println("Please pass the path of the JRE lib/ as the first argument!")
-                    return
-                }
-                else -> {
-                    if (System.getProperty("java.version").split(".").first().toInt() == 1) {
-                        // Version <= 8
-                        home + File.separator + "lib"
-                    } else {
-                        // Version >= 9 -> Modularized
-                        home + File.separator + "jmods"
-                    }
+        val libPath = when (val home = System.getProperty("java.home")) {
+            null -> {
+                System.err.println("Java home not set!")
+                return
+            }
+            else -> {
+                if (System.getProperty("java.version").split(".").first().toInt() == 1) {
+                    // Version <= 8
+                    home + File.separator + "lib"
+                } else {
+                    // Version >= 9 -> Modularized
+                    home + File.separator + "jmods"
                 }
             }
-        }.let { Paths.get(it) }
+        }.let(Paths::get)
+
+        val jclDocLocation = args.getOrNull(0)?.let(Paths::get)
+        if (jclDocLocation == null) {
+            println("JRE doc location not set")
+        }
 
         val jarPaths = Files.list(libPath).filter {
             it.toFile().extension in listOf("jar", "jmod")
@@ -64,6 +68,10 @@ object ContextManagerStore {
         val (javaRepo, jclRepo) = jclCollector.collectJcl(jclJarInfo, "JCL")
         val jclResolver = SingleRepoTypeResolver(jclRepo)
         val jclFunctions = JarFileFunctionCollector.collectFunctions(jclJarInfo, javaRepo, MapJavaInfoRepo, jclResolver)
+
+        val jclDocs = jclDocLocation?.let {
+            JarHtmlJavadocParser(MapJavaInfoRepo).parseJar(it.toFile())
+        }
 
         printLoadResults(jclRepo, jclFunctions)
 
@@ -82,7 +90,8 @@ object ContextManagerStore {
 
         val mavenJavadocManager = MavenMapJavadocManager(
                 infoRepo = MapJavaInfoRepo,
-                mavenFetcher = ExternalMavenFetcher()
+                mavenFetcher = ExternalMavenFetcher(),
+                jclDocs = jclDocs ?: DocStore.nop()
         )
 
         contextManager = SimpleMapContextManager(

@@ -46,6 +46,10 @@ object FunHeaderParser {
         val name = parts.getOrNull(0) ?: return null
         val inParen = parts.getOrNull(1)?.dropLast(1) ?: return null
 
+        if (inParen.isBlank()) {
+            return HeaderData(name, emptyList(), emptyList())
+        }
+
         val withoutAnnotations = inParen.split("\\s+".toRegex()).filterNot {
             it.startsWith("@")
         }.joinToString(prefix = "", separator = " ", postfix = "")

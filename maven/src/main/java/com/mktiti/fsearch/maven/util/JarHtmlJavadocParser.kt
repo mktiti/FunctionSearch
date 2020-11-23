@@ -39,6 +39,11 @@ class JarHtmlJavadocParser(
         private fun Element.firstAttr(vararg names: String): String? {
             return names.map { attr(it) }.firstOrNull { it.isNotBlank() }
         }
+
+        private val nonPrintRegex = "\\p{C}+".toRegex()
+
+        private fun String.cleanText() = replace(nonPrintRegex, "").trim()
+
     }
 
     private fun parseParenFunSignature(signature: String): Pair<String, List<FunIdParam>> {
@@ -113,13 +118,13 @@ class JarHtmlJavadocParser(
                 else -> return@mapNotNull null
             }
 
-            val static = it.child(0).wholeText().split("\\W+".toRegex()).contains("static")
+            val static = it.child(0).wholeText().cleanText().contains("static")
 
             val (name, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
-            val shortInfo = descElem?.wholeText()
+            val shortInfo = descElem?.wholeText()?.cleanText()
 
             IncompleteFunId(
-                    name = name.replace("\\p{C}".toRegex(), ""),
+                    name = name.cleanText(),
                     static = static,
                     params = signature
             ) to FunctionDoc(
@@ -178,15 +183,17 @@ class JarHtmlJavadocParser(
                 val (name, params) = parseFunSignature(funId)
 
                 val detail = detailElem.child(0)
-                val isStatic = detail.child(1).wholeText().split("\\W+".toRegex()).contains("static")
+                val isStatic = detail.child(1).wholeText().cleanText().contains("static")
 
                 val info = IncompleteFunId(
-                        name = name.replace("\\p{C}".toRegex(), ""),
+                        name = name.cleanText(),
                         static = isStatic,
                         params = params
                 )
 
-                val fullDetails = detail.children().drop(2).joinToString("\n") { it.wholeText() }
+                val fullDetails = detail.children().drop(2).joinToString("\n") {
+                    it.wholeText().trim()
+                }
 
                 info to DetailData(params, fullDetails)
             } catch (e: Exception) {
@@ -214,7 +221,7 @@ class JarHtmlJavadocParser(
                     paramTypes = data.signature
             )
 
-            val longInfo = doc.shortInfo?.let { data.detail.removePrefix(it) } ?: data.detail
+            val longInfo = doc.shortInfo?.let { data.detail.removePrefix(it).trimStart() } ?: data.detail
 
             info to doc.copy(longInfo = longInfo)
         }

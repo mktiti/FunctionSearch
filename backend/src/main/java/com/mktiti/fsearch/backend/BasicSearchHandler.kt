@@ -4,6 +4,7 @@ import com.mktiti.fsearch.backend.api.*
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
+import org.antlr.v4.runtime.misc.ParseCancellationException
 import kotlin.streams.toList
 
 class BasicSearchHandler(
@@ -32,6 +33,8 @@ class BasicSearchHandler(
                 queryParser.parse(query)
             } catch (te: TypeException) {
                 return@with QueryResult.Error.Query(query, "Failed to parse query - ${te.message}")
+            } catch (pe: ParseCancellationException) {
+                return@with QueryResult.Error.Query(query, "Failed to parse query - ${pe.message}")
             }
 
             val resolver = FallbackResolver.withVirtuals(queryRes.virtualTypes, domain.typeResolver)

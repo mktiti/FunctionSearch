@@ -42,7 +42,7 @@ class BasicSearchHandler(
             val resolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver)
             val fitter = JavaQueryFitter(infoRepo, resolver)
 
-            val results = fitter.findFittings(parsedQuery, domain.functions.parallelStream()).map { (function, fit) ->
+            val results = fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions).map { (function, fit) ->
                 fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
             }
 

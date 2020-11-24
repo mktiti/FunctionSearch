@@ -2,6 +2,7 @@ package com.mktiti.fsearch.parser.service
 
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.parser.service.FunctionCollector.FunctionCollection
 
 interface JclCollector<in I> {
 
@@ -27,15 +28,20 @@ interface JarTypeCollector<in I> {
 
 interface FunctionCollector<in I> {
 
+    data class FunctionCollection(
+            val staticFunctions: Collection<FunctionObj>,
+            val instanceMethods: Collection<FunctionObj>
+    )
+
     companion object {
-        fun empty(): Collection<FunctionObj> = emptyList()
+        fun empty(): FunctionCollection = FunctionCollection(emptyList(), emptyList())
 
         fun <I> nop() = object : FunctionCollector<I> {
             override fun collectFunctions(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver) = empty()
         }
     }
 
-    fun collectFunctions(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): Collection<FunctionObj>
+    fun collectFunctions(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): FunctionCollection
 
 }
 
@@ -51,7 +57,7 @@ interface CombinedCollector<in I> {
 
     data class Result(
             val typeRepo: TypeRepo,
-            val functions: Collection<FunctionObj>
+            val functions: FunctionCollection
     )
 
     fun collectCombined(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): Result

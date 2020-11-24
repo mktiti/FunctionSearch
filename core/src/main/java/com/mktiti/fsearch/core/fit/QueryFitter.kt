@@ -11,7 +11,7 @@ interface QueryFitter {
 
     fun fitsQuery(query: QueryType, function: FunctionObj): FittingMap?
 
-    fun findFittings(query: QueryType, functions: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>>
+    fun findFittings(query: QueryType, staticFuns: Stream<FunctionObj>, instanceFuns: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>>
 
 }
 

@@ -98,7 +98,7 @@ class QueryIntegrationTest {
                 val queryResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
                 val fitter: QueryFitter = JavaQueryFitter(infoRepo, queryResolver)
 
-                val fitting = functions.filter { function ->
+                val fitting = (functions.staticFunctions + functions.instanceMethods).filter { function ->
                     fitter.fitsQuery(query, function) != null
                 }.map {
                     it.info

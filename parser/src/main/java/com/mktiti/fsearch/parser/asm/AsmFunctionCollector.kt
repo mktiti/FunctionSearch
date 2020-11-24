@@ -10,6 +10,7 @@ import com.mktiti.fsearch.core.type.TypeTemplate
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
+import com.mktiti.fsearch.parser.service.FunctionCollector.FunctionCollection
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -18,10 +19,13 @@ import kotlin.collections.ArrayList
 
 object AsmFunctionCollector {
 
-    fun collect(infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver, load: AsmCollectorView.() -> Unit): Collection<FunctionObj> {
+    fun collect(infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver, load: AsmCollectorView.() -> Unit): FunctionCollection {
         val visitor = AsmFunctionCollectorVisitor(dependencyResolver, infoRepo)
         DefaultAsmCollectorView(visitor).load()
-        return visitor.methods
+        return FunctionCollection(
+                staticFunctions = visitor.staticFuns,
+                instanceMethods = visitor.instanceFuns
+        )
     }
 
 }
@@ -70,9 +74,13 @@ private class AsmFunctionCollectorVisitor(
 
     private lateinit var context: ContextInfo<*>
 
-    private val collectedMethods: MutableList<FunctionObj> = ArrayList()
-    val methods: List<FunctionObj>
-        get() = collectedMethods
+    private val collectedStaticFuns: MutableList<FunctionObj> = ArrayList()
+    val staticFuns: List<FunctionObj>
+        get() = collectedStaticFuns
+
+    private val collectedInstanceFuns: MutableList<FunctionObj> = ArrayList()
+    val instanceFuns: List<FunctionObj>
+        get() = collectedInstanceFuns
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         val info = AsmUtil.parseName(name)
@@ -118,7 +126,11 @@ private class AsmFunctionCollectorVisitor(
                                 infoRepo = infoRepo
                         ) ?: error("Cannot create function info! ($info::$name)")
 
-                        collectedMethods += FunctionObj(funInfo, parsedSignature)
+                        if (isStatic) {
+                            collectedStaticFuns += FunctionObj(funInfo, parsedSignature)
+                        } else {
+                            collectedInstanceFuns += FunctionObj(funInfo, parsedSignature)
+                        }
                     } catch (e: NotImplementedError) {
                         System.err.println("Failed to parse $info $name :: ${signature ?: descriptor}")
                         e.printStackTrace()

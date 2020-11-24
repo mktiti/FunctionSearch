@@ -1,6 +1,5 @@
 package com.mktiti.fsearch.maven.util
 
-import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.javadoc.DocStore
@@ -11,12 +10,11 @@ import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
 import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
 import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
-import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.modules.DomainRepo
-import com.mktiti.fsearch.modules.SimpleDomainRepo
+import com.mktiti.fsearch.modules.*
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryParser
+import com.mktiti.fsearch.parser.service.FunctionCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.util.InMemTypeParseLog
@@ -27,10 +25,11 @@ import java.nio.file.Paths
 import java.util.stream.Collectors
 import kotlin.streams.toList
 
-fun printLoadResults(typeRepo: TypeRepo, functions: Collection<FunctionObj>) {
+fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollector.FunctionCollection) {
     println("==== Loading Done ====")
     println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
-    println("\tLoaded ${functions.size} functions")
+    println("\tLoaded ${functions.staticFunctions.size} static functions")
+    println("\tLoaded ${functions.instanceMethods.size} instance functions")
 }
 
 fun printLog(log: InMemTypeParseLog) {
@@ -61,10 +60,7 @@ private data class QueryContext(
     val typePrint: TypePrint = JavaTypePrinter(infoRepo, domain.typeResolver, docStore)
 
     fun withVirtuals(virtuals: Collection<DirectType>) = copy(
-            domain = SimpleDomainRepo(
-                    typeResolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver),
-                    functions = domain.functions
-            )
+            domain = FunFallbackDomainRepo(FallbackResolver.withVirtuals(virtuals, domain.typeResolver), domain)
     )
 
 }
@@ -163,9 +159,9 @@ fun main(args: Array<String>) {
 
                             context = context.copy(
                                     artifacts = combined,
-                                    domain = SimpleDomainRepo(
-                                            typeResolver = FallbackResolver(loaded.typeResolver, jclResolver),
-                                            functions = loaded.functions + jclFunctions
+                                    domain = FallbackDomainRepo(
+                                            repo = loaded,
+                                            fallbackRepo = loaded
                                     ), docStore = docStore
                             )
                         } else {
@@ -186,7 +182,7 @@ fun main(args: Array<String>) {
 
                 val extraContext = context.withVirtuals(virtuals)
 
-                context.domain.functions.parallelStream().map { function ->
+                context.domain.allFunctions.parallelStream().map { function ->
                     extraContext.fitter.fitsQuery(query, function)?.let { function to it }
                 }.filter { it != null }.collect(Collectors.toList()).filterNotNull().forEach { (function, result) ->
                     print("Fits function ")
@@ -261,7 +257,7 @@ private fun printInfo(command: List<String>, context: QueryContext) {
             }
         }
         else -> {
-            val foundFun = context.domain.functions.find {
+            val foundFun = context.domain.allFunctions.find {
                 with (it.info) {
                     name == function && (file.fullName == type || file.simpleName == type)
                 }

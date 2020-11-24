@@ -1,6 +1,5 @@
 package com.mktiti.fsearch.backend
 
-import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.modules.*
@@ -27,9 +26,9 @@ class SimpleMapContextManager(
 
     override fun context(contextId: ContextId) = store.getOrPut(contextId) {
         val onlyCtxDomain = artifactManager.getWithDependencies(contextId.artifacts)
-        val extendedDomain = SimpleDomainRepo(
-                typeResolver = FallbackResolver(onlyCtxDomain.typeResolver, jclDomain.typeResolver),
-                functions = onlyCtxDomain.functions + jclDomain.functions
+        val extendedDomain = FallbackDomainRepo(
+                repo = jclDomain,
+                fallbackRepo = onlyCtxDomain
         )
 
         val docStore = docManager.forArtifacts(contextId.artifacts)

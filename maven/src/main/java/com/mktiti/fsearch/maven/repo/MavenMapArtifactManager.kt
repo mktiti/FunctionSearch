@@ -11,6 +11,7 @@ import com.mktiti.fsearch.parser.service.IndirectInfoCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.util.orElse
 import java.io.File
+import kotlin.streams.toList
 
 // TODO proper domain caching
 class MavenMapArtifactManager(
@@ -43,7 +44,11 @@ class MavenMapArtifactManager(
             val typeRepo = RadixTypeRepo(directs, templates)
             val functions = funCollector.collectFunctions(jarInfo, javaRepo, infoRepo, baseResolver)
 
-            SimpleDomainRepo(SingleRepoTypeResolver(typeRepo), functions)
+            SimpleDomainRepo(
+                    typeResolver = SingleRepoTypeResolver(typeRepo),
+                    staticStore = functions.staticFunctions,
+                    instanceStore = functions.instanceMethods
+            )
         }
     }
 
@@ -73,17 +78,32 @@ class MavenMapArtifactManager(
         val resolver = SimpleCombiningTypeResolver(newResolvers)
         val processResolver = FallbackResolver(SimpleCombiningTypeResolver(newResolvers), baseResolver)
 
-        val functions = entries.flatMap { (_, jarInfo) ->
-            funCollector.collectFunctions(jarInfo, javaRepo, infoRepo, processResolver)
-        }
+        val (statics, instances) = entries.map { (_, jarInfo) ->
+            funCollector.collectFunctions(jarInfo, javaRepo, infoRepo, processResolver).let { (statics, instances) ->
+                statics to instances
+            }
+        }.unzip()
 
-        SimpleDomainRepo(resolver, functions)
+        SimpleDomainRepo(
+                typeResolver = resolver,
+                staticStore = statics.flatten(),
+                instanceStore = instances.flatten()
+        )
     } ?: error("Failed to load $artifacts")
 
     override fun getWithDependencies(artifacts: Collection<ArtifactId>): DomainRepo {
         return artifacts.map { stored[it] }.liftNull()?.let { domains ->
             val resolver = SimpleCombiningTypeResolver(domains.map { it.typeResolver })
-            SimpleDomainRepo(resolver, domains.flatMap { it.functions })
+
+            val (statics, instances) = domains.map {
+                it.staticFunctions to it.instanceFunctions
+            }.unzip()
+
+            SimpleDomainRepo(
+                    typeResolver = resolver,
+                    staticStore = statics.flatMap { it.toList() },
+                    instanceStore = instances.flatMap { it.toList() }
+            )
         }.orElse {
             fetchWithDependencies(artifacts)
         }

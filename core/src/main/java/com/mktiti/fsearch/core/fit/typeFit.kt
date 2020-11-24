@@ -363,7 +363,7 @@ class JavaQueryFitter(
         }.firstOrNull()
     }
 
-    override fun findFittings(query: QueryType, functions: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>> {
+    override fun findFittings(query: QueryType, staticFuns: Stream<FunctionObj>, instanceFuns: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>> {
         val possibleThisTypes = query.inputParameters.flatMap { param ->
             SuperUtil.resolveSuperInfosDeep(infoRepo, typeResolver, param.info)
         }
@@ -374,13 +374,15 @@ class JavaQueryFitter(
             SelfSubstitution -> false
         }
 
-        return functions.filter { (info, sig) ->
-            info.isStatic || sig.inputParameters.firstOrNull()?.let { isThisMatch(it.second) } ?: false
-        }.map { function ->
+        fun Stream<FunctionObj>.search(): List<Pair<FunctionObj, FittingMap>> = map { function ->
             fitsQuery(query, function)?.let { function to it }
         }.filter {
             it != null
         }.toList().filterNotNull()
+
+        return staticFuns.search() + instanceFuns.filter { (_, sig) ->
+            sig.inputParameters.firstOrNull()?.let { isThisMatch(it.second) } ?: false
+        }.search()
     }
 
 }

@@ -120,6 +120,12 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
                     <finalName>backend</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.mktiti.fsearch.backend.spring.SpringStart</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
             </plugin>
 

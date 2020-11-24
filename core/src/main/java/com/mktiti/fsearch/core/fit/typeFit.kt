@@ -20,6 +20,8 @@ import com.mktiti.fsearch.util.allPermutations
 import com.mktiti.fsearch.util.roll
 import com.mktiti.fsearch.util.safeCutLast
 import java.util.*
+import java.util.stream.Stream
+import kotlin.streams.toList
 
 class JavaQueryFitter(
         private val infoRepo: JavaInfoRepo,
@@ -54,18 +56,9 @@ class JavaQueryFitter(
             variance: InheritanceLogic
     ): Boolean {
         return if (infoFitter.fit(argPar, subPar)) {
-            return argPar.info.args.zipIfSameLength(subPar.info.args)?.all { (argParPar, subParPar) ->
+            argPar.info.args.zipIfSameLength(subPar.info.args)?.all { (argParPar, subParPar) ->
                 subStatic(argParPar.holder(), subParPar.holder(), INVARIANCE)
             } ?: false
-
-            /*
-            val resolvedArg = argPar.resolve() ?: return false
-            val resolvedSub = subPar.resolve() ?: return false
-
-            resolvedArg.typeArgs.zipIfSameLength(resolvedSub.typeArgs)?.all { (argParPar, subParPar) ->
-                subStatic(argParPar, subParPar, INVARIANCE)
-            } ?: false
-             */
         } else {
             val resolvedArg = argPar.resolve() ?: return false
             resolvedArg.samType?.let { paramSam ->
@@ -170,7 +163,7 @@ class JavaQueryFitter(
                     }?.rollResult(anyEnough = true) ?: Failure
                 }
                 CONTRAVARIANCE -> {
-                    resolvedArg.superTypes.asSequence().asIterable().map { superType ->
+                    resolvedArg.superTypes.asIterable().map { superType ->
                         when (superType) {
                             is TypeHolder.Static -> subStatic(superType, subPar, variance).asResult()
                             is TypeHolder.Dynamic -> subDynamic(argCtx, superType, subPar, variance)
@@ -343,7 +336,7 @@ class JavaQueryFitter(
         }
 
         return transformContext(MatchingContext(query, function), FittingMap(query, function.signature)) { matchingCtx ->
-            val essentialResult = matchingCtx.pairings.toList().roll(MatchRoll()) { statAcc, (index, funArg, queryArg, variance) ->
+            val essentialResult = matchingCtx.pairings.iterator().roll(MatchRoll()) { statAcc, (index, funArg, queryArg, variance) ->
                 when (val subResult = subAny(matchingCtx.funCtx.typeParams, funArg, TypeHolder.Static.Direct(queryArg), variance)) {
                     ConstraintsKept -> statAcc.withFit(index)
                     Skip -> statAcc.skipped()
@@ -370,5 +363,24 @@ class JavaQueryFitter(
         }.firstOrNull()
     }
 
+    override fun findFittings(query: QueryType, functions: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>> {
+        val possibleThisTypes = query.inputParameters.flatMap { param ->
+            SuperUtil.resolveSuperInfosDeep(infoRepo, typeResolver, param.info)
+        }
+
+        fun isThisMatch(param: Substitution): Boolean = when (param) {
+            is TypeSubstitution<*, *> -> param.holder.info.base in possibleThisTypes
+            is ParamSubstitution -> false
+            SelfSubstitution -> false
+        }
+
+        return functions.filter { (info, sig) ->
+            info.isStatic || sig.inputParameters.firstOrNull()?.let { isThisMatch(it.second) } ?: false
+        }.map { function ->
+            fitsQuery(query, function)?.let { function to it }
+        }.filter {
+            it != null
+        }.toList().filterNotNull()
+    }
 
 }

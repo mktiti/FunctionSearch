@@ -33,6 +33,8 @@ interface TypeResolver {
         is CompleteMinInfo.Dynamic -> get(info)
     }
 
+    fun semi(info: MinimalInfo): SemiType?
+
     fun allSemis(): Sequence<SemiType>
 
 }
@@ -48,6 +50,8 @@ class SingleRepoTypeResolver(
     override fun get(name: String, allowSimple: Boolean): DirectType? = repo[name, allowSimple]
 
     override fun template(name: String, allowSimple: Boolean): TypeTemplate? = repo.template(name, allowSimple)
+
+    override fun semi(info: MinimalInfo) = repo.semi(info)
 
     override fun allSemis(): Sequence<SemiType> {
         return repo.allTypes.asSequence() + repo.allTemplates.asSequence()
@@ -86,6 +90,8 @@ class FallbackResolver(
 
     override fun template(name: String, allowSimple: Boolean): TypeTemplate? = resolve { template(name, allowSimple) }
 
+    override fun semi(info: MinimalInfo) = primary.semi(info) ?: fallback.semi(info)
+
     override fun allSemis(): Sequence<SemiType> = primary.allSemis() + fallback.allSemis()
 
 }
@@ -103,6 +109,8 @@ class SimpleCombiningTypeResolver(
     override fun get(name: String, allowSimple: Boolean) = first { it[name, allowSimple] }
 
     override fun template(name: String, allowSimple: Boolean) = first { it.template(name, allowSimple) }
+
+    override fun semi(info: MinimalInfo) = first { it.semi(info) }
 
     override fun allSemis(): Sequence<SemiType> {
         return resolvers.asSequence().flatMap { it.allSemis() }

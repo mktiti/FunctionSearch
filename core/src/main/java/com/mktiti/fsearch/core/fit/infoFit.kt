@@ -22,14 +22,10 @@ class JavaInfoFitter(
     private fun anyPrimitive(info: MinimalInfo) = infoRepo.ifPrimitive(info) ?: infoRepo.ifBoxed(info)
 
     override fun fit(parInfo: MinimalInfo, subInfo: MinimalInfo): Boolean {
-        val parPrimitive = anyPrimitive(parInfo)
-        val subPrimitive = anyPrimitive(subInfo)
+        val parPrimitive = anyPrimitive(parInfo) ?: return parInfo == subInfo
+        val subPrimitive = anyPrimitive(subInfo) ?: return parInfo == subInfo
 
-        return if (parPrimitive != null && subPrimitive != null) {
-            subPrimitive == parPrimitive
-        } else {
-            parInfo == subInfo
-        }
+        return subPrimitive == parPrimitive
     }
 
 }

@@ -44,6 +44,19 @@ fun <T> Collection<T>.allPermutations(): List<List<T>> {
     return toList().allPermutationsInner()
 }
 
+tailrec fun <T, R> Iterator<T>.rollIndexed(initial: R, startIndex: Int = 0, combine: (Int, R, T) -> Pair<R, Boolean>): R {
+    return if (hasNext()) {
+        val (combined, shouldStop) = combine(startIndex, initial, next())
+        return if (shouldStop) {
+            combined
+        } else {
+            rollIndexed(combined, startIndex + 1, combine)
+        }
+    } else {
+        initial
+    }
+}
+
 tailrec fun <T, R> List<T>.rollIndexed(initial: R, startIndex: Int = 0, combine: (Int, R, T) -> Pair<R, Boolean>): R {
     val (head, tail) = safeCutHead() ?: return initial
     val (combined, shouldStop) = combine(startIndex, initial, head)
@@ -53,6 +66,13 @@ tailrec fun <T, R> List<T>.rollIndexed(initial: R, startIndex: Int = 0, combine:
         tail.rollIndexed(combined, startIndex + 1, combine)
     }
 }
+
+fun <T, R> Iterator<T>.roll(initial: R, combine: (R, T) -> Pair<R, Boolean>): R = rollIndexed(
+        initial = initial,
+        startIndex = 0,
+        combine = { _, acc, elem -> combine(acc, elem) }
+)
+
 
 fun <T, R> List<T>.roll(initial: R, combine: (R, T) -> Pair<R, Boolean>): R = rollIndexed(
         initial = initial,

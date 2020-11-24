@@ -4,8 +4,9 @@ interface EnumMap<K : Enum<K>, V> {
 
     companion object {
         inline fun <reified K : Enum<K>, V> eager(noinline mapper: (key: K) -> V): EnumMap<K, V> {
-            return lazy(mapper).apply {
-                enumValues<K>().forEach { get(it) }
+            val results = enumValues<K>().map(mapper)
+            return object : EnumMap<K, V> {
+                override fun get(key: K): V = results[key.ordinal]
             }
         }
 

@@ -2,6 +2,7 @@ package com.mktiti.fsearch.core.util
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
+import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.TypeHolder
 
@@ -12,15 +13,15 @@ object SuperUtil {
         else -> typeResolver[infoRepo.boxed(primitive)]?.superTypes ?: emptyList()
     }.asSequence()
 
-    fun anyNgSuper(infoRepo: JavaInfoRepo, resolver: TypeResolver, base: TypeHolder.Static, predicate: (Type.NonGenericType) -> Boolean): Boolean {
-        val resolved = base.with(resolver) ?: return false
-        return if (predicate(resolved)) {
-            true
-        } else {
-            resolveSupers(infoRepo, resolver, resolved).any {
-                anyNgSuper(infoRepo, resolver, it, predicate)
-            }
+    fun resolveSuperInfosDeep(infoRepo: JavaInfoRepo, typeResolver: TypeResolver, info: MinimalInfo): Set<MinimalInfo> {
+        fun resolveSupersInner(info: MinimalInfo): List<MinimalInfo> {
+            return (typeResolver.semi(info)?.superTypes?.flatMap { superType ->
+                resolveSupersInner(superType.info.base)
+            } ?: emptyList()) + info
         }
+
+        val bases = infoRepo.ifPrimitive(info)?.let { listOf(infoRepo.boxed(it), info) } ?: listOf(info)
+        return bases.flatMap { resolveSupersInner(it) }.toSet()
     }
 
 }

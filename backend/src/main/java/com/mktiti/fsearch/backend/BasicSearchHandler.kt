@@ -1,11 +1,13 @@
 package com.mktiti.fsearch.backend
 
-import com.mktiti.fsearch.backend.api.*
+import com.mktiti.fsearch.backend.api.QueryCtxDto
+import com.mktiti.fsearch.backend.api.QueryResult
+import com.mktiti.fsearch.backend.api.SearchHandler
+import com.mktiti.fsearch.backend.api.TypeHint
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import kotlin.streams.toList
 
 class BasicSearchHandler(
         private val contextManager: ContextManager,
@@ -29,7 +31,7 @@ class BasicSearchHandler(
 
     override fun syncQuery(contextId: QueryCtxDto, query: String): QueryResult = try {
         with(contextManager[contextId.toId()]) {
-            val queryRes = try {
+            val (parsedQuery, virtuals) = try {
                 queryParser.parse(query)
             } catch (te: TypeException) {
                 return@with QueryResult.Error.Query(query, "Failed to parse query - ${te.message}")
@@ -37,14 +39,10 @@ class BasicSearchHandler(
                 return@with QueryResult.Error.Query(query, "Failed to parse query - ${pe.message}")
             }
 
-            val resolver = FallbackResolver.withVirtuals(queryRes.virtualTypes, domain.typeResolver)
+            val resolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver)
             val fitter = JavaQueryFitter(infoRepo, resolver)
 
-            val results = domain.functions.parallelStream().map { function ->
-                fitter.fitsQuery(queryRes.query, function)?.let {
-                    function to it
-                }
-            }.toList().filterNotNull().map { (function, fit) ->
+            val results = fitter.findFittings(parsedQuery, domain.functions.parallelStream()).map { (function, fit) ->
                 fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
             }
 

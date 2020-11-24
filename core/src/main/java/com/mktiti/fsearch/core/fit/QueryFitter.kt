@@ -3,12 +3,15 @@ package com.mktiti.fsearch.core.fit
 import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.TypeParameter
 import com.mktiti.fsearch.core.util.genericString
+import java.util.stream.Stream
 
 interface QueryFitter {
 
     fun fitsOrderedQuery(query: QueryType, function: FunctionObj): FittingMap?
 
     fun fitsQuery(query: QueryType, function: FunctionObj): FittingMap?
+
+    fun findFittings(query: QueryType, functions: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>>
 
 }
 

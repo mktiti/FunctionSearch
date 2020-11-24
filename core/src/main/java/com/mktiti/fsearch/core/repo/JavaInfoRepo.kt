@@ -54,6 +54,8 @@ private class FunInfoHandler(
 
 object MapJavaInfoRepo : JavaInfoRepo {
 
+    private val primitiveCache = ArrayList(PrimitiveType.values().toList())
+
     private val internalPackage = listOf("\$internal")
     private fun internal(name: String) = MinimalInfo(simpleName = name, packageName = internalPackage, virtual = true)
 
@@ -82,16 +84,14 @@ object MapJavaInfoRepo : JavaInfoRepo {
     override fun primitive(primitive: PrimitiveType) = primitiveMap[primitive]
 
     override fun ifPrimitive(info: MinimalInfo): PrimitiveType? = if (isInternal(info)) {
-        PrimitiveType.values().find { it.javaName == info.simpleName }
+        primitiveCache.find { it.javaName == info.simpleName }
     } else {
         null
     }
 
     override fun boxed(primitive: PrimitiveType) = boxMap[primitive]
 
-    override fun ifBoxed(info: MinimalInfo): PrimitiveType? = PrimitiveType.values().mapNotNull {
-        if (boxMap[it] == info) it else null
-    }.firstOrNull()
+    override fun ifBoxed(info: MinimalInfo): PrimitiveType? = primitiveCache.find { boxMap[it] == info }
 
     override fun funInfo(inParamCount: Int): MinimalInfo = funInfoHandler[inParamCount]
 

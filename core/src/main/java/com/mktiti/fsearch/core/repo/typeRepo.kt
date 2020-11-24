@@ -14,6 +14,8 @@ interface TypeRepo {
 
     operator fun get(info: MinimalInfo): DirectType?
 
+    fun semi(info: MinimalInfo): SemiType? = get(info) ?: template(info)
+
     fun template(name: String, allowSimple: Boolean = false): TypeTemplate?
 
     fun template(info: MinimalInfo): TypeTemplate?

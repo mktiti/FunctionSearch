@@ -3,12 +3,49 @@ body {
     font-family: helvetica, serif;
 }
 
+#context-select {
+    width: 700px;
+    max-height: 48px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 130px;
+    display: flex;
+    position: relative;
+    color: #f9f9fa;
+}
+
+#context-summary {
+    cursor: pointer;
+    user-select: none;
+}
+
+#context-summary>.expand-btn, #context-summary>.hide-btn {
+    align-self: center;
+    margin-left: 6px;
+}
+
+#context-select.max .expand-btn {
+    display: none;
+}
+
+#context-select.min .hide-btn {
+    display: none;
+}
+
+#context-details {
+    display: none;
+}
+
+#context-details.min {
+    display: none;
+}
+
 #search-wrapper {
     width: 700px;
     max-height: 48px;
     margin-left: auto;
     margin-right: auto;
-    margin-top: 150px;
+    margin-top: 10px;
     display: flex;
     position: relative;
 }

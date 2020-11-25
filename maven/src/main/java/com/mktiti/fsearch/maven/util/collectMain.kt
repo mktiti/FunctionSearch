@@ -5,6 +5,7 @@ import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.flatAll
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
@@ -29,7 +30,7 @@ fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollector.FunctionCo
     println("==== Loading Done ====")
     println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
     println("\tLoaded ${functions.staticFunctions.size} static functions")
-    println("\tLoaded ${functions.instanceMethods.size} instance functions")
+    println("\tLoaded ${functions.instanceMethods.flatAll().count()} instance functions")
 }
 
 fun printLog(log: InMemTypeParseLog) {
@@ -182,7 +183,7 @@ fun main(args: Array<String>) {
 
                 val extraContext = context.withVirtuals(virtuals)
 
-                context.domain.allFunctions.parallelStream().map { function ->
+                context.domain.allFunctions.map { function ->
                     extraContext.fitter.fitsQuery(query, function)?.let { function to it }
                 }.filter { it != null }.collect(Collectors.toList()).filterNotNull().forEach { (function, result) ->
                     print("Fits function ")
@@ -257,11 +258,11 @@ private fun printInfo(command: List<String>, context: QueryContext) {
             }
         }
         else -> {
-            val foundFun = context.domain.allFunctions.find {
+            val foundFun = context.domain.allFunctions.filter {
                 with (it.info) {
                     name == function && (file.fullName == type || file.simpleName == type)
                 }
-            }
+            }.findAny().orElseGet(null)
             if (foundFun != null) {
                 context.typePrint.printFun(foundFun)
             } else {

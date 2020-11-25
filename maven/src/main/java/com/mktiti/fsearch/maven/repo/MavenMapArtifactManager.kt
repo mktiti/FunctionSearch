@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.maven.repo
 
 import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.ArtifactManager
@@ -11,7 +12,7 @@ import com.mktiti.fsearch.parser.service.IndirectInfoCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.util.orElse
 import java.io.File
-import kotlin.streams.toList
+import java.util.stream.Collectors
 
 // TODO proper domain caching
 class MavenMapArtifactManager(
@@ -46,8 +47,7 @@ class MavenMapArtifactManager(
 
             SimpleDomainRepo(
                     typeResolver = SingleRepoTypeResolver(typeRepo),
-                    staticStore = functions.staticFunctions,
-                    instanceStore = functions.instanceMethods
+                    functions = functions
             )
         }
     }
@@ -84,10 +84,12 @@ class MavenMapArtifactManager(
             }
         }.unzip()
 
+        val combined = InfoMap.combine(instances) { results -> results.flatten() }
+
         SimpleDomainRepo(
                 typeResolver = resolver,
                 staticStore = statics.flatten(),
-                instanceStore = instances.flatten()
+                instanceFunctions = combined
         )
     } ?: error("Failed to load $artifacts")
 
@@ -99,10 +101,13 @@ class MavenMapArtifactManager(
                 it.staticFunctions to it.instanceFunctions
             }.unzip()
 
+            val stats = statics.flatMap { it.collect(Collectors.toList()) }
+            val combined = InfoMap.combine(instances) { results -> results.flatten() }
+
             SimpleDomainRepo(
                     typeResolver = resolver,
-                    staticStore = statics.flatMap { it.toList() },
-                    instanceStore = instances.flatMap { it.toList() }
+                    staticStore = stats,
+                    instanceFunctions = combined
             )
         }.orElse {
             fetchWithDependencies(artifacts)

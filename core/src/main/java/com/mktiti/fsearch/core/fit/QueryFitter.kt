@@ -2,6 +2,7 @@ package com.mktiti.fsearch.core.fit
 
 import com.mktiti.fsearch.core.type.Type
 import com.mktiti.fsearch.core.type.TypeParameter
+import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.genericString
 import java.util.stream.Stream
 
@@ -11,7 +12,7 @@ interface QueryFitter {
 
     fun fitsQuery(query: QueryType, function: FunctionObj): FittingMap?
 
-    fun findFittings(query: QueryType, staticFuns: Stream<FunctionObj>, instanceFuns: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>>
+    fun findFittings(query: QueryType, staticFuns: Stream<FunctionObj>, instanceFuns: InfoMap<Collection<FunctionObj>>): List<Pair<FunctionObj, FittingMap>>
 
 }
 

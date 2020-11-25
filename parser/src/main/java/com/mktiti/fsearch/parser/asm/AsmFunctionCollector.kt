@@ -7,6 +7,7 @@ import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.TypeTemplate
+import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
@@ -16,6 +17,7 @@ import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 object AsmFunctionCollector {
 
@@ -24,7 +26,8 @@ object AsmFunctionCollector {
         DefaultAsmCollectorView(visitor).load()
         return FunctionCollection(
                 staticFunctions = visitor.staticFuns,
-                instanceMethods = visitor.instanceFuns
+                //instanceMethods = InfoMap.fromPrefix(visitor.instanceFuns)
+                instanceMethods = InfoMap.fromMap(visitor.instanceFuns)
         )
     }
 
@@ -78,8 +81,12 @@ private class AsmFunctionCollectorVisitor(
     val staticFuns: List<FunctionObj>
         get() = collectedStaticFuns
 
-    private val collectedInstanceFuns: MutableList<FunctionObj> = ArrayList()
-    val instanceFuns: List<FunctionObj>
+    //private val collectedInstanceFuns: MutablePrefixTree<String, MutableCollection<FunctionObj>> = mapMutablePrefixTree()
+    //val instanceFuns: PrefixTree<String, Collection<FunctionObj>>
+        //get() = collectedInstanceFuns
+
+    private val collectedInstanceFuns: MutableMap<MinimalInfo, MutableCollection<FunctionObj>> = HashMap()
+    val instanceFuns: Map<MinimalInfo, Collection<FunctionObj>>
         get() = collectedInstanceFuns
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
@@ -129,7 +136,14 @@ private class AsmFunctionCollectorVisitor(
                         if (isStatic) {
                             collectedStaticFuns += FunctionObj(funInfo, parsedSignature)
                         } else {
-                            collectedInstanceFuns += FunctionObj(funInfo, parsedSignature)
+                            //val id = info.packageName + info.simpleName
+                            /*val store: MutableCollection<FunctionObj> = collectedInstanceFuns[id].orElse {
+                                ArrayList<FunctionObj>().apply {
+                                    collectedInstanceFuns[id] = this
+                                }
+                            }
+                             */
+                            collectedInstanceFuns.getOrPut(info) { LinkedList() } += FunctionObj(funInfo, parsedSignature)
                         }
                     } catch (e: NotImplementedError) {
                         System.err.println("Failed to parse $info $name :: ${signature ?: descriptor}")

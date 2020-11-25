@@ -13,6 +13,7 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType
+import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.zipIfSameLength
@@ -363,15 +364,13 @@ class JavaQueryFitter(
         }.firstOrNull()
     }
 
-    override fun findFittings(query: QueryType, staticFuns: Stream<FunctionObj>, instanceFuns: Stream<FunctionObj>): List<Pair<FunctionObj, FittingMap>> {
+    override fun findFittings(
+            query: QueryType,
+            staticFuns: Stream<FunctionObj>,
+            instanceFuns: InfoMap<Collection<FunctionObj>>
+    ): List<Pair<FunctionObj, FittingMap>> {
         val possibleThisTypes = query.inputParameters.flatMap { param ->
             SuperUtil.resolveSuperInfosDeep(infoRepo, typeResolver, param.info)
-        }
-
-        fun isThisMatch(param: Substitution): Boolean = when (param) {
-            is TypeSubstitution<*, *> -> param.holder.info.base in possibleThisTypes
-            is ParamSubstitution -> false
-            SelfSubstitution -> false
         }
 
         fun Stream<FunctionObj>.search(): List<Pair<FunctionObj, FittingMap>> = map { function ->
@@ -380,9 +379,7 @@ class JavaQueryFitter(
             it != null
         }.toList().filterNotNull()
 
-        return staticFuns.search() + instanceFuns.filter { (_, sig) ->
-            sig.inputParameters.firstOrNull()?.let { isThisMatch(it.second) } ?: false
-        }.search()
+        return staticFuns.search() + possibleThisTypes.mapNotNull { instanceFuns[it] }.flatten().parallelStream().search()
     }
 
 }

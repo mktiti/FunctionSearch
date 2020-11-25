@@ -4,7 +4,10 @@ import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
-import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.repo.FallbackResolver
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
+import com.mktiti.fsearch.core.repo.RadixTypeRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.function.DirectoryFunctionCollector
@@ -98,10 +101,8 @@ class QueryIntegrationTest {
                 val queryResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
                 val fitter: QueryFitter = JavaQueryFitter(infoRepo, queryResolver)
 
-                val fitting = (functions.staticFunctions + functions.instanceMethods).filter { function ->
-                    fitter.fitsQuery(query, function) != null
-                }.map {
-                    it.info
+                val fitting = fitter.findFittings(query, functions.staticFunctions.stream(), functions.instanceMethods).map {
+                    it.first.info
                 }.toSet()
 
                 assertEquals(results, fitting)

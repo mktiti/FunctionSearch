@@ -3,9 +3,10 @@ package com.mktiti.fsearch.modules
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.parser.service.FunctionCollector
 import java.util.stream.Stream
-import kotlin.streams.toList
 
 data class ArtifactId(
         val group: List<String>,
@@ -39,17 +40,17 @@ interface DomainRepo {
 
     val staticFunctions: Stream<FunctionObj>
 
-    val instanceFunctions: Stream<FunctionObj>
+    val instanceFunctions: InfoMap<Collection<FunctionObj>>
 
-    val allFunctions: Collection<FunctionObj>
-        get() = staticFunctions.toList() + instanceFunctions.toList()
+    val allFunctions: Stream<FunctionObj>
+        get() = Stream.concat(staticFunctions, instanceFunctions.all().flatMap { it.stream() })
 
 }
 
 data class SimpleDomainRepo(
         override val typeResolver: TypeResolver,
         private val staticStore: Collection<FunctionObj>,
-        private val instanceStore: Collection<FunctionObj>
+        override val instanceFunctions: InfoMap<Collection<FunctionObj>>
 ) : DomainRepo {
 
     constructor(typeResolver: TypeResolver, functions: FunctionCollector.FunctionCollection)
@@ -58,8 +59,16 @@ data class SimpleDomainRepo(
     override val staticFunctions: Stream<FunctionObj>
         get() = staticStore.stream()
 
-    override val instanceFunctions: Stream<FunctionObj>
-        get() = instanceStore.stream()
+}
+
+private class MapCombiner<V>(
+        private val primary: InfoMap<V>,
+        private val fallback: InfoMap<V>
+) : InfoMap<V> {
+
+    override fun get(info: MinimalInfo) = primary[info] ?: fallback[info]
+
+    override fun all(): Stream<V> = Stream.concat(primary.all(), fallback.all())
 
 }
 
@@ -73,8 +82,8 @@ class FallbackDomainRepo(
     override val staticFunctions: Stream<FunctionObj>
         get() = Stream.concat(repo.staticFunctions, fallbackRepo.staticFunctions)
 
-    override val instanceFunctions: Stream<FunctionObj>
-        get() = Stream.concat(repo.instanceFunctions, fallbackRepo.instanceFunctions)
+    override val instanceFunctions: InfoMap<Collection<FunctionObj>>
+            = MapCombiner(repo.instanceFunctions, fallbackRepo.instanceFunctions)
 
 }
 
@@ -86,7 +95,10 @@ class FunFallbackDomainRepo(
     override val staticFunctions: Stream<FunctionObj>
         get() = fallback.staticFunctions
 
-    override val instanceFunctions: Stream<FunctionObj>
+    override val allFunctions: Stream<FunctionObj>
+        get() = fallback.allFunctions
+
+    override val instanceFunctions
         get() = fallback.instanceFunctions
 
 }

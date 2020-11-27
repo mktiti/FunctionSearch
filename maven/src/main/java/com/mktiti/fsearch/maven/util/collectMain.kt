@@ -25,6 +25,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
 import kotlin.streams.toList
+import kotlin.system.measureTimeMillis
 
 fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollector.FunctionCollection) {
     println("==== Loading Done ====")
@@ -127,6 +128,27 @@ fun main(args: Array<String>) {
             domain = jclArtifactRepo,
             docStore = DocStore.nop()
     )
+
+    fun test(iterations: Int) {
+        val (query, virtuals) = context.queryParser.parse("List<a>, int -> a")
+        val updated = context.withVirtuals(virtuals)
+        measureTimeMillis {
+            repeat(iterations) {
+                updated.fitter.findFittings(query, updated.domain.staticFunctions, updated.domain.instanceFunctions)
+            }
+        }.apply {
+            println("Time for $iterations iterations: $this ms")
+        }
+    }
+
+    while (true) {
+        val iters = readLine()?.toIntOrNull()
+        if (iters != null) {
+            test(iters)
+        } else {
+            println("Input number of iterations!")
+        }
+    }
 
     while (true) {
         print(">")

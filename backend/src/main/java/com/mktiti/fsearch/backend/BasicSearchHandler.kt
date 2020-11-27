@@ -9,8 +9,6 @@ import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import kotlin.streams.toList
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTimedValue
 
 class BasicSearchHandler(
         private val contextManager: ContextManager,
@@ -32,7 +30,6 @@ class BasicSearchHandler(
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     override fun syncQuery(contextId: QueryCtxDto, query: String): QueryResult = try {
         with(contextManager[contextId.toId()]) {
             val (parsedQuery, virtuals) = try {
@@ -46,13 +43,9 @@ class BasicSearchHandler(
             val resolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver)
             val fitter = JavaQueryFitter(infoRepo, resolver)
 
-            println("Starting searching for fitting")
-            val (results, time) = measureTimedValue {
-                fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions).map { (function, fit) ->
-                    fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
-                }.limit(50).toList()
-            }
-            println("Search done in ${time.inMilliseconds} ms")
+            val results = fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions).map { (function, fit) ->
+                fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
+            }.limit(50).toList()
 
             QueryResult.Success(query, results)
         }

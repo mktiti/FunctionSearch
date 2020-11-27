@@ -32,8 +32,6 @@ class SimpleMapContextManager(
         )
 
         val docStore = docManager.forArtifacts(contextId.artifacts)
-        // TODO load jcl docs
-
         SimpleQueryContext(
                 id = contextId,
                 infoRepo = infoRepo,

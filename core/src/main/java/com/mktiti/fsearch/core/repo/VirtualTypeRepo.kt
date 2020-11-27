@@ -20,7 +20,7 @@ class VirtualTypeRepo(
 
     override fun get(info: MinimalInfo): DirectType? = virtualTypes[info]
 
-    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = null
+    override fun template(name: String, allowSimple: Boolean, paramCount: Int?): TypeTemplate? = null
 
     override fun template(info: MinimalInfo): TypeTemplate? = null
 

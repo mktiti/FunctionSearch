@@ -42,7 +42,7 @@ class MavenMapArtifactManager(
             val jarInfo = jarInfo(artifact, jarFile)
 
             val (directs, templates) = typeCollector.collectInitial(jarInfo)
-            val typeRepo = RadixTypeRepo(directs, templates)
+            val typeRepo = MapTypeRepo(directs, templates)
             val functions = funCollector.collectFunctions(jarInfo, javaRepo, infoRepo, baseResolver)
 
             SimpleDomainRepo(
@@ -70,7 +70,7 @@ class MavenMapArtifactManager(
         val newResolvers = entries.map { (artifact, jarInfo) ->
             stored[artifact]?.typeResolver.orElse {
                 val (directs, templates) = typeCollector.collectInitial(jarInfo)
-                val typeRepo = RadixTypeRepo(directs, templates)
+                val typeRepo = MapTypeRepo(directs, templates)
 
                 SingleRepoTypeResolver(typeRepo)
             }

@@ -4,10 +4,7 @@ import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
-import com.mktiti.fsearch.core.repo.FallbackResolver
-import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import com.mktiti.fsearch.core.repo.RadixTypeRepo
+import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.function.DirectoryFunctionCollector
@@ -78,7 +75,7 @@ class QueryIntegrationTest {
                 val (javaRepo, baseResolver) = RepoTestUtil.minimalRepos(infoRepo)
 
                 val (directs, templates) = DirectoryInfoCollector(infoRepo).collectInitial(path)
-                val typeRepo = RadixTypeRepo(
+                val typeRepo = MapTypeRepo(
                         directs = directs,
                         templates = templates
                 )

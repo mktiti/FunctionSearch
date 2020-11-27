@@ -60,7 +60,8 @@ class AntlrQueryParser(
             }
             else -> {
                 val typeArgs = typeSignature.completeName().map { buildFullType(it, paramVirtualTypes) }
-                typeResolver.template(name, allowSimple = true)?.forceStaticApply(TypeHolder.staticDirects(typeArgs))
+                typeResolver.template(name, allowSimple = true, paramCount = typeArgs.size)
+                        ?.forceStaticApply(TypeHolder.staticDirects(typeArgs))
                         ?: throw TypeException("Generic type $name not found")
             }
         }

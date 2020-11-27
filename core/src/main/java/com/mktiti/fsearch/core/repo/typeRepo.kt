@@ -16,7 +16,7 @@ interface TypeRepo {
 
     fun semi(info: MinimalInfo): SemiType? = get(info) ?: template(info)
 
-    fun template(name: String, allowSimple: Boolean = false): TypeTemplate?
+    fun template(name: String, allowSimple: Boolean = false, paramCount: Int? = null): TypeTemplate?
 
     fun template(info: MinimalInfo): TypeTemplate?
 
@@ -58,6 +58,20 @@ class SetTypeRepo : MutableTypeRepo {
     private val types: MutableMap<String, DirectType> = HashMap()
     private val templates: MutableMap<String, TypeTemplate> = HashMap()
 
+    companion object {
+        private fun namePred(name: String): (SemiType) -> Boolean = { it.info.simpleName == name }
+
+        private fun namePred(name: String, paramCount: Int): (TypeTemplate) -> Boolean = {
+            it.info.simpleName == name && it.typeParamCount == paramCount
+        }
+
+        private fun namePredChoose(name: String, paramCount: Int?) = if (paramCount == null) {
+            namePred(name)
+        } else {
+            namePred(name, paramCount)
+        }
+    }
+
     override val allTypes: Collection<DirectType>
         get() = types.map { it.value }
 
@@ -72,8 +86,8 @@ class SetTypeRepo : MutableTypeRepo {
 
     override fun get(info: MinimalInfo): DirectType? = get(info.toString())
 
-    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = templates[name] ?: if (allowSimple && !name.contains(".")) {
-        templates.values.find { it.info.simpleName == name }
+    override fun template(name: String, allowSimple: Boolean, paramCount: Int?): TypeTemplate? = templates[name] ?: if (allowSimple && !name.contains(".")) {
+        templates.values.find(namePredChoose(name, paramCount))
     } else {
         null
     }

@@ -27,7 +27,7 @@ object RepoTestUtil {
             }
         }
 
-        return RadixJavaRepo(infoRepo, directs) to SingleRepoTypeResolver(typeRepo)
+        return DefaultJavaRepo.fromRadix(infoRepo, directs) to SingleRepoTypeResolver(typeRepo)
     }
 
 }

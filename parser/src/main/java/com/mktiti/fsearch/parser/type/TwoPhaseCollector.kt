@@ -17,23 +17,26 @@ class IndirectJarTypeCollector(
 
     override fun collectArtifact(info: JarFileInfoCollector.JarInfo, javaRepo: JavaRepo, dependencyResolver: TypeResolver): TypeRepo {
         val (directs, templates) = infoCollector.collectInitial(info)
-        return RadixTypeRepo(
+        return MapTypeRepo(
                 directs = directs,
                 templates = templates
         )
     }
 
     override fun collectJcl(info: JarFileInfoCollector.JarInfo, name: String): JclCollector.Result {
-        val (directs, templates) = infoCollector.collectInitial(info)
+        val (loadedDirects, loadedTemplates) = infoCollector.collectInitial(info)
 
-        templates[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TypeTemplate(
+        val directs = loadedDirects.toMutableMap()
+        val templates = loadedTemplates.toMutableMap()
+
+        templates[infoRepo.arrayType] = TypeTemplate(
                 info = infoRepo.arrayType,
                 superTypes = listOf(infoRepo.objectType.complete().holder()),
                 typeParams = listOf(TypeParameter("X", TypeBounds(emptySet()))),
                 samType = null
         )
         PrimitiveType.values().map(infoRepo::primitive).forEach { primitive ->
-            directs[primitive.packageName, primitive.simpleName] = DirectType(
+            directs[primitive] = DirectType(
                     minInfo = primitive,
                     superTypes = emptyList(),
                     virtual = false,
@@ -41,19 +44,16 @@ class IndirectJarTypeCollector(
             )
         }
 
-        val javaRepo = RadixJavaRepo(
-                infoRepo = infoRepo,
-                directs = directs
-        )
+        val javaRepo = DefaultJavaRepo.fromMap(infoRepo, directs)
 
-        val typeRepo = RadixTypeRepo(
+        val jclRepo = MapTypeRepo(
                 directs = directs,
                 templates = templates
         )
 
         return JclCollector.Result(
                 javaRepo = javaRepo,
-                jclRepo = typeRepo
+                jclRepo = jclRepo
         )
     }
 

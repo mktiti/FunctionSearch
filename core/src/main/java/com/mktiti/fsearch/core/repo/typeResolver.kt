@@ -13,7 +13,7 @@ interface TypeResolver {
 
     fun template(info: MinimalInfo): TypeTemplate?
 
-    fun template(name: String, allowSimple: Boolean = false): TypeTemplate?
+    fun template(name: String, allowSimple: Boolean = false, paramCount: Int? = null): TypeTemplate?
 
     operator fun get(info: CompleteMinInfo.Static): NonGenericType? {
         return if (info.args.isEmpty()) {
@@ -49,7 +49,11 @@ class SingleRepoTypeResolver(
 
     override fun get(name: String, allowSimple: Boolean): DirectType? = repo[name, allowSimple]
 
-    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = repo.template(name, allowSimple)
+    override fun template(
+            name: String,
+            allowSimple: Boolean,
+            paramCount: Int?
+    ): TypeTemplate? = repo.template(name, allowSimple, paramCount)
 
     override fun semi(info: MinimalInfo) = repo.semi(info)
 
@@ -88,7 +92,11 @@ class FallbackResolver(
 
     override fun template(info: MinimalInfo): TypeTemplate? = resolve { template(info) }
 
-    override fun template(name: String, allowSimple: Boolean): TypeTemplate? = resolve { template(name, allowSimple) }
+    override fun template(
+            name: String,
+            allowSimple: Boolean,
+            paramCount: Int?
+    ): TypeTemplate? = resolve { template(name, allowSimple, paramCount) }
 
     override fun semi(info: MinimalInfo) = primary.semi(info) ?: fallback.semi(info)
 
@@ -108,7 +116,11 @@ class SimpleCombiningTypeResolver(
 
     override fun get(name: String, allowSimple: Boolean) = first { it[name, allowSimple] }
 
-    override fun template(name: String, allowSimple: Boolean) = first { it.template(name, allowSimple) }
+    override fun template(
+            name: String,
+            allowSimple: Boolean,
+            paramCount: Int?
+    ) = first { it.template(name, allowSimple, paramCount) }
 
     override fun semi(info: MinimalInfo) = first { it.semi(info) }
 

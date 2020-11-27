@@ -8,9 +8,6 @@ import com.mktiti.fsearch.parser.intermediate.DefaultTypeParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureTypeParser
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
-import com.mktiti.fsearch.util.MutablePrefixTree
-import com.mktiti.fsearch.util.PrefixTree
-import com.mktiti.fsearch.util.mapMutablePrefixTree
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor
@@ -22,7 +19,7 @@ object AsmInfoCollector {
     fun collect(infoRepo: JavaInfoRepo, load: AsmCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
         val visitor = AsmInfoCollectorVisitor(infoRepo)
         DefaultAsmCollectorView(visitor).load()
-        return IndirectInfoCollector.IndirectInitialData(visitor.directTypes, visitor.typeTemplates)
+        return IndirectInfoCollector.IndirectInitialData(visitor.loadedDirectTypes, visitor.loadedTemplates)
     }
 
 }
@@ -35,8 +32,13 @@ private class AsmInfoCollectorVisitor(
 
     private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
 
-    val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
-    val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
+    private val directTypes: MutableMap<MinimalInfo, DirectType> = HashMap()
+    val loadedDirectTypes: Map<MinimalInfo, DirectType>
+        get() = directTypes
+
+    private val typeTemplates: MutableMap<MinimalInfo, TypeTemplate> = HashMap()
+    val loadedTemplates: Map<MinimalInfo, TypeTemplate>
+        get() = typeTemplates
 
     private sealed class AbstractCount {
         object NoAbstract : AbstractCount() {
@@ -67,7 +69,7 @@ private class AsmInfoCollectorVisitor(
     private var currentType: TypeMeta? = null
 
     private fun addDirect(type: DirectType) {
-        directTypes.mutableSubtreeSafe(type.info.packageName)[type.info.simpleName] = type
+        directTypes[type.info] = type
     }
 
     private fun addDirect(
@@ -86,7 +88,7 @@ private class AsmInfoCollectorVisitor(
     }
 
     private fun addTemplate(template: TypeTemplate) {
-        typeTemplates.mutableSubtreeSafe(template.info.packageName)[template.info.simpleName] = template
+        typeTemplates[template.info] = template
     }
 
     private fun addTemplate(
@@ -173,8 +175,6 @@ private class AsmInfoCollectorVisitor(
             val nests = info.simpleName.split(".").dropLast(1)
             val depth = Integer.min(nestDepth, nests.size)
 
-            val nestPackage: PrefixTree<String, TypeTemplate> = typeTemplates.mutableSubtreeSafe(info.packageName)
-
             val affectingNests = nests.takeLast(depth)
             val nestPrefix = when (val prefix = nests.dropLast(depth).joinToString(separator = ".")) {
                 "" -> prefix
@@ -183,7 +183,8 @@ private class AsmInfoCollectorVisitor(
 
             affectingNests.fold(emptyList<TypeParameter>() to nestPrefix) { (params, name), nest ->
                 val newName = name + nest
-                val nestParams = nestPackage[newName]?.typeParams ?: emptyList()
+                val nestInfo = info.copy(simpleName = newName)
+                val nestParams = typeTemplates[nestInfo]?.typeParams ?: emptyList()
 
                 (params + nestParams) to "$newName."
             }.first

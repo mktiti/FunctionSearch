@@ -134,7 +134,7 @@ fun main(args: Array<String>) {
         val updated = context.withVirtuals(virtuals)
         measureTimeMillis {
             repeat(iterations) {
-                updated.fitter.findFittings(query, updated.domain.staticFunctions, updated.domain.instanceFunctions)
+                updated.fitter.findFittings(query, updated.domain.staticFunctions, updated.domain.instanceFunctions).count()
             }
         }.apply {
             println("Time for $iterations iterations: $this ms")

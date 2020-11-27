@@ -13,15 +13,24 @@ object SuperUtil {
         else -> typeResolver[infoRepo.boxed(primitive)]?.superTypes ?: emptyList()
     }.asSequence()
 
-    fun resolveSuperInfosDeep(infoRepo: JavaInfoRepo, typeResolver: TypeResolver, info: MinimalInfo): Set<MinimalInfo> {
+    fun resolveSuperInfosDeep(infoRepo: JavaInfoRepo, typeResolver: TypeResolver, infos: Collection<MinimalInfo>): Set<MinimalInfo> {
         fun resolveSupersInner(info: MinimalInfo): List<MinimalInfo> {
             return (typeResolver.semi(info)?.superTypes?.flatMap { superType ->
                 resolveSupersInner(superType.info.base)
             } ?: emptyList()) + info
         }
 
-        val bases = infoRepo.ifPrimitive(info)?.let { listOf(infoRepo.boxed(it), info) } ?: listOf(info)
+        val bases = infos.flatMap { info ->
+            when (val asPrimitive = infoRepo.ifPrimitive(info)) {
+                null -> listOf(info)
+                else -> listOf(info, infoRepo.boxed(asPrimitive))
+            }
+        }
         return bases.flatMap { resolveSupersInner(it) }.toSet()
+    }
+
+    fun resolveSuperInfosDeep(infoRepo: JavaInfoRepo, typeResolver: TypeResolver, info: MinimalInfo): Set<MinimalInfo> {
+        return resolveSuperInfosDeep(infoRepo, typeResolver, listOf(info))
     }
 
 }

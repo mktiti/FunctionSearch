@@ -8,7 +8,7 @@ import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import kotlin.system.measureTimeMillis
+import kotlin.streams.toList
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
@@ -50,7 +50,7 @@ class BasicSearchHandler(
             val (results, time) = measureTimedValue {
                 fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions).map { (function, fit) ->
                     fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
-                }
+                }.limit(50).toList()
             }
             println("Search done in ${time.inMilliseconds} ms")
 

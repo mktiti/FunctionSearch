@@ -18,11 +18,11 @@ import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.allPermutations
+import com.mktiti.fsearch.util.mapNotNull
 import com.mktiti.fsearch.util.roll
 import com.mktiti.fsearch.util.safeCutLast
 import java.util.*
 import java.util.stream.Stream
-import kotlin.streams.toList
 
 class JavaQueryFitter(
         private val infoRepo: JavaInfoRepo,
@@ -368,18 +368,14 @@ class JavaQueryFitter(
             query: QueryType,
             staticFuns: Stream<FunctionObj>,
             instanceFuns: InfoMap<Collection<FunctionObj>>
-    ): List<Pair<FunctionObj, FittingMap>> {
-        val possibleThisTypes = query.inputParameters.flatMap { param ->
-            SuperUtil.resolveSuperInfosDeep(infoRepo, typeResolver, param.info)
-        }
+    ): Stream<Pair<FunctionObj, FittingMap>> {
+        val inputInfos = query.inputParameters.map { it.info }
+        val possibleThisTypes = SuperUtil.resolveSuperInfosDeep(infoRepo, typeResolver, inputInfos)
+        val instanceStream = possibleThisTypes.stream().flatMap { instanceFuns[it]?.stream() ?: Stream.empty() }
 
-        fun Stream<FunctionObj>.search(): List<Pair<FunctionObj, FittingMap>> = map { function ->
-            fitsQuery(query, function)?.let { function to it }
-        }.filter {
-            it != null
-        }.toList().filterNotNull()
+        fun FunctionObj.test(): Pair<FunctionObj, FittingMap>? = fitsQuery(query, this)?.let { this to it }
 
-        return staticFuns.search() + possibleThisTypes.mapNotNull { instanceFuns[it] }.flatten().parallelStream().search()
+        return Stream.concat(staticFuns, instanceStream).parallel().mapNotNull { it.test() }
     }
 
 }

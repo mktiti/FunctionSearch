@@ -16,6 +16,7 @@ import com.mktiti.fsearch.util.orElse
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Paths
+import java.util.stream.Collectors
 import kotlin.test.assertEquals
 
 @Tag("integrationTest")
@@ -100,7 +101,7 @@ class QueryIntegrationTest {
 
                 val fitting = fitter.findFittings(query, functions.staticFunctions.stream(), functions.instanceMethods).map {
                     it.first.info
-                }.toSet()
+                }.collect(Collectors.toSet())
 
                 assertEquals(results, fitting)
             }

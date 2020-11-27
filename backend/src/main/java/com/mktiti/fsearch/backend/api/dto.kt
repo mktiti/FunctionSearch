@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.mktiti.fsearch.backend.ContextId
 import com.mktiti.fsearch.modules.ArtifactId
 
+enum class ContextLoadStatus {
+    LOADING, LOADED, ERROR
+}
+
 data class ArtifactIdDto(
         val group: String,
         val name: String,

@@ -12,6 +12,8 @@ interface ContextManager {
 
     operator fun get(contextId: ContextId): QueryContext = context(contextId)
 
+    operator fun contains(contextId: ContextId): Boolean
+
 }
 
 class SimpleMapContextManager(
@@ -23,6 +25,8 @@ class SimpleMapContextManager(
 ) : ContextManager {
 
     private val store = mutableMapOf<ContextId, QueryContext>()
+
+    override fun contains(contextId: ContextId) = store.containsKey(contextId)
 
     override fun context(contextId: ContextId) = store.getOrPut(contextId) {
         val onlyCtxDomain = artifactManager.getWithDependencies(contextId.artifacts)

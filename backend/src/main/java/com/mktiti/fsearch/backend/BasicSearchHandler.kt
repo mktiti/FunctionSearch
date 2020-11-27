@@ -1,19 +1,19 @@
 package com.mktiti.fsearch.backend
 
-import com.mktiti.fsearch.backend.api.QueryCtxDto
-import com.mktiti.fsearch.backend.api.QueryResult
-import com.mktiti.fsearch.backend.api.SearchHandler
-import com.mktiti.fsearch.backend.api.TypeHint
+import com.mktiti.fsearch.backend.api.*
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import java.util.concurrent.Executors
 import kotlin.streams.toList
 
 class BasicSearchHandler(
         private val contextManager: ContextManager,
         private val fitPresenter: FitPresenter
 ) : SearchHandler {
+
+    private val service = Executors.newCachedThreadPool()
 
     override fun typeHint(contextId: QueryCtxDto, namePart: String): List<TypeHint> {
         return with(contextManager[contextId.toId()]) {
@@ -27,6 +27,19 @@ class BasicSearchHandler(
                         typeParamCount = semi.typeParamCount
                 )
             }.toList()
+        }
+    }
+
+    // TODO primitive
+    override fun preloadContext(contextId: QueryCtxDto): ContextLoadStatus {
+        val id = contextId.toId()
+        return if (id in contextManager) {
+            ContextLoadStatus.LOADED
+        } else {
+            service.submit {
+                contextManager[id]
+            }
+            ContextLoadStatus.LOADING
         }
     }
 

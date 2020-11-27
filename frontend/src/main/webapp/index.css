@@ -3,20 +3,44 @@ body {
     font-family: helvetica, serif;
 }
 
+input.code-in{
+    font-size: 15px;
+    background: #38383d;
+    color: #f9f9fa;
+    font-family: monospace;
+    padding: 0;
+    padding-inline-start: 15px;
+    border: solid 1px #5f5f63;
+    border-radius: 3px;
+}
+
 #context-select {
     width: 700px;
-    max-height: 48px;
+    /* max-height: 48px; */
     margin-left: auto;
     margin-right: auto;
     margin-top: 130px;
     display: flex;
+    flex-direction: column;
     position: relative;
     color: #f9f9fa;
+    border-left: solid #662fff 2px;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.artifact-item {
+    align-self: flex-start;
+    margin-left: 20px;
+
+    font-family: monospace;
+    font-size: 15px;
 }
 
 #context-summary {
     cursor: pointer;
     user-select: none;
+    margin-left: 7px;
 }
 
 #context-summary>.expand-btn, #context-summary>.hide-btn {
@@ -24,7 +48,7 @@ body {
     margin-left: 6px;
 }
 
-#context-select.max .expand-btn {
+#context-select:not(.min) .expand-btn {
     display: none;
 }
 
@@ -33,11 +57,46 @@ body {
 }
 
 #context-details {
+    margin-top: 5px;
+}
+
+#context-select.min #context-details {
     display: none;
 }
 
-#context-details.min {
-    display: none;
+.artifact-item>button {
+    background: none;
+    font-size: 20px;
+    border: none;
+    color: white;
+    cursor: pointer;
+}
+
+#artifact-add-container {
+    display: flex;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: 10px;
+}
+
+#artifact-add-name {
+    width: 400px;
+    height: 33px;
+    padding-inline-start: 10px;
+}
+
+#artifact-add-name:active, #artifact-add-name:focus, #artifact-add-name:focus-within {
+    border: 1px solid #45a1ff;
+    box-shadow: 0 0 1px 1px #324e6d;
+}
+
+#artifact-add {
+    height: 33px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
 }
 
 #search-wrapper {
@@ -51,17 +110,10 @@ body {
 }
 
 #search-bar {
-    font-size: 15px;
-    background: #38383d;
-    color: #f9f9fa;
-    font-family: monospace;
-    padding: 0;
     padding-inline-start: 15px;
     padding-inline-end: 48px;
     width: 100%;
     height: 48px;
-    border: solid 1px #5f5f63;
-    border-radius: 3px;
 }
 
 #search-bar:active, #search-bar:focus, #search-bar:focus-within {

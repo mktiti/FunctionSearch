@@ -23,24 +23,12 @@ class SearchHandler(
         private val resultList: HTMLDivElement,
         private val errorDiv: HTMLDivElement,
         private val resultWrap: HTMLDivElement,
-        private val loadingMessageDiv: HTMLElement
+        private val loadingMessageDiv: HTMLElement,
+        private val contextProvider: () -> QueryContext
 ) {
 
     companion object {
         private const val itemMinClass = "item-min"
-
-        val defaultContext = QueryCtxDto(
-                artifacts = listOf(
-                        ArtifactIdDto("org.apache.commons", "commons-lang3", "3.11"),
-                        ArtifactIdDto("com.google.guava", "guava", "30.0-jre")
-                )
-        )
-    }
-
-    private fun onItemCLick(source: HTMLDivElement) {
-        if (!source.removeClass(itemMinClass)) {
-            source.addClass(itemMinClass)
-        }
     }
 
     init {
@@ -54,6 +42,10 @@ class SearchHandler(
         (searchButton as? EventTarget)?.addEventListener("click", { initSearch() }, false)
     }
 
+    private fun onItemCLick(source: HTMLDivElement) {
+        source.toggleClass(itemMinClass)
+    }
+
     private fun initSearch() {
         val query = searchBar.value
         if (query.isBlank()) {
@@ -62,7 +54,7 @@ class SearchHandler(
 
         showResult(loadingMessageDiv)
 
-        search(query, defaultContext)
+        search(query, contextProvider())
     }
 
     private fun createItem(fit: QueryFitResult): HTMLDivElement {
@@ -85,11 +77,7 @@ class SearchHandler(
     }
 
     private fun onSuccess(result: QueryResult.Success) {
-        while (resultList.children.length > 0) {
-            resultList.children.item(0)?.let { child ->
-                resultList.removeChild(child)
-            }
-        }
+        resultList.removeChildren()
 
         result.results.map {
             createItem(it)
@@ -124,7 +112,7 @@ class SearchHandler(
 
     private fun search(
             query: String,
-            context: QueryCtxDto
+            context: QueryContext
     ) {
         with(XMLHttpRequest()) {
             open("POST", "/search", true)
@@ -143,7 +131,7 @@ class SearchHandler(
             }
 
             val param = QueryRequestDto(
-                    context = context,
+                    context = context.dto(),
                     query = query
             )
             send(dtoJson.encodeToString(param))

@@ -11,17 +11,23 @@
 
 <div id="context-select" class="min">
     <div id="context-summary">
-        <span id="summary-text">Search in 10 artifacts</span>
+        <span id="summary-text">Loading artifacts</span>
         <div class="expand-btn fa fa-chevron-down"></div>
         <div class="hide-btn fa fa-chevron-up"></div>
     </div>
     <div id="context-details">
+        <div id="context-listing">
 
+        </div>
+        <div id="artifact-add-container">
+            <input id="artifact-add-name" class="code-in" maxlength="256" placeholder="Artifact id" title="Artifact id">
+            <button id="artifact-add" class="fa fa-plus-circle" aria-label="Add" title="Add"></button>
+        </div>
     </div>
 </div>
 
 <div id="search-wrapper">
-    <input id="search-bar" maxlength="256" type="search" autocomplete="off" placeholder="Search for functions" title="Search for function">
+    <input id="search-bar" class="code-in" maxlength="256" type="search" autocomplete="off" placeholder="Search for functions" title="Search for function">
     <button id="search-submit" class="fa fa-search" aria-label="Search" title="Search"></button>
 </div>
 

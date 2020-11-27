@@ -1,8 +1,6 @@
 package com.mktiti.fsearch.backend.spring
 
-import com.mktiti.fsearch.backend.api.HintRequestDto
-import com.mktiti.fsearch.backend.api.QueryRequestDto
-import com.mktiti.fsearch.backend.api.SearchHandler
+import com.mktiti.fsearch.backend.api.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -19,5 +17,9 @@ class SpringSearchHandler @Autowired constructor(private val backingHandler: Sea
     @PostMapping("/search")
     @ResponseBody
     fun syncQuery(@RequestBody req: QueryRequestDto) = backingHandler.syncQuery(req.context, req.query)
+
+    @PostMapping("/preload")
+    @ResponseBody
+    fun preloadContext(@RequestBody ctxId: QueryCtxDto): ContextLoadStatus = backingHandler.preloadContext(ctxId)
 
 }

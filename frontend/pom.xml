@@ -109,6 +109,42 @@
             </plugin>
 
             <plugin>
+                <groupId>com.samaxes.maven</groupId>
+                <artifactId>minify-maven-plugin</artifactId>
+                <version>1.7.6</version>
+                <executions>
+                    <execution>
+                        <id>default-minify</id>
+                        <phase>package</phase>
+                        <configuration>
+                            <charset>UTF-8</charset>
+                            <webappSourceDir>${project.basedir}</webappSourceDir>
+                            <webappTargetDir>${project.build.directory}/minified/</webappTargetDir>
+
+                            <cssSourceDir>src/main/webapp/</cssSourceDir>
+                            <cssTargetDir>css</cssTargetDir>
+                            <cssSourceIncludes>
+                                <cssSourceInclude>**/*.css</cssSourceInclude>
+                            </cssSourceIncludes>
+
+                            <jsSourceDir>/target/js/</jsSourceDir>
+                            <jsTargetDir>js</jsTargetDir>
+                            <jsSourceFiles>
+                                <jsSourceFile>lib/kotlin.js</jsSourceFile>
+                                <jsSourceFile>lib/kotlinx-serialization-kotlinx-serialization-core-jsLegacy.js</jsSourceFile>
+                                <jsSourceFile>lib/kotlinx-serialization-kotlinx-serialization-json-jsLegacy.js</jsSourceFile>
+                                <jsSourceFile>frontend.js</jsSourceFile>
+                            </jsSourceFiles>
+                            <jsEngine>CLOSURE</jsEngine>
+                        </configuration>
+                        <goals>
+                            <goal>minify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.2.2</version>

@@ -11,17 +11,17 @@
 		<fileSet>
 			<directory>${project.basedir}/src/main/webapp</directory>
 			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>**/*.html</include>
+			</includes>
 			<excludes>
 				<exclude>WEB-INF/</exclude>
 				<exclude>WEB-INF/web.xml</exclude>
 			</excludes>
 		</fileSet>
 		<fileSet>
-			<directory>${project.build.directory}/js</directory>
-			<outputDirectory>js</outputDirectory>
-			<includes>
-				<include>**/*.js</include>
-			</includes>
+			<directory>${project.build.directory}/minified/</directory>
+			<outputDirectory>/</outputDirectory>
 		</fileSet>
 	</fileSets>
 	<files>

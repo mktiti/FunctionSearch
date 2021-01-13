@@ -120,7 +120,6 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
                     <finalName>backend</finalName>
-                    <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
                             <mainClass>com.mktiti.fsearch.backend.spring.SpringStart</mainClass>
@@ -158,8 +157,13 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <id>repackage</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
                         <configuration>
-                            <mainClass>com.mktiti.fsearch.backend.spring.SpringMain</mainClass>
+                            <finalName>backend-spring</finalName>
                         </configuration>
                     </execution>
                 </executions>

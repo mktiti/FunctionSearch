@@ -115,7 +115,7 @@ class SearchHandler(
             context: QueryContext
     ) {
         with(XMLHttpRequest()) {
-            open("POST", "/search", true)
+            open("POST", "/api/v1/search", true)
             setRequestHeader("Content-Type", "application/json")
             onreadystatechange = {
                 if (readyState == XMLHttpRequest.DONE) {

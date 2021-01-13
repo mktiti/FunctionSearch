@@ -47,13 +47,13 @@ class ExternalMavenFetcher(
 
     }
 
-    private fun <T> runCommand(command: List<String>, dir: File, code: () -> T): T? {
+    private fun <T> runCommand(command: List<String>, dir: File, redirect: ProcessBuilder.Redirect, code: () -> T): T? {
         return try {
             val process = try {
                 ProcessBuilder(command)
                         .directory(dir.absoluteFile)
-                        .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                        .redirectError(ProcessBuilder.Redirect.PIPE)
+                        .redirectOutput(redirect)
+                        .redirectError(redirect)
                         .start()
             } catch (ioe: IOException) {
                 ioe.printStackTrace()
@@ -82,13 +82,15 @@ class ExternalMavenFetcher(
             val repo = tempDir(prefix = "repo-", directory = combined.absoluteFile)
             val markers = tempDir(prefix = "markers-", directory = combined.absoluteFile)
 
+            val processOuts = ProcessBuilder.Redirect.to(combined.resolve("mvn-output.txt"))
+
             project.resolve("pom.xml").outputStream().use { out ->
                 MockPomHandler.createMockPom(artifacts, out)
             }
 
             val listOut = project.resolve("dependencies.txt")
             val list = listCommand(listOut, classifier)
-            val depList = runCommand(list, project) {
+            val depList = runCommand(list, project, processOuts) {
                 println(">>> External maven dependency list process finished")
                 listOut.useLines {
                     parseListOutput(it)
@@ -96,7 +98,7 @@ class ExternalMavenFetcher(
             } ?: return null
 
             val copy = fetchCommand(repo, markers, classifier)
-            val files = runCommand(copy, project) {
+            val files = runCommand(copy, project, processOuts) {
                 println(">>> External maven dependency fetch process finished")
 
                 depList.map {

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@RequestMapping("\${api.base.path}")
 class SpringSearchHandler @Autowired constructor(private val backingHandler: SearchHandler) {
 
     @GetMapping("health_check")

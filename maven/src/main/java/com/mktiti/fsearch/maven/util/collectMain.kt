@@ -161,7 +161,7 @@ fun main(args: Array<String>) {
                             context = context.copy(
                                     artifacts = combined,
                                     domain = FallbackDomainRepo(
-                                            repo = loaded,
+                                            repo = context.domain,
                                             fallbackRepo = loaded
                                     ), docStore = docStore
                             )

@@ -60,6 +60,7 @@ private class AsmInfoCollectorVisitor(
 
     private data class TypeMeta(
             val info: MinimalInfo,
+            val isInterface: Boolean,
             val signature: String?,
             val superNames: List<String>,
             val nestDepth: Int? = null,
@@ -111,6 +112,8 @@ private class AsmInfoCollectorVisitor(
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         val info = AsmUtil.parseName(name)
 
+        val isInterface = access and Opcodes.ACC_INTERFACE > 0
+
         val lastName = info.simpleName.split('.').last()
         if (lastName.first().isDigit()) {
             // Skip anonymous nested and local class
@@ -123,15 +126,20 @@ private class AsmInfoCollectorVisitor(
             interfaces?.let(this::addAll)
         }
 
-        currentType = TypeMeta(info, signature, superNames)
+        currentType = TypeMeta(info, isInterface, signature, superNames)
     }
 
     override fun visitInnerClass(name: String?, outerName: String?, innerName: String?, access: Int) {
         // TODO
         currentType?.let { current ->
-            val parsedName = AsmUtil.parseName(name ?: return)
-            if (parsedName == current.info) {
-                currentType = current.copy(nestDepth = max(current.nestDepth ?: 0, 1))
+            val parsedInfo = AsmUtil.parseName(name ?: return)
+            if (parsedInfo == current.info) {
+                val newNest = if (current.isInterface) {
+                    0
+                } else {
+                    max(current.nestDepth ?: 0, 1)
+                }
+                currentType = current.copy(isInterface = false, nestDepth = newNest)
             }
         }
     }
@@ -169,7 +177,7 @@ private class AsmInfoCollectorVisitor(
     }
 
     private fun createInitials(meta: TypeMeta) {
-        val (info, signature, superNames, nestDepth, abstractCount) = meta
+        val (info, _, signature, superNames, nestDepth, abstractCount) = meta
 
         val nestContext: List<TypeParameter> = if (nestDepth != null) {
             val nests = info.simpleName.split(".").dropLast(1)

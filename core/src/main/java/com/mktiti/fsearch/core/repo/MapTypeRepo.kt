@@ -23,25 +23,47 @@ class MapTypeRepo(
         } else {
             namePred(name, paramCount)
         }
+
+        private fun canBeSimple(name: String, allowSimple: Boolean): Boolean {
+            if (allowSimple) {
+                return if ("." !in name) {
+                    true
+                } else {
+                    name.split(".").all {
+                        it.isNotBlank() && it.first().isUpperCase()
+                    }
+                }
+            }
+
+            return false
+        }
     }
 
     override val allTypes: Collection<DirectType> = directs.values
     override val allTemplates: Collection<TypeTemplate> = templates.values
 
-    override fun get(name: String, allowSimple: Boolean): DirectType? = if (allowSimple && !name.contains(".")) {
-        allTypes.find { it.info.simpleName == name }
-    } else {
+    override fun get(name: String, allowSimple: Boolean): DirectType? {
+        if (canBeSimple(name, allowSimple)) {
+            allTypes.find { it.info.simpleName == name }?.let {
+                return it
+            }
+        }
+
         val (packages, onlyName) = name.split('.').cutLast()
-        directs[MinimalInfo(packages, onlyName)]
+        return directs[MinimalInfo(packages, onlyName)]
     }
 
     override fun get(info: MinimalInfo): DirectType? = directs[info]
 
-    override fun template(name: String, allowSimple: Boolean, paramCount: Int?): TypeTemplate? = if (allowSimple && !name.contains(".")) {
-        allTemplates.find(namePredChoose(name, paramCount))
-    } else {
+    override fun template(name: String, allowSimple: Boolean, paramCount: Int?): TypeTemplate? {
+        if (canBeSimple(name, allowSimple)) {
+            allTemplates.find(namePredChoose(name, paramCount))?.let {
+                return it
+            }
+        }
+
         val (packages, onlyName) = name.split('.').cutLast()
-        templates[MinimalInfo(packages, onlyName)]
+        return templates[MinimalInfo(packages, onlyName)]
     }
 
     override fun template(info: MinimalInfo): TypeTemplate? = templates[info]

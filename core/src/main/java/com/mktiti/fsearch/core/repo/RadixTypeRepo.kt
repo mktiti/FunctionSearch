@@ -40,7 +40,7 @@ class RadixTypeRepo(
         val nameParts = name.split(".")
         return when (val direct = store[nameParts]) {
             null -> {
-                if (allowSimple && nameParts.size == 1) {
+                if (allowSimple && nameParts.all { it.firstOrNull()?.isUpperCase() == true }) {
                     simpleMap[name]?.let(simpleSelect)
                 } else {
                     null
@@ -64,9 +64,9 @@ class RadixTypeRepo(
             paramCount: Int?
     ): TypeTemplate? {
         val simplePred: (Collection<TypeTemplate>) -> TypeTemplate? = if (paramCount == null) {
-            { it.find { t -> t.typeParamCount == paramCount } }
-        } else {
             Collection<TypeTemplate>::firstOrNull
+        } else {
+            { it.find { t -> t.typeParamCount == paramCount } }
         }
 
         return find(name, allowSimple, templates, templateSimpleIndex, simplePred)

@@ -78,7 +78,7 @@ class SetTypeRepo : MutableTypeRepo {
     override val allTemplates: Collection<TypeTemplate>
         get() = templates.map { it.value }
 
-    override fun get(name: String, allowSimple: Boolean): DirectType? = types[name] ?: if (allowSimple && !name.contains(".")) {
+    override fun get(name: String, allowSimple: Boolean): DirectType? = types[name] ?: if (allowSimple) {
         types.values.find { it.info.simpleName == name }
     } else {
         null
@@ -86,7 +86,7 @@ class SetTypeRepo : MutableTypeRepo {
 
     override fun get(info: MinimalInfo): DirectType? = get(info.toString())
 
-    override fun template(name: String, allowSimple: Boolean, paramCount: Int?): TypeTemplate? = templates[name] ?: if (allowSimple && !name.contains(".")) {
+    override fun template(name: String, allowSimple: Boolean, paramCount: Int?): TypeTemplate? = templates[name] ?: if (allowSimple) {
         templates.values.find(namePredChoose(name, paramCount))
     } else {
         null

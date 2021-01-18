@@ -10,6 +10,10 @@
         <version>0.1-SNAPSHOT</version>
     </parent>
 
+    <properties>
+        <spring.openapi.version>1.5.2</spring.openapi.version>
+    </properties>
+
     <artifactId>backend</artifactId>
     <version>0.1-SNAPSHOT</version>
 
@@ -51,6 +55,24 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>2.2.0.RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>${spring.openapi.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-kotlin</artifactId>
+            <version>${spring.openapi.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-data-rest</artifactId>
+            <version>${spring.openapi.version}</version>
         </dependency>
 
         <dependency>
@@ -157,16 +179,60 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <id>openapi-gen-start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.mktiti.fsearch.backend.spring.SpringNopStart</mainClass>
+                            <profiles>
+                                <profile>nop</profile>
+                            </profiles>
+                            <systemPropertyVariables>
+                                <apiBasePath>/</apiBasePath>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>openapi-gen-stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+
+                    <execution>
                         <id>repackage</id>
                         <phase>package</phase>
                         <goals>
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
+                            <mainClass>com.mktiti.fsearch.backend.spring.SpringStart</mainClass>
                             <finalName>backend-spring</finalName>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-maven-plugin</artifactId>
+                <version>1.1</version>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <apiDocsUrl>http://localhost:8080/api-docs</apiDocsUrl>
+                    <outputFileName>openapi-docs.json</outputFileName>
+                </configuration>
             </plugin>
         </plugins>
     </build>

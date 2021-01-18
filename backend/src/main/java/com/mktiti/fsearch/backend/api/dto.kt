@@ -3,6 +3,7 @@ package com.mktiti.fsearch.backend.api
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.mktiti.fsearch.backend.ContextId
 import com.mktiti.fsearch.modules.ArtifactId
+import io.swagger.v3.oas.annotations.media.Schema
 
 enum class ContextLoadStatus {
     LOADING, LOADED, ERROR
@@ -60,6 +61,9 @@ data class QueryFitResult(
         include = JsonTypeInfo.As.PROPERTY,
         property = "type"
 )
+@Schema(name = "QueryResult", oneOf = [
+    QueryResult.Error.InternalError::class, QueryResult.Error.Query::class, QueryResult.Success::class
+])
 sealed class QueryResult {
 
     abstract val query: String
@@ -69,11 +73,13 @@ sealed class QueryResult {
         abstract override val query: String
         abstract val message: String
 
+        @Schema(name = "QueryResultInternalError")
         class InternalError(
                 override val query: String,
                 override val message: String
         ) : Error()
 
+        @Schema(name = "QueryResultQueryError")
         class Query(
                 override val query: String,
                 override val message: String
@@ -81,6 +87,7 @@ sealed class QueryResult {
 
     }
 
+    @Schema(name = "QueryResultSuccess")
     class Success(
             override val query: String,
             val results: List<QueryFitResult>

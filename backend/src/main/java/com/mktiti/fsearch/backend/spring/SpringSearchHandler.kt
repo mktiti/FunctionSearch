@@ -1,11 +1,14 @@
 package com.mktiti.fsearch.backend.spring
 
 import com.mktiti.fsearch.backend.api.*
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("\${api.base.path}")
+@CrossOrigin("\${cross.origin}")
+@Tag(name = "search")
 class SpringSearchHandler @Autowired constructor(private val backingHandler: SearchHandler) {
 
     @GetMapping("health_check")

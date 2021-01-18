@@ -44,12 +44,7 @@ const ResultBase = Vue.extend({
 })
 
 @Component({
-  components: {ResultEntry},
-  computed: {
-    title: function () {
-      return "my title"
-    }
-  }
+  components: {ResultEntry}
 })
 export default class SearchResults extends ResultBase {
   isInited(): boolean {

@@ -11,15 +11,15 @@
     <div id="footer">
       <div id="separator"></div>
       <div class="content">
-        Created by <a class="mono" title="Kotlin, Java, etc | Hire me!" href="https://github.com/mktiti">@mktiti</a>
+        Created by <a class="mono" title="Kotlin, Java, etc | Hire me!" href="https://github.com/mktiti" target="_blank">@mktiti</a>
         <span>
-          <a class="icon" title="LinkedIn" href="https://www.linkedin.com/in/kriszti%C3%A1n-m%C3%A1rkus/"><fa-icon :icon="['fab', 'linkedin']" /></a>
-          <a class="icon" title="GitHub" href="https://github.com/mktiti/FunctionSearch"><fa-icon :icon="['fab', 'github']" /></a>
+          <a class="icon" title="LinkedIn" target="_blank" href="https://www.linkedin.com/in/kriszti%C3%A1n-m%C3%A1rkus/"><fa-icon :icon="['fab', 'linkedin']" /></a>
+          <a class="icon" title="GitHub" target="_blank" href="https://github.com/mktiti/FunctionSearch"><fa-icon :icon="['fab', 'github']" /></a>
         </span>
         <br>
         Written in
-        <a href="https://kotlinlang.org/">Kotlin</a>&
-        <a href="https://vuejs.org/">Vue.js</a>
+        <a href="https://kotlinlang.org/" target="_blank">Kotlin</a>&
+        <a href="https://vuejs.org/" target="_blank">Vue.js</a>
       </div>
     </div>
   </div>
@@ -52,6 +52,7 @@ body {
   width: 100%;
   z-index: 10;
   list-style-type: none;
+  border-bottom: 5px solid #8bbeff;
 }
 
 #nav li {
@@ -69,7 +70,7 @@ body {
   font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: 1px;
-  padding: 20px 15px 15px 20px;
+  padding: 17px 15px 10px 20px;
 }
 
 #nav li.right:hover, #nav li.right:focus {

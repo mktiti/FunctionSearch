@@ -7,11 +7,11 @@
     <parent>
         <groupId>com.mktiti.signature-search</groupId>
         <artifactId>parent</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>frontend-vue</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <dependencies>
@@ -24,6 +24,151 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>generated-client</directory>
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                        <fileset>
+                            <directory>fsearch-frontend/dist</directory>
+                            <includes>
+                                <include>**</include>
+                            </includes>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>5.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <inputSpec>${project.basedir}/../backend/target/openapi-docs.json</inputSpec>
+                    <generatorName>typescript</generatorName>
+                    <output>generated-client</output>
+                    <configHelp>false</configHelp>
+                    <packageName>fsearch_client</packageName>
+                    <configOptions>
+                        <npmName>fsearch_client</npmName>
+                        <npmVersion>${project.version}</npmVersion>
+                        <typescriptThreePlus>true</typescriptThreePlus>
+                    </configOptions>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>io.github.olivierlemasle.maven</groupId>
+                <artifactId>plaintext-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>write</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <outputDirectory>${pom.basedir}/generated-client/</outputDirectory>
+                    <files>
+                        <file>
+                            <name>.eslintrc.json</name>
+                            <lines>
+                                <line>{}</line>
+                            </lines>
+                        </file>
+                    </files>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.11.0</version>
+
+                <executions>
+                    <execution>
+                        <id>install-node</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+
+                    <execution>
+                        <id>npm-install</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+
+                <configuration>
+                    <nodeVersion>v4.6.0</nodeVersion>
+                    <npmVersion>2.15.9</npmVersion>
+                    <workingDirectory>fsearch-frontend</workingDirectory>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>vue-cli-build-workaround</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <successCodes>
+                                <successCode>0</successCode>
+                                <successCode>1</successCode>
+                            </successCodes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>vue-cli-build</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <executable>${project.basedir}/fsearch-frontend/node/npm</executable>
+                    <arguments>
+                        <argument>run</argument>
+                        <argument>build</argument>
+                    </arguments>
+                    <workingDirectory>${project.basedir}/fsearch-frontend/</workingDirectory>
+                </configuration>
+            </plugin>
+
+
+            <!--<plugin>
                 <groupId>io.swagger.codegen.v3</groupId>
                 <artifactId>swagger-codegen-maven-plugin</artifactId>
                 <version>3.0.24</version>
@@ -35,12 +180,16 @@
                         </goals>
                         <configuration>
                             <inputSpec>${project.basedir}/../backend/target/openapi-docs.json</inputSpec>
-                            <language>javascript</language>
-                            <output>fsearch-frontend/src/service/generated-client</output>
+                            <language>typescript-fetch</language>
+                            <artifactVersion>1</artifactVersion>
+                            <output>generated-client</output>
+                            <configOptions>
+                                <typescriptThreePlus>true</typescriptThreePlus>
+                            </configOptions>
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
         </plugins>
     </build>
 

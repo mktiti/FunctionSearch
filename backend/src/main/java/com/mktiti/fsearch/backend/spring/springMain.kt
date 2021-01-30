@@ -3,6 +3,7 @@
 package com.mktiti.fsearch.backend.spring
 
 import com.mktiti.fsearch.backend.ContextManager
+import com.mktiti.fsearch.backend.ProjectInfo
 import com.mktiti.fsearch.backend.SimpleMapContextManager
 import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
@@ -19,6 +20,10 @@ import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.util.InMemTypeParseLog
+import io.swagger.v3.oas.annotations.OpenAPIDefinition
+import io.swagger.v3.oas.models.Components
+import io.swagger.v3.oas.models.OpenAPI
+import io.swagger.v3.oas.models.info.Info
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -29,7 +34,15 @@ import kotlin.streams.toList
 import org.springframework.context.annotation.Bean
 
 @SpringBootApplication
-class SpringMain
+class SpringMain {
+
+    @Bean
+    fun openApi(): OpenAPI = OpenAPI().components(Components()).info(Info().apply {
+        title = "FunctionSearch"
+        version = ProjectInfo.version.removeSuffix("-SNAPSHOT")
+    })
+
+}
 
 object ContextManagerStore {
 

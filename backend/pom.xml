@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.mktiti.signature-search</groupId>
         <artifactId>parent</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <version>0.1.0-SNAPSHOT</version>
     </parent>
 
     <properties>
@@ -15,7 +15,7 @@
     </properties>
 
     <artifactId>backend</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
 
     <dependencies>
         <dependency>
@@ -46,7 +46,7 @@
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
             <artifactId>frontend</artifactId>
-            <version>0.1-SNAPSHOT</version>
+            <version>0.1.0-SNAPSHOT</version>
             <scope>runtime</scope>
             <type>zip</type>
         </dependency>
@@ -119,6 +119,10 @@
                     <compilerPlugins>
                         <plugin>spring</plugin>
                     </compilerPlugins>
+                    <sourceDirs>
+                        <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                        <sourceDir>${project.build.directory}/src/main/kotlin</sourceDir>
+                    </sourceDirs>
                 </configuration>
                 <dependencies>
                     <dependency>
@@ -127,6 +131,27 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+
+            <plugin>
+                <groupId>com.mktiti</groupId>
+                <artifactId>const-generator-maven-plugin</artifactId>
+                <version>1.1</version>
+
+                <configuration>
+                    <packageName>com.mktiti.fsearch.backend</packageName>
+                    <type>kotlin</type>
+                </configuration>
+
+                <executions>
+                    <execution>
+                        <id>generate-const</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>

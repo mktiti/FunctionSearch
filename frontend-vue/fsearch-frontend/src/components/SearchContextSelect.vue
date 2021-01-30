@@ -23,7 +23,7 @@
 import Vue from "vue";
 import Component from "vue-class-component";
 import ResultEntry from "@/components/ResultEntry.vue";
-import {ArtifactIdDto} from "@/service/generated-client";
+import {ArtifactIdDto} from "fsearch_client";
 
 const SearchCtxBase = Vue.extend({
   props: {

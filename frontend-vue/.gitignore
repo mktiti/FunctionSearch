@@ -1,1 +1,3 @@
-fsearch-frontend/src/service/generated-client/
+fsearch-frontend/generated-client/
+fsearch-frontend/node/
+generated-client/

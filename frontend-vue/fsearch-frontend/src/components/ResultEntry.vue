@@ -10,7 +10,7 @@
 <script lang="ts">
 import Vue from "vue";
 import Component from "vue-class-component";
-import {QueryFitResult} from "@/service/generated-client";
+import {QueryFitResult} from "fsearch_client";
 
 const ResultEntryBase = Vue.extend({
   props: {

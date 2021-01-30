@@ -6,7 +6,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "generate-client": "openapi --input ../../backend/target/openapi-docs.json --output ./src/service/generated-client"
+    "generate-client": "openapi --input ../../backend/target/openapi-docs.json --output ../generated-client"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.34",
@@ -15,6 +15,7 @@
     "@fortawesome/vue-fontawesome": "^2.0.2",
     "@types/jest": "^26.0.20",
     "core-js": "^3.6.5",
+    "fsearch_client": "file:../generated-client",
     "portable-fetch": "^3.0.0",
     "superagent": "^6.1.0",
     "vue": "^2.6.11",

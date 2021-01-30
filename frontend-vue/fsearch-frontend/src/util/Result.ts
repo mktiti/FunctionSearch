@@ -1,4 +1,4 @@
-import {QueryResult} from "@/service/generated-client";
+import {QueryResult} from "fsearch_client";
 
 type ResType = {
     type: string;

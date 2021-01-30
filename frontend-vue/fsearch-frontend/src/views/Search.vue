@@ -12,11 +12,12 @@
 import Vue from 'vue'
 import Component from "vue-class-component"
 import SearchInput from "@/components/SearchInput.vue";
-import {ArtifactIdDto, QueryCtxDto, QueryRequestDto, QueryResult, SearchService} from "@/service/generated-client";
 import SearchResults from "@/components/SearchResults.vue";
-import {QueryState} from "@/util/QueryState";
 import SearchContextSelect from "@/components/SearchContextSelect.vue";
 import {artifactEqual} from "@/util/Artifact";
+import {ArtifactIdDto, QueryCtxDto, QueryRequestDto, QueryResult, SearchApi} from "fsearch_client";
+import {QueryState} from "@/util/QueryState";
+import {clientConfig} from "@/main";
 
 const defaultContext: QueryCtxDto = {
   artifacts: [
@@ -29,6 +30,8 @@ const defaultContext: QueryCtxDto = {
   components: {SearchContextSelect, SearchInput, SearchResults}
 })
 export default class SearchComponent extends Vue {
+  private client = new SearchApi(clientConfig);
+
   private result: QueryResult | null = null;
   private queryState: QueryState = QueryState.None;
 
@@ -41,7 +44,8 @@ export default class SearchComponent extends Vue {
     }
     this.result = null
     this.queryState = QueryState.Loading
-    SearchService.syncQuery(reqData).then(res => {
+
+    this.client.syncQuery(reqData).then(res => {
       this.result = res
       this.queryState = QueryState.Done
     });

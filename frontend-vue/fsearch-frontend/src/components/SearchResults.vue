@@ -27,7 +27,7 @@
 <script lang="ts">
 import Component from "vue-class-component";
 import Vue from "vue";
-import {QueryResult} from "@/service/generated-client";
+import {QueryResult} from "fsearch_client";
 import {isInternalError, isQueryError, isSuccess} from "@/util/Result";
 import ResultEntry from "@/components/ResultEntry.vue";
 import {QueryState} from "@/util/QueryState";

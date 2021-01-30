@@ -125,8 +125,7 @@
                 </executions>
 
                 <configuration>
-                    <nodeVersion>v4.6.0</nodeVersion>
-                    <npmVersion>2.15.9</npmVersion>
+                    <nodeVersion>v10.19.0</nodeVersion>
                     <workingDirectory>fsearch-frontend</workingDirectory>
                 </configuration>
             </plugin>
@@ -159,6 +158,9 @@
                 </executions>
                 <configuration>
                     <executable>${project.basedir}/fsearch-frontend/node/npm</executable>
+                    <environmentVariables>
+                        <PATH>${project.basedir}/fsearch-frontend/node/:${env.PATH}</PATH>
+                    </environmentVariables>
                     <arguments>
                         <argument>run</argument>
                         <argument>build</argument>

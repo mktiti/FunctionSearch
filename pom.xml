@@ -32,7 +32,6 @@
         <module>modules</module>
         <module>maven</module>
         <module>backend</module>
-        <module>frontend</module>
         <module>frontend-vue</module>
     </modules>
 
@@ -85,13 +84,6 @@
                 <groupId>com.mktiti.signature-search</groupId>
                 <artifactId>maven</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.mktiti.signature-search</groupId>
-                <artifactId>frontend</artifactId>
-                <version>0.1.0-SNAPSHOT</version>
-                <type>zip</type>
             </dependency>
 
             <dependency>

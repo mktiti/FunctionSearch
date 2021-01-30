@@ -3,6 +3,8 @@ services:
   backend:
     build: backend
     container_name: fsearch-backend
+    environment:
+      - BACKEND_MIN_HEAP
     ports:
       - "8081:8080"
   frontend:
@@ -14,7 +16,7 @@ services:
     build: facade-docker
     container_name: fsearch-facade
     ports:
-      - "8080:8080"
+      - "${FACADE_PORT}:8080"
     links:
       - "backend:backend"
       - "frontend:frontend"

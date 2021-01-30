@@ -7,7 +7,7 @@ import {faChevronDown, faChevronUp, faPlus, faSearch, faTrashAlt} from '@fortawe
 import {faGithub, faLinkedin} from '@fortawesome/free-brands-svg-icons';
 import {createConfiguration, ServerConfiguration} from "fsearch_client";
 
-export const server = new ServerConfiguration<{  }>("http://localhost:8080/api/v1/", {  })
+export const server = new ServerConfiguration<{  }>(process.env.VUE_APP_API_BASE, {  })
 export const clientConfig = createConfiguration({
   baseServer: server
 })

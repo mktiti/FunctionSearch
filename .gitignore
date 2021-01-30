@@ -1,4 +1,4 @@
-
+.env
 *.old
 
 # Created by https://www.gitignore.io/api/maven,kotlin,intellij+all

@@ -6,7 +6,7 @@ services:
     ports:
       - "8081:8080"
   frontend:
-    build: frontend
+    build: frontend-vue
     container_name: fsearch-frontend
     ports:
       - "8082:8080"

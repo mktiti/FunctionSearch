@@ -51,9 +51,13 @@ sealed class FunIdParam {
 
 }
 
+enum class FunInstanceRelation {
+    INSTANCE, STATIC, CONSTRUCTOR
+}
+
 data class FunctionInfo(
         val file: MinimalInfo,
-        val isStatic: Boolean,
+        val relation: FunInstanceRelation,
         val name: String,
         val paramTypes: List<FunIdParam>
 ) {
@@ -93,11 +97,11 @@ data class FunctionInfo(
         fun paramTypes(
                 infoRepo: JavaInfoRepo,
                 signature: TypeSignature,
-                isStatic: Boolean,
+                instanceRelation: FunInstanceRelation,
                 typeParams: List<String>
         ): List<FunIdParam>? {
             fun <T> params(all: List<Pair<String, T>>): List<T> {
-                val nonThis = if (isStatic) all else all.drop(1)
+                val nonThis = if (instanceRelation != FunInstanceRelation.INSTANCE) all else all.drop(1)
                 return nonThis.map { it.second }
             }
 
@@ -126,12 +130,12 @@ data class FunctionInfo(
                 file: MinimalInfo,
                 name: String,
                 signature: TypeSignature,
-                isStatic: Boolean,
+                instanceRelation: FunInstanceRelation,
                 typeParams: List<String>,
                 infoRepo: JavaInfoRepo
         ): FunctionInfo? {
-            return paramTypes(infoRepo, signature, isStatic, typeParams)?.let {
-                FunctionInfo(file, isStatic, name, it)
+            return paramTypes(infoRepo, signature, instanceRelation, typeParams)?.let {
+                FunctionInfo(file, instanceRelation, name, it)
             }
         }
     }

@@ -1,11 +1,10 @@
 package com.mktiti.fsearch.backend
 
 import com.mktiti.fsearch.backend.api.FunDocDto
+import com.mktiti.fsearch.backend.api.FunRelationDto
 import com.mktiti.fsearch.backend.api.QueryFitResult
-import com.mktiti.fsearch.core.fit.FittingMap
-import com.mktiti.fsearch.core.fit.FunctionInfo
-import com.mktiti.fsearch.core.fit.FunctionObj
-import com.mktiti.fsearch.core.fit.TypeSignature
+import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.fit.FunInstanceRelation.*
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
@@ -13,7 +12,6 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.util.PrefixTree
-import com.mktiti.fsearch.util.map
 import com.mktiti.fsearch.util.mapMutablePrefixTree
 import com.mktiti.fsearch.util.roll
 
@@ -145,24 +143,33 @@ class BasicFitPresenter(
             paramNames: List<String>?
     ): String {
         val currentPackage = info.file.packageName
+        val tpNames = typeTps + funTps.map(TypeParameter::sign)
 
         return buildString {
-            if (info.isStatic) {
-                append("static ")
-            }
-            val tpNames = typeTps + funTps.map(TypeParameter::sign)
-            if (funTps.isNotEmpty()) {
-                val tpString = funTps.genericString {
-                    resolveTypeParam(currentPackage, it, tpNames)
+            if (info.relation == CONSTRUCTOR) {
+                append(info.file.simpleName)
+            } else {
+                if (info.relation == STATIC) {
+                    append("static ")
                 }
-                append(tpString)
+                if (funTps.isNotEmpty()) {
+                    val tpString = funTps.genericString {
+                        resolveTypeParam(currentPackage, it, tpNames)
+                    }
+                    append(tpString)
+                    append(" ")
+                }
+                append(resolveSub(currentPackage, signature.output, tpNames))
                 append(" ")
+                append(info.name)
             }
-            append(resolveSub(currentPackage, signature.output, tpNames))
-            append(" ")
-            append(info.name)
 
-            val inString = signature.inputParameters.drop(info.isStatic.map(0, 1)).mapIndexed { i, inParam ->
+            val explicitIns = if (info.relation == INSTANCE) {
+                signature.inputParameters.drop(1)
+            } else {
+                signature.inputParameters
+            }
+            val inString = explicitIns.mapIndexed { i, inParam ->
                 val (setName, param) = inParam
                 val name = if (setName.startsWith("\$")) {
                     paramNames?.getOrNull(i) ?: setName
@@ -180,10 +187,14 @@ class BasicFitPresenter(
     override fun present(function: FunctionObj, fit: FittingMap, doc: FunctionDoc): QueryFitResult {
         val info = function.info
 
-        val fileTypeParams = if (info.isStatic) {
+        val fileTypeParams = if (info.relation == STATIC) {
             0
         } else {
-            val thisParam = fit.funSignature.inputParameters.firstOrNull()?.second
+            val thisParam = if (info.relation == INSTANCE) {
+                fit.funSignature.inputParameters.firstOrNull()?.second
+            } else {
+                fit.funSignature.output
+            }
             (thisParam as? Substitution.TypeSubstitution<*, *>)?.typeParamCount ?: 0
         }
 
@@ -202,7 +213,7 @@ class BasicFitPresenter(
         return QueryFitResult(
                 file = fileName,
                 funName = info.name,
-                static = info.isStatic,
+                relation = FunRelationDto.fromModel(info.relation),
                 doc = FunDocDto(shortInfo = doc.shortInfo, details = doc.longInfo),
                 header = header
         )

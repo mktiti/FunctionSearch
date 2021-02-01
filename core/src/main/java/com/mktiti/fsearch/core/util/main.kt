@@ -14,7 +14,7 @@ fun main() {
     fun funInfo(name: String, className: String) = FunctionInfo(
             file = MinimalInfo(listOf("org", "test"), className),
             name = name,
-            isStatic = true,
+            relation = FunInstanceRelation.STATIC,
             paramTypes = emptyList()
     )
 

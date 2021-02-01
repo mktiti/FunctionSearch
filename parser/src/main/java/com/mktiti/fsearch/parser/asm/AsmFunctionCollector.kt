@@ -1,7 +1,10 @@
 package com.mktiti.fsearch.parser.asm
 
+import com.mktiti.fsearch.core.fit.FunInstanceRelation
+import com.mktiti.fsearch.core.fit.FunInstanceRelation.*
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.FunctionObj
+import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.CompleteMinInfo
@@ -71,6 +74,12 @@ private class AsmFunctionCollectorVisitor(
 
     companion object {
         private const val checkFlag = Opcodes.ACC_PUBLIC
+
+        private fun functionRelation(name: String, access: Int): FunInstanceRelation = when {
+            name == "<init>" -> CONSTRUCTOR
+            ((access and Opcodes.ACC_STATIC) > 0) -> STATIC
+            else -> INSTANCE
+        }
     }
 
     private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
@@ -100,9 +109,10 @@ private class AsmFunctionCollectorVisitor(
 
     override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
         return if (checkFlag and access == checkFlag) {
-            val isStatic = ((access and Opcodes.ACC_STATIC) > 0)
+            val instanceRel = functionRelation(name, access)
+
             with(context) {
-                if (info.nameParts.any { it.firstOrNull()?.isDigit() != false } && !isStatic) {
+                if (info.nameParts.any { it.firstOrNull()?.isDigit() != false } && instanceRel != STATIC) {
                     // Skip anonymous and local types
                     return null
                 }
@@ -110,10 +120,13 @@ private class AsmFunctionCollectorVisitor(
                 val toParse = signature ?: descriptor
                 AsmFunParamNamesVisitor { paramNames ->
                     try {
-                        val parsedSignature = if (isStatic) {
-                            funParser.parseStaticFunction(name, paramNames, toParse)
-                        } else {
-                            when (this) {
+                        val parsedSignature: TypeSignature = when (instanceRel) {
+                            STATIC -> funParser.parseStaticFunction(name, paramNames, toParse)
+                            CONSTRUCTOR -> when (this) {
+                                is ContextInfo.Direct -> funParser.parseDirectConstructor(thisType, toParse, paramNames)
+                                is ContextInfo.Template -> funParser.parseTemplateConstructor(thisType, toParse, paramNames)
+                            }
+                            INSTANCE -> when (this) {
                                 is ContextInfo.Direct -> funParser.parseDirectFunction(name, paramNames, toParse, thisType)
                                 is ContextInfo.Template -> funParser.parseTemplateFunction(name, paramNames, toParse, thisType)
                             }
@@ -128,12 +141,12 @@ private class AsmFunctionCollectorVisitor(
                                 file = info,
                                 name = name,
                                 signature = parsedSignature,
-                                isStatic = isStatic,
+                                instanceRelation = instanceRel,
                                 typeParams = typeParams,
                                 infoRepo = infoRepo
                         ) ?: error("Cannot create function info! ($info::$name)")
 
-                        if (isStatic) {
+                        if (instanceRel != INSTANCE) {
                             collectedStaticFuns += FunctionObj(funInfo, parsedSignature)
                         } else {
                             //val id = info.packageName + info.simpleName

@@ -1,10 +1,10 @@
 package com.mktiti.fsearch.parser.integrationtest
 
-import com.mktiti.fsearch.core.fit.FunIdParam
-import com.mktiti.fsearch.core.fit.FunctionInfo
-import com.mktiti.fsearch.core.fit.JavaQueryFitter
-import com.mktiti.fsearch.core.fit.QueryFitter
-import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.repo.FallbackResolver
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
+import com.mktiti.fsearch.core.repo.MapTypeRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.function.DirectoryFunctionCollector
@@ -37,7 +37,12 @@ class QueryIntegrationTest {
                             val (fileAndName, sig) = result.split('(')
                             val (file, name) = fileAndName.split(regex = "\\.|(::)".toRegex()).cutLast()
                             val (filePackage, fileName) = file.cutLast()
-                            val isStatic = fileAndName.contains("::")
+
+                            val relation = when {
+                                fileAndName.contains("::") -> FunInstanceRelation.STATIC
+                                fileName == name -> FunInstanceRelation.CONSTRUCTOR
+                                else -> FunInstanceRelation.INSTANCE
+                            }
 
                             val params = sig.dropLast(1).split(',').map { param ->
                                 PrimitiveType.fromNameSafe(param)?.let {
@@ -51,7 +56,7 @@ class QueryIntegrationTest {
                             FunctionInfo(
                                     file = MinimalInfo(filePackage, fileName),
                                     name = name,
-                                    isStatic = isStatic,
+                                    relation = relation,
                                     paramTypes = params
                             )
                         }.toSet()

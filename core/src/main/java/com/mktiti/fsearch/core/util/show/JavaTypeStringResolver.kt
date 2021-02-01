@@ -1,6 +1,8 @@
 package com.mktiti.fsearch.core.util.show
 
 import com.mktiti.fsearch.core.fit.FittingMap
+import com.mktiti.fsearch.core.fit.FunInstanceRelation.CONSTRUCTOR
+import com.mktiti.fsearch.core.fit.FunInstanceRelation.STATIC
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.QueryType
 import com.mktiti.fsearch.core.javadoc.DocStore
@@ -111,13 +113,21 @@ class JavaTypeStringResolver(
             }
         }
         function.info.apply {
-            append(file.fullName)
-            if (isStatic) {
-                append("::")
-            } else {
-                append(".")
+            when (function.info.relation) {
+                CONSTRUCTOR -> {
+                    append("constructor ")
+                    append(file.fullName)
+                }
+                else -> {
+                    append(file.fullName)
+                    if (function.info.relation == STATIC) {
+                        append("::")
+                    } else {
+                        append(".")
+                    }
+                    append(name)
+                }
             }
-            append(name)
         }
         function.signature.apply {
             val typeParams = typeParameters.map { it.sign }

@@ -2,9 +2,11 @@ package com.mktiti.fsearch.core.type
 
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.ParamSubstitution
 import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
+import com.mktiti.fsearch.core.util.forceDynamicApply
 import com.mktiti.fsearch.util.castIfAllInstance
 import com.mktiti.fsearch.core.util.genericString
 import java.util.*
@@ -89,7 +91,7 @@ sealed class Type<out I : CompleteMinInfo<*>> : SemiType {
         }
 
         override val typeParamCount: Int
-            get() = typeArgMapping.map { it.typeParamCount }.max() ?: 0
+            get() = typeArgMapping.map { it.typeParamCount }.maxOrNull() ?: 0
 
         override val staticApplicable: Boolean
             get() = typeArgMapping.filterIsInstance<BoundedWildcard>().none()
@@ -163,6 +165,10 @@ class TypeTemplate(
 
     override val typeParamCount: Int
         get() = typeParams.size
+
+    fun asDynamicApplied(): DynamicAppliedType = forceDynamicApply(
+            (0 until typeParams.size).map { ParamSubstitution(it) }
+    )
 
     override fun staticApply(typeArgs: List<TypeHolder.Static>): StaticAppliedType? {
         return StaticAppliedType(

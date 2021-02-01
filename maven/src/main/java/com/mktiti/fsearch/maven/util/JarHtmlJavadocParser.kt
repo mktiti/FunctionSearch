@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.maven.util
 
 import com.mktiti.fsearch.core.fit.FunIdParam
+import com.mktiti.fsearch.core.fit.FunInstanceRelation
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
@@ -9,6 +10,7 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.cutLast
+import com.mktiti.fsearch.util.map
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -75,12 +77,12 @@ class JarHtmlJavadocParser(
     private data class IncompleteFunId(
             val name: String,
             val params: List<FunIdParam>,
-            val static: Boolean
+            val relation: FunInstanceRelation
     ) {
 
         override fun equals(other: Any?): Boolean {
             return if (other is IncompleteFunId) {
-                if (name != other.name || static != other.static) {
+                if (relation != other.relation || (name != other.name)) {
                     false
                 } else {
                     params.zipIfSameLength(other.params)?.all { (a, b) ->
@@ -92,8 +94,44 @@ class JarHtmlJavadocParser(
             }
         }
 
-        override fun hashCode() = Objects.hash(name, static)
+        override fun hashCode() = Objects.hash(name, relation)
 
+    }
+
+    private fun parseConstructorHeaders(file: MinimalInfo, document: Document): Map<IncompleteFunId, FunctionDoc> {
+        val methodSummary = (
+                document.selectFirst("[name='constructor_summary']") ?:
+                document.selectFirst("[name='constructor.summary']") ?:
+                document.getElementById("constructor.summary")
+        )?.parent()?.selectFirst("table>tbody")
+
+        if (methodSummary == null) {
+            println("No constructor summary table found ($file)")
+            return emptyMap()
+        }
+
+        return methodSummary.children().drop(1).mapNotNull {
+            val (sigElem, descElem) = when (it.childrenSize()) {
+                1 -> {
+                    val sigDesc = it.child(0).children()
+                    sigDesc[0] to sigDesc.getOrNull(1)
+                }
+                2 -> it.child(0) to it.child(1)
+                else -> return@mapNotNull null
+            }
+
+            val (_, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
+            val shortInfo = descElem?.wholeText()?.cleanText()
+
+            IncompleteFunId(
+                    name = "<init>",
+                    relation = FunInstanceRelation.CONSTRUCTOR,
+                    params = signature
+            ) to FunctionDoc(
+                    paramNames = paramNames,
+                    shortInfo = shortInfo
+            )
+        }.toMap()
     }
 
     private fun parseMethodHeaders(file: MinimalInfo, document: Document): Map<IncompleteFunId, FunctionDoc> {
@@ -118,14 +156,15 @@ class JarHtmlJavadocParser(
                 else -> return@mapNotNull null
             }
 
-            val static = it.child(0).wholeText().cleanText().contains("static")
-
             val (name, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
+            val cleanName = name.cleanText()
+            val isStatic = it.child(0).wholeText().cleanText().contains("static")
+
             val shortInfo = descElem?.wholeText()?.cleanText()
 
             IncompleteFunId(
-                    name = name.cleanText(),
-                    static = static,
+                    name = cleanName,
+                    relation = isStatic.map(FunInstanceRelation.STATIC, FunInstanceRelation.INSTANCE),
                     params = signature
             ) to FunctionDoc(
                     paramNames = paramNames,
@@ -139,6 +178,21 @@ class JarHtmlJavadocParser(
             val detail: String
     )
 
+    private fun parseConstructorDetails(file: MinimalInfo, document: Document): Map<IncompleteFunId, DetailData> {
+        val constructorDetails = (
+                document.selectFirst("[name='constructor_detail']") ?:
+                document.selectFirst("[name='constructor.detail']") ?:
+                document.getElementById("constructor.detail")
+        )?.parent()
+
+        if (constructorDetails == null) {
+            println("No constructor detail elem found ($file)")
+            return emptyMap()
+        }
+
+        return parseMemberDetails(constructorDetails, true)
+    }
+
     private fun parseMethodDetails(file: MinimalInfo, document: Document): Map<IncompleteFunId, DetailData> {
         val methodDetails = (
                 document.selectFirst("[name='method_detail']") ?:
@@ -151,6 +205,10 @@ class JarHtmlJavadocParser(
             return emptyMap()
         }
 
+        return parseMemberDetails(methodDetails, false)
+    }
+
+    private fun parseMemberDetails(container: Element, isConstructor: Boolean): Map<IncompleteFunId, DetailData> {
         data class MethodGroup(
                 val ids: List<Element>,
                 val detailElem: Element
@@ -167,7 +225,7 @@ class JarHtmlJavadocParser(
             )
         }
 
-        val methodGroups = methodDetails.children().drop(2).fold(GroupAcc()) { acc, elem ->
+        val methodGroups = container.children().drop(2).fold(GroupAcc()) { acc, elem ->
             if (elem.tagName() == "a") {
                 acc.addId(elem)
             } else {
@@ -183,11 +241,17 @@ class JarHtmlJavadocParser(
                 val (name, params) = parseFunSignature(funId)
 
                 val detail = detailElem.child(0)
-                val isStatic = detail.child(1).wholeText().cleanText().contains("static")
+
+                val cleanName = name.cleanText()
+                val relation = when {
+                    isConstructor -> FunInstanceRelation.CONSTRUCTOR
+                    detail.child(1).wholeText().cleanText().contains("static") -> FunInstanceRelation.STATIC
+                    else -> FunInstanceRelation.INSTANCE
+                }
 
                 val info = IncompleteFunId(
-                        name = name.cleanText(),
-                        static = isStatic,
+                        name = if (relation == FunInstanceRelation.CONSTRUCTOR) "<init>" else cleanName,
+                        relation = relation,
                         params = params
                 )
 
@@ -208,15 +272,15 @@ class JarHtmlJavadocParser(
             Jsoup.parse(it.readText())
         }
 
-        val methodInfos = parseMethodHeaders(file, document)
-        val details = parseMethodDetails(file, document)
+        val methodInfos = parseConstructorHeaders(file, document) + parseMethodHeaders(file, document)
+        val details = parseConstructorDetails(file, document) + parseMethodDetails(file, document)
 
         return methodInfos.mapNotNull { (id, doc) ->
             val data = details[id] ?: return@mapNotNull null
 
             val info = FunctionInfo(
                     file = file,
-                    isStatic = id.static,
+                    relation = id.relation,
                     name = id.name,
                     paramTypes = data.signature
             )

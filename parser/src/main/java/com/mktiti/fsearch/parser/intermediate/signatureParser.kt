@@ -49,6 +49,10 @@ interface JavaSignatureFunctionParser {
 
     fun parseDirectFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: CompleteMinInfo.Static): TypeSignature
 
+    fun parseDirectConstructor(type: CompleteMinInfo.Static, signature: String, paramNames: List<String>?): TypeSignature
+
+    fun parseTemplateConstructor(type: TypeTemplate, signature: String, paramNames: List<String>?): TypeSignature
+
     fun parseStaticFunction(name: String, paramNames: List<String>?, signature: String): TypeSignature
 
 }

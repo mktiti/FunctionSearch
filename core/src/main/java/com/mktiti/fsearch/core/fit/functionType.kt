@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.core.fit
 
+import com.mktiti.fsearch.core.fit.FunInstanceRelation.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
 import com.mktiti.fsearch.core.type.StaticTypeSubstitution
@@ -56,13 +57,26 @@ sealed class TypeSignature {
         override val typeParameters: List<TypeParameter>
             get() = emptyList()
 
+        fun copy(
+                inputParameters: List<Pair<String, StaticTypeSubstitution>> = this.inputParameters,
+                output: StaticTypeSubstitution = this.output
+        ) = DirectSignature(inputParameters, output)
+
     }
 
     class GenericSignature(
             override val typeParameters: List<TypeParameter>,
             override val inputParameters: List<Pair<String, Substitution>>,
             override val output: Substitution
-    ) : TypeSignature()
+    ) : TypeSignature() {
+
+        fun copy(
+                typeParameters: List<TypeParameter> = this.typeParameters,
+                inputParameters: List<Pair<String, Substitution>> = this.inputParameters,
+                output: Substitution = this.output
+        ) = GenericSignature(typeParameters, inputParameters, output)
+
+    }
 
     override fun toString() = fullString
 
@@ -74,18 +88,29 @@ data class FunctionObj(
 ) {
 
     override fun toString() = buildString {
-        append("fun")
+        if (info.relation == CONSTRUCTOR) {
+            append("constructor ")
+        } else {
+            append("fun")
+        }
+
         if (signature.genericString.isEmpty()) {
             append(signature.genericString)
             append(" ")
         }
+
         append(info.file.fullName)
-        if (info.isStatic) {
-            append("::")
-        } else {
-            append(".")
+        when (info.relation) {
+            INSTANCE -> {
+                append(".")
+                append(info.name)
+            }
+            STATIC -> {
+                append("::")
+                append(info.name)
+            }
+            CONSTRUCTOR -> {}
         }
-        append(info.name)
         append(signature.typeString)
     }
 

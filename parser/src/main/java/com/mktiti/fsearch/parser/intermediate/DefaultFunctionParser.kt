@@ -116,7 +116,29 @@ class DefaultFunctionParser(
 
     override fun parseDirectFunction(name: String, paramNames: List<String>?, signature: String, implicitThis: CompleteMinInfo.Static): TypeSignature {
         val parseBase = parseFunctionBase(signature, emptyList())
-        return parseStaticArgs(parseBase, paramNames, implicitThis) ?: parseDynamicArgs(parseBase, paramNames, TypeSubstitution(implicitThis.holder()))
+        return parseStaticArgs(parseBase, paramNames, implicitThis)
+                ?: parseDynamicArgs(parseBase, paramNames, TypeSubstitution(implicitThis.holder()))
+    }
+
+    override fun parseDirectConstructor(type: CompleteMinInfo.Static, signature: String, paramNames: List<String>?): TypeSignature {
+        val parseBase = parseFunctionBase(signature, emptyList())
+        val thisOutput = TypeSubstitution(type.holder())
+        return when (val static = parseStaticArgs(parseBase, paramNames, implicitThis = null)) {
+            null -> {
+                parseDynamicArgs(parseBase, paramNames, implicitThis = null).copy(output = thisOutput)
+            }
+            else -> {
+                static.copy(output = thisOutput)
+            }
+        }
+    }
+
+    override fun parseTemplateConstructor(type: TypeTemplate, signature: String, paramNames: List<String>?): TypeSignature {
+        val parseBase = parseFunctionBase(signature, emptyList()).copy(
+                typeParams = type.typeParams
+        )
+        val thisOutput = TypeSubstitution(type.asDynamicApplied().holder())
+        return parseDynamicArgs(parseBase, paramNames, implicitThis = null).copy(output = thisOutput)
     }
 
     override fun parseStaticFunction(name: String, paramNames: List<String>?, signature: String): TypeSignature {

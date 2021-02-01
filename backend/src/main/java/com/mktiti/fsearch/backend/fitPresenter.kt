@@ -65,9 +65,9 @@ class BasicFitPresenter(
     }
 
     private fun <A : Any> resolveCompleteMinimal(currentPackage: PackageName, info: CompleteMinInfo<A>, argConvert: (A) -> String): String {
-        return when (info.base) {
-            infoRepo.voidType -> "void"
-            infoRepo.arrayType -> argConvert(info.args.single()) + "[]"
+        return when {
+            info.base.sameAs(infoRepo.arrayType) -> argConvert(info.args.single()) + "[]"
+            info.base.virtual -> info.base.simpleName
             else -> {
                 val base = resolveInfo(info.base, currentPackage)
                 if (info.args.isEmpty()) {

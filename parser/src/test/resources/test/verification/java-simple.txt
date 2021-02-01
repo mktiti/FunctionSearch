@@ -47,3 +47,9 @@ com.mktiti.fsearchtest.FtCollUtil::permutations(com.mktiti.fsearchtest.FtCollect
 FtMap<FtString, int> -> FtCollection<FtList<FtPair<FtString, int>>>
 com.mktiti.fsearchtest.FtCollUtil::permutations(com.mktiti.fsearchtest.FtCollection)
 
+# Unbound wildcard as generic parameter
+FtList<a> -> ()
+com.mktiti.fsearchtest.FtCollUtil::reverse(com.mktiti.fsearchtest.FtList)
+
+FtList<a> -> FtList<a>
+com.mktiti.fsearchtest.FtCollUtil::reversed(com.mktiti.fsearchtest.FtList)

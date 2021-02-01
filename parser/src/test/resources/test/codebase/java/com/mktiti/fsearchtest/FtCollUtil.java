@@ -26,4 +26,8 @@ public interface FtCollUtil {
         return null;
     }
 
+    static void reverse(FtList<?> list) {}
+
+    static <T> FtList<T> reversed(FtList<T> list) { return null; }
+
 }

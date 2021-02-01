@@ -43,6 +43,11 @@ data class MinimalInfo(
 
     fun dynamicComplete(args: List<ApplicationParameter>) = CompleteMinInfo.Dynamic(this, args)
 
+    fun sameAs(other: MinimalInfo): Boolean
+        = packageName == other.packageName &&
+            simpleName == other.simpleName &&
+            virtual == other.virtual
+
     override fun equals(other: Any?): Boolean = when {
         other !is MinimalInfo -> false
         this === anyWildcard -> true

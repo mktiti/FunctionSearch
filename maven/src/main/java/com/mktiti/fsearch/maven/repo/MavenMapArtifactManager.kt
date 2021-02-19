@@ -33,6 +33,8 @@ class MavenMapArtifactManager(
 
     private val stored = mutableMapOf<ArtifactId, DomainRepo>()
 
+    override fun allStored(): Set<ArtifactId> = stored.keys
+
     override fun effective(artifacts: Collection<ArtifactId>) = mavenFetcher.runOnArtifactWithDeps(artifacts) { files ->
         files.keys
     } ?: error("Failed to resolve dependencies")
@@ -113,5 +115,7 @@ class MavenMapArtifactManager(
             fetchWithDependencies(artifacts)
         }
     }
+
+    override fun remove(artifact: ArtifactId): Boolean = stored.remove(artifact) != null
 
 }

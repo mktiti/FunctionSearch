@@ -1,32 +1,35 @@
-package com.mktiti.fsearch.backend.api
+package com.mktiti.fsearch.dto
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.mktiti.fsearch.backend.ContextId
-import com.mktiti.fsearch.core.fit.FunInstanceRelation
-import com.mktiti.fsearch.modules.ArtifactId
 import io.swagger.v3.oas.annotations.media.Schema
+
+@SuppressWarnings("unused")
 
 enum class ContextLoadStatus {
     LOADING, LOADED, ERROR
 }
 
+data class MessageDto(val message: String)
+
 data class ArtifactIdDto(
         val group: String,
         val name: String,
         val version: String
-) {
-
-    fun toId() = ArtifactId(group.split('.'), name, version)
-
-}
+)
 
 data class QueryCtxDto(
         val artifacts: List<ArtifactIdDto>
-) {
+)
 
-    fun toId() = ContextId(artifacts.map { it.toId() }.toSet())
+data class TypeDto(
+        val packageName: String,
+        val simpleName: String
+)
 
-}
+data class TypeInfoDto(
+        val type: TypeDto,
+        val typeParamCount: Int
+)
 
 data class HintRequestDto(
         val context: QueryCtxDto,
@@ -50,17 +53,21 @@ data class FunDocDto(
 
 enum class FunRelationDto {
     STATIC, CONSTRUCTOR, INSTANCE;
-
-    companion object {
-        fun fromModel(rel: FunInstanceRelation) = when (rel) {
-            FunInstanceRelation.INSTANCE -> INSTANCE
-            FunInstanceRelation.STATIC -> STATIC
-            FunInstanceRelation.CONSTRUCTOR -> CONSTRUCTOR
-        }
-    }
 }
 
-// TODO Fitting result
+data class ContextInfoQueryParam(
+        val context: QueryCtxDto,
+        val namePart: String?
+)
+
+data class FunId(
+        val type: TypeDto,
+        val name: String,
+        val signature: String,
+        val relation: FunRelationDto
+)
+
+// TODO Fitting result, rename to Function?
 data class QueryFitResult(
         val file: String,
         val funName: String,

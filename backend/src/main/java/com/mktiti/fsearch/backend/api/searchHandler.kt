@@ -1,5 +1,10 @@
 package com.mktiti.fsearch.backend.api
 
+import com.mktiti.fsearch.dto.ContextLoadStatus
+import com.mktiti.fsearch.dto.QueryCtxDto
+import com.mktiti.fsearch.dto.QueryResult
+import com.mktiti.fsearch.dto.TypeHint
+
 interface SearchHandler {
 
     object Nop : SearchHandler {

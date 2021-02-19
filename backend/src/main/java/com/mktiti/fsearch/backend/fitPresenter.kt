@@ -1,8 +1,6 @@
 package com.mktiti.fsearch.backend
 
-import com.mktiti.fsearch.backend.api.FunDocDto
-import com.mktiti.fsearch.backend.api.FunRelationDto
-import com.mktiti.fsearch.backend.api.QueryFitResult
+import com.mktiti.fsearch.backend.api.relationDtoFromModel
 import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.fit.FunInstanceRelation.*
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
@@ -11,6 +9,9 @@ import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.util.genericString
+import com.mktiti.fsearch.dto.FunDocDto
+import com.mktiti.fsearch.dto.FunRelationDto
+import com.mktiti.fsearch.dto.QueryFitResult
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree
 import com.mktiti.fsearch.util.roll
@@ -18,6 +19,8 @@ import com.mktiti.fsearch.util.roll
 interface FitPresenter {
 
     fun present(function: FunctionObj, fit: FittingMap, doc: FunctionDoc): QueryFitResult
+
+    fun present(function: FunctionObj, doc: FunctionDoc): QueryFitResult
 
 }
 
@@ -184,39 +187,44 @@ class BasicFitPresenter(
         }
     }
 
-    override fun present(function: FunctionObj, fit: FittingMap, doc: FunctionDoc): QueryFitResult {
+    override fun present(function: FunctionObj, doc: FunctionDoc): QueryFitResult {
         val info = function.info
+        val signature = function.signature
 
         val fileTypeParams = if (info.relation == STATIC) {
             0
         } else {
             val thisParam = if (info.relation == INSTANCE) {
-                fit.funSignature.inputParameters.firstOrNull()?.second
+                signature.inputParameters.firstOrNull()?.second
             } else {
-                fit.funSignature.output
+                signature.output
             }
             (thisParam as? Substitution.TypeSubstitution<*, *>)?.typeParamCount ?: 0
         }
 
-        val fileTps = fit.funSignature.typeParameters.map(TypeParameter::sign).take(fileTypeParams)
+        val fileTps = signature.typeParameters.map(TypeParameter::sign).take(fileTypeParams)
 
         val fileName = info.file.fullName + (if (fileTps.isEmpty()) "" else fileTps.genericString())
 
         val header = headerString(
                 info = info,
-                signature = fit.funSignature,
+                signature = signature,
                 typeTps = fileTps,
-                funTps = fit.funSignature.typeParameters.drop(fileTypeParams),
+                funTps = signature.typeParameters.drop(fileTypeParams),
                 paramNames = doc.paramNames
         )
 
         return QueryFitResult(
                 file = fileName,
                 funName = info.name,
-                relation = FunRelationDto.fromModel(info.relation),
+                relation = relationDtoFromModel(info.relation),
                 doc = FunDocDto(shortInfo = doc.shortInfo, details = doc.longInfo),
                 header = header
         )
+    }
+
+    override fun present(function: FunctionObj, fit: FittingMap, doc: FunctionDoc): QueryFitResult {
+        return present(function, doc)
     }
 
 }

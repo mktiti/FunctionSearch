@@ -14,24 +14,22 @@ import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
 import com.mktiti.fsearch.maven.util.printLoadResults
 import com.mktiti.fsearch.maven.util.printLog
-import com.mktiti.fsearch.modules.ArtifactId
+import com.mktiti.fsearch.modules.ArtifactManager
 import com.mktiti.fsearch.modules.SimpleDomainRepo
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.util.InMemTypeParseLog
-import io.swagger.v3.oas.annotations.OpenAPIDefinition
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.context.annotation.Bean
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.streams.toList
-import org.springframework.context.annotation.Bean
 
 @SpringBootApplication
 class SpringMain {
@@ -46,6 +44,7 @@ class SpringMain {
 
 object ContextManagerStore {
 
+    lateinit var artifactManager: ArtifactManager
     lateinit var contextManager: ContextManager
 
     fun init(args: List<String>) {
@@ -102,6 +101,7 @@ object ContextManagerStore {
                 baseResolver = jclResolver,
                 mavenFetcher = ExternalMavenFetcher()
         )
+        artifactManager = mavenManager
 
         val mavenJavadocManager = MavenMapJavadocManager(
                 infoRepo = MapJavaInfoRepo,
@@ -118,10 +118,11 @@ object ContextManagerStore {
         )
 
         // Force load apache commons and guava
-        contextManager.context(setOf(
+        /*contextManager.context(setOf(
                 ArtifactId(listOf("org", "apache", "commons"), "commons-lang3", "3.11"),
                 ArtifactId(listOf("com", "google", "guava"), "guava", "30.0-jre")
         ))
+         */
     }
 
 }

@@ -4,6 +4,10 @@ import com.mktiti.fsearch.backend.api.*
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
+import com.mktiti.fsearch.dto.ContextLoadStatus
+import com.mktiti.fsearch.dto.QueryCtxDto
+import com.mktiti.fsearch.dto.QueryResult
+import com.mktiti.fsearch.dto.TypeHint
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.util.concurrent.Executors
 import kotlin.streams.toList

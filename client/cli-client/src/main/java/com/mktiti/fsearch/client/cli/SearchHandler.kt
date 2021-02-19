@@ -1,0 +1,96 @@
+package com.mktiti.fsearch.client.cli
+
+//import com.mktiti.fsearch.client.rest.RestClient
+import com.mktiti.fsearch.client.rest.ApiCallResult
+import com.mktiti.fsearch.client.rest.SearchApi
+import com.mktiti.fsearch.client.rest.Service
+import com.mktiti.fsearch.dto.QueryRequestDto
+import com.mktiti.fsearch.dto.QueryResult
+
+class SearchHandler(
+        private val searchApi: SearchApi
+) {
+
+    //constructor(client: RestClient) : this(client.search)
+    constructor(client: Service) : this(client.searchApi)
+
+    companion object {
+        private fun constructDto(context: Context, query: String) = QueryRequestDto(
+                context = context.contextDto(),
+                query = query
+        )
+    }
+
+    fun searchJob(context: Context, query: String): BackgroundJob {
+        return {
+            printer.println("Searching...")
+
+            val callRes = searchApi.search(constructDto(context, query))
+            if (!isCancelled) {
+                when (callRes) {
+                    is ApiCallResult.Success<QueryResult> -> {
+                        when (val queryRes = callRes.result) {
+                            is QueryResult.Success -> {
+                                queryRes.results.forEach {
+                                    printer.println("Search done!")
+                                    printer.println("Fitting functions:")
+                                    if (!isCancelled) {
+                                        printer.println(it.file)
+                                        printer.println("\t${it.header}")
+                                    }
+                                }
+                            }
+                            is QueryResult.Error.InternalError -> {
+                                printer.println("Error while processing query - ${queryRes.message}")
+                            }
+                            is QueryResult.Error.Query -> {
+                                printer.println("Invalid query - ${queryRes.message}")
+                            }
+                        }
+                    }
+                    is ApiCallResult.Exception<QueryResult> -> {
+                        printer.println("Failed to search functions")
+                        printer.println(callRes.message)
+                    }
+                }
+            }
+
+
+            /*
+            val result = safeApiCall {
+                searchApi.search(constructDto(context, query))
+            }
+
+            if (!isCancelled) {
+                when (result) {
+                    is ApiCallResult.Success -> {
+                        when (val queryRes = result.result) {
+                            is QueryResult.Success -> {
+                                queryRes.results.forEach {
+                                    printer.println("Search done!")
+                                    printer.println("Fitting functions:")
+                                    if (isCancelled) {
+                                        printer.println(it.file)
+                                        printer.println("\t${it.header}")
+                                    }
+                                }
+                            }
+                            is QueryResult.Error.InternalError -> {
+                                printer.println("Error while processing query - ${queryRes.message}")
+                            }
+                            is QueryResult.Error.Query -> {
+                                printer.println("Invalid query - ${queryRes.message}")
+                            }
+                        }
+                    }
+                    is ApiCallResult.Exception -> {
+                        printer.println("Failed to search functions")
+                        printer.println(result.message)
+                    }
+                }
+            }
+             */
+        }
+    }
+
+}

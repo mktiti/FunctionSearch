@@ -8,6 +8,7 @@ import com.mktiti.fsearch.parser.intermediate.DefaultTypeParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureTypeParser
 import com.mktiti.fsearch.parser.service.IndirectInfoCollector
+import com.mktiti.fsearch.parser.type.JavaSamUtil
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor
@@ -159,10 +160,13 @@ private class AsmInfoCollectorVisitor(
 
     override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
         if ((access and Opcodes.ACC_ABSTRACT) > 0 && (access and Opcodes.ACC_STATIC) == 0) {
-            currentType?.let {
-                currentType = it.copy(
-                        abstractCount = it.abstractCount + AbstractCount.OneAbstract(signature ?: descriptor)
-                )
+            // Skipping always realized abstract methods
+            if (!JavaSamUtil.isObjectMethod(name, descriptor)) {
+                currentType?.let {
+                    currentType = it.copy(
+                            abstractCount = it.abstractCount + AbstractCount.OneAbstract(signature ?: descriptor)
+                    )
+                }
             }
         }
 
@@ -230,7 +234,7 @@ private class AsmInfoCollectorVisitor(
                         samType = genericSam(nestContext)
                 )
             } else {
-                when (val direct = typeParser.parseDirectTypeSignature(info, signature, /*TODO*/ try {directSam()}catch(e: Exception){null})) {
+                when (val direct = typeParser.parseDirectTypeSignature(info, signature, directSam())) {
                     null -> {
                         addTemplate(typeParser.parseTemplateSignature(info, signature, nestContext, ::genericSam))
                     }

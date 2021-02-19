@@ -23,6 +23,7 @@ com.mktiti.fsearchtest.FtList.get(int)
 <a : FtComp<a>> FtCollection<a> -> a
 com.mktiti.fsearchtest.FtCollUtil::min(com.mktiti.fsearchtest.FtCollection);com.mktiti.fsearchtest.FtCollUtil::max(com.mktiti.fsearchtest.FtCollection)
 
+# List min/max with Comparator
 FtCollection<a>, FtComparator<a> -> a
 com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
@@ -36,6 +37,22 @@ FtCollection<FtCeo>, FtComparator<FtPerson> -> FtCeo
 com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtCollection<FtCeo>, FtComparator<FtBoss> -> FtCeo
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
+
+# List min/max with SAM Comparator
+FtCollection<a>, (a, a -> int) -> a
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
+
+(a, a -> int), FtCollection<a> -> a
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
+
+FtCollection<FtBoss>, (FtPerson, FtPerson -> int) -> FtBoss
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
+
+FtCollection<FtCeo>, (FtPerson, FtPerson -> int) -> FtCeo
+com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
+
+FtCollection<FtCeo>, (FtBoss, FtBoss -> int) -> FtCeo
 com.mktiti.fsearchtest.FtCollUtil::minWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator);com.mktiti.fsearchtest.FtCollUtil::maxWc(com.mktiti.fsearchtest.FtCollection,com.mktiti.fsearchtest.FtComparator)
 
 FtCollection<FtCeo> -> FtCollection<FtList<FtCeo>>

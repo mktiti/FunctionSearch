@@ -8,6 +8,8 @@ import com.mktiti.fsearch.parser.generated.SignatureParser
 import com.mktiti.fsearch.parser.generated.SignatureParser.ClassTypeSignatureContext
 import com.mktiti.fsearch.parser.generated.SignatureParser.TypeParametersContext
 
+class UndeclaredTypeArgReference(typeArg: String) : Exception("Type argument $typeArg is undeclared!")
+
 interface JavaSignatureParser {
 
     fun parseDefinedStaticType(param: ClassTypeSignatureContext): CompleteMinInfo.Static?

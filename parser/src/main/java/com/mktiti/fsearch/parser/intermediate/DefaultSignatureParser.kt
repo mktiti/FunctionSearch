@@ -177,7 +177,7 @@ class DefaultSignatureParser(
                 if (ref == selfParamName) {
                     Substitution.SelfSubstitution
                 } else {
-                    val index = typeParams.indexOfOrNull(ref) ?: error("Undeclared type arg $ref!")
+                    val index = typeParams.indexOfOrNull(ref) ?: throw UndeclaredTypeArgReference(ref)
                     ParamSubstitution(index)
                 }
             }

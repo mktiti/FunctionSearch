@@ -147,7 +147,12 @@ class DefaultFunctionParser(
     }
 
     override fun parseDirectSam(paramNames: List<String>?, signature: String): SamType.DirectSam? {
-        val parseBase = parseFunctionBase(signature, emptyList())
+        val parseBase = try {
+            parseFunctionBase(signature, emptyList())
+        } catch (typeError: UndeclaredTypeArgReference) {
+            // TODO log or fix
+            return null
+        }
 
         return if (parseBase.typeParams.isEmpty()) {
             parseStaticArgs(parseBase, paramNames, null)?.run {

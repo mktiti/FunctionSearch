@@ -7,6 +7,12 @@ import java.util.concurrent.atomic.AtomicReference
 
 typealias BackgroundJob = BackgroundJobContext.() -> Unit
 
+val NopBackgroundJob: BackgroundJob = { /* Nop */ }
+
+fun printJob(message: String): BackgroundJob = {
+    printer.println(message)
+}
+
 interface JobHandler {
 
     val hasActive: Boolean
@@ -16,8 +22,9 @@ interface JobHandler {
 }
 
 class DefaultJobHandler(
-        private val printer: PrintWriter
-) : JobHandler {
+        private val printer: PrintWriter,
+        private val contextManager: ContextManager
+) : JobHandler, AutoCloseable {
 
     private val executor = Executors.newSingleThreadExecutor()
     private val jobContainer = AtomicReference<DefaultBackgroundJobContext?>()
@@ -26,11 +33,12 @@ class DefaultJobHandler(
         get() = jobContainer.get() != null
 
     override fun setJob(job: BackgroundJob) {
-        with(DefaultBackgroundJobContext(printer)) {
-            job()
-            executor.submit {
+        with(DefaultBackgroundJobContext(printer, contextManager)) {
+            val future = executor.submit {
+                job()
             }
             jobContainer.set(this)
+            future.get()
         }
     }
 
@@ -38,17 +46,23 @@ class DefaultJobHandler(
         jobContainer.get()?.cancel()
     }
 
+    override fun close() {
+        executor.shutdown()
+    }
+
 }
 
 interface BackgroundJobContext {
 
+    val contextManager: ContextManager
     val printer: PrintWriter
     val isCancelled: Boolean
 
 }
 
 class DefaultBackgroundJobContext(
-        override val printer: PrintWriter
+        override val printer: PrintWriter,
+        override val contextManager: ContextManager
 ) : BackgroundJobContext {
 
     private val atomicCancel = AtomicBoolean()

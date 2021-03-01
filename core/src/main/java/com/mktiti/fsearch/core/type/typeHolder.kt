@@ -66,7 +66,7 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
             override val info: CompleteMinInfo.Dynamic
                 get() = type.completeInfo
 
-            override fun with(resolver: TypeResolver): DynamicAppliedType? = type
+            override fun with(resolver: TypeResolver): DynamicAppliedType = type
 
             override fun staticApply(typeArgs: List<Static>): Static? {
                 val argTypes = typeArgs.castIfAllInstance<Static.Direct>()
@@ -96,10 +96,10 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
         }
 
         override val typeParamCount: Int
-            get() = info.args.map { it.typeParamCount }.max() ?: 0
+            get() = info.args.map { it.typeParamCount }.maxOrNull() ?: 0
 
         override fun staticApply(typeArgs: List<Static>): Static? {
-            return info.staticApply(typeArgs) ?: return null
+            return info.staticApply(typeArgs)
         }
 
         override fun applySelf(self: Static): Dynamic = Indirect(info = info.applySelf(self))
@@ -127,7 +127,7 @@ sealed class TypeHolder<out I : CompleteMinInfo<*>, out T : Type<I>> : StaticApp
             override val info: CompleteMinInfo.Static
                 get() = type.completeInfo
 
-            override fun with(resolver: TypeResolver): NonGenericType? = type
+            override fun with(resolver: TypeResolver): NonGenericType = type
 
             override fun indirect(): Indirect = Indirect(info)
 

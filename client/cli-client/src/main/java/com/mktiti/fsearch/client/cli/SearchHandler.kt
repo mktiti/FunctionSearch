@@ -1,6 +1,5 @@
 package com.mktiti.fsearch.client.cli
 
-//import com.mktiti.fsearch.client.rest.RestClient
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.SearchApi
 import com.mktiti.fsearch.client.rest.Service
@@ -23,7 +22,7 @@ class SearchHandler(
 
     fun searchJob(context: Context, query: String): BackgroundJob {
         return {
-            printer.println("Searching...")
+            printer.print("Searching... ")
 
             val callRes = searchApi.search(constructDto(context, query))
             if (!isCancelled) {
@@ -31,12 +30,16 @@ class SearchHandler(
                     is ApiCallResult.Success<QueryResult> -> {
                         when (val queryRes = callRes.result) {
                             is QueryResult.Success -> {
+                                printer.println("done!")
+                                printer.println("Matching functions:")
                                 queryRes.results.forEach {
-                                    printer.println("Search done!")
-                                    printer.println("Fitting functions:")
                                     if (!isCancelled) {
+                                        printer.println("========")
                                         printer.println(it.file)
                                         printer.println("\t${it.header}")
+                                        it.doc.shortInfo?.let { info ->
+                                            printer.println(info)
+                                        }
                                     }
                                 }
                             }

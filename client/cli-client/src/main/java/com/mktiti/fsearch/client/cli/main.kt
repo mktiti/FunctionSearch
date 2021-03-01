@@ -1,12 +1,12 @@
 package com.mktiti.fsearch.client.cli
 
+import com.mktiti.fsearch.client.cli.command.CommandStore
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.fuel.FuelService
 import org.jline.console.impl.SystemRegistryImpl
 import org.jline.reader.*
 import org.jline.reader.impl.DefaultParser
 import org.jline.reader.impl.DefaultParser.Bracket
-import org.jline.reader.impl.completer.StringsCompleter
 import org.jline.terminal.Size
 import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
@@ -32,8 +32,10 @@ fun main(args: Array<String>) {
         }
     }
 
-    val completer: Completer = StringsCompleter(
-            "info", "load", "load-code", "load-doc", "list-artifact", "list-fun", "list-type", "doc", "delete"
+    val commandStore = CommandStore(client)
+    val completer: Completer = CommandQueryCompleter(
+        queryCompleter = KotlinCompleter.NOP,
+        commandCompleter = commandStore.completer
     )
 
     val lineReader = with(LineReaderBuilder.builder()) {
@@ -57,44 +59,50 @@ fun main(args: Array<String>) {
 
     val searchHandler = SearchHandler(client)
 
-    val jobHandler: JobHandler = DefaultJobHandler(printer)
-    terminal.handle(Terminal.Signal.QUIT) {
-        jobHandler.cancel()
-    }
+    val contextManager = ContextManager()
 
-    val context = AtomicReference(
-            Context(emptySet(), ContextImports.empty())
-    )
+    DefaultJobHandler(printer, contextManager).use { jobHandler ->
+        terminal.handle(Terminal.Signal.INT) {
+            jobHandler.cancel()
+            printer.println("Interrupted")
+        }
 
-    fun runCommand(line: String): Boolean {
-        return if (line.startsWith(":")) {
-            if (line == ":quit") {
-                printer.println("Quitting")
-                true
+        val context = AtomicReference(
+                Context(emptySet(), ContextImports.empty())
+        )
+
+        fun runCommand(line: String): Boolean {
+            return if (line.startsWith(":")) {
+                if (line == ":quit") {
+                    printer.println("Quitting")
+                    true
+                } else {
+                    val job = commandStore.handle(line.removePrefix(":").split("\\s+".toRegex()))
+                    jobHandler.setJob(job)
+                    false
+                }
             } else {
+                jobHandler.setJob(searchHandler.searchJob(context.get(), line))
                 false
             }
-        } else {
-            jobHandler.setJob(searchHandler.searchJob(context.get(), line))
-            false
         }
-    }
 
-    while (true) {
-        try {
-            val line = lineReader.readLine(">")?.trim() ?: break
-            if (runCommand(line)) {
+        while (true) {
+            try {
+                val line = lineReader.readLine("λ>")?.trim() ?: break
+                if (runCommand(line)) {
+                    break
+                }
+            } catch (interrupt: UserInterruptException) {
+                //printer.println("Quiting")
+                //break
+            } catch (fileEnd: EndOfFileException) {
+                fileEnd.partialLine?.let(::runCommand)
                 break
             }
-        } catch (interrupt: UserInterruptException) {
-            printer.println("Quiting")
-            break
-        } catch (fileEnd: EndOfFileException) {
-            fileEnd.partialLine?.let(::runCommand)
-            break
         }
-    }
 
-    println("Exited")
+        println("Exiting")
+    }
 
 }

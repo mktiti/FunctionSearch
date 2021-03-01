@@ -124,7 +124,7 @@ private class MapPrefixNode<N, L>(
 
     override fun removeIf(pred: (L) -> Boolean) {
         value?.let { frozenValue ->
-            if (frozenValue != null && pred(frozenValue)) {
+            if (pred(frozenValue)) {
                 value = null
             }
         }

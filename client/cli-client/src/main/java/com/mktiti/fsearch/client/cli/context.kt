@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.client.cli
 
 import com.mktiti.fsearch.dto.ArtifactIdDto
+import com.mktiti.fsearch.dto.QueryCtxDto
 import com.mktiti.fsearch.dto.TypeDto
 
 data class ContextImports(
@@ -41,5 +42,12 @@ data class Context(
     operator fun minus(artifact: ArtifactIdDto) = copy(
             artifacts = artifacts - artifact
     )
+
+}
+
+class ContextManager(var context: Context = Context.empty()) {
+
+    val dto: QueryCtxDto
+        get() = QueryCtxDto(context.artifacts.toList())
 
 }

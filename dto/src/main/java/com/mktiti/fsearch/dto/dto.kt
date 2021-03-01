@@ -15,7 +15,13 @@ data class ArtifactIdDto(
         val group: String,
         val name: String,
         val version: String
-)
+) {
+
+    override fun toString(): String {
+        return "$group:$name$version"
+    }
+
+}
 
 data class QueryCtxDto(
         val artifacts: List<ArtifactIdDto>

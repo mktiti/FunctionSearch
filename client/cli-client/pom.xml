@@ -121,7 +121,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.mktiti.fsearch.client.cli.MainKt</mainClass>
+                            <mainClass>com.mktiti.fsearch.client.cli.tui.MainKt</mainClass>
                         </manifest>
                     </archive>
                     <finalName>fsearch-client</finalName>

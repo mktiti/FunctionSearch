@@ -1,31 +1,31 @@
 package com.mktiti.fsearch.client.cli.command
 
-import com.mktiti.fsearch.client.cli.BackgroundJob
-import com.mktiti.fsearch.client.cli.KotlinCompleter
+import com.mktiti.fsearch.client.cli.command.dsl.createCommands
+import com.mktiti.fsearch.client.cli.job.BackgroundJob
+import com.mktiti.fsearch.client.cli.tui.KotlinCompleter
+import com.mktiti.fsearch.client.cli.util.parseArtifactId
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.Service
-import com.mktiti.fsearch.dto.ArtifactIdDto
 
 class CommandStore(service: Service) {
 
     private val commands = createCommands {
         command("load") {
-            help = {
+            help {
                 "Loads a given maven artifact given by format \${group}:\${name}:\${version}"
             }
 
-            handler = { args ->
+            handle { args ->
                 if (args.size != 1) {
                     printer.println("Requires artifact id")
                 } else {
-                    val parts = args.first().split(":")
-                    if (parts.size != 3) {
-                        printer.println("Artifact id must be in format \$group:\$name:\$version")
+                    val artifact = parseArtifactId(args.first())
+                    if (artifact == null) {
+                        printer.println("Artifact id must be in format \${group}:\${name}:\${version}")
                     } else {
-                        val id = ArtifactIdDto(parts[0], parts[1], parts[2])
-                        when (val callRes = service.artifactApi.load(id)) {
+                        when (val callRes = service.artifactApi.load(artifact)) {
                             is ApiCallResult.Success -> {
-                                printer.println("Successfully loaded artifact $id")
+                                printer.println("Successfully loaded artifact $artifact")
                             }
                             is ApiCallResult.Exception -> {
                                 printer.println("Error while loading artifact - [${callRes.code}] ${callRes.message}")
@@ -37,11 +37,11 @@ class CommandStore(service: Service) {
         }
 
         command("list-artifacts") {
-            help = {
+            help {
                 "Lists available artifacts, optionally filtered by name (first parameter)"
             }
 
-            handler = { args ->
+            handle { args ->
                 if (args.size !in (0..1)) {
                     printer.println("Requires one or no arguments (optional name filer)")
                 } else {
@@ -58,13 +58,56 @@ class CommandStore(service: Service) {
             }
         }
 
+        command("import") {
+            help {
+                """
+                    Imports a type so that it can be referenced without fully qualified name in queries.
+                    For imported types, see :imports list 
+                """
+            }
+
+            handleTransform { args ->
+                val typeName = args.firstOrNull()
+                if (typeName == null) {
+                    printer.println("Requires the qualified name of the type to import.")
+                    context
+                } else {
+                    context
+                }
+            }
+        }
+
+        command("imports") {
+
+            help {
+                "Commands to manipulate and query imported types"
+            }
+
+            subCommand("list") {
+                help {
+                    "List the imported types which can be referenced safely without full qualifications"
+                }
+
+                handle {
+                    if (context.imports.importMap.isEmpty()) {
+                        printer.println("No type imported")
+                    } else {
+                        context.imports.importMap.forEach { (type, full) ->
+                            printer.println("${full.packageName}.${full.simpleName} as $type")
+                        }
+                    }
+                }
+            }
+
+        }
+
         command("types") {
-            help = {
+            help {
                 "Lists available types, optionally filtered by name (first parameter)"
             }
 
-            handler = { args ->
-                when (val callRes = service.infoApi.types(contextManager.dto, args.firstOrNull())) {
+            handle { args ->
+                when (val callRes = service.infoApi.types(context.artifactsDto, args.firstOrNull())) {
                     is ApiCallResult.Success -> {
                         callRes.result.forEach {
                             printer.println(it.type.packageName + "." + it.type.simpleName)
@@ -78,14 +121,18 @@ class CommandStore(service: Service) {
         }
 
         command("functions") {
-            help = {
+            help {
                 "Lists available functions, optionally filtered by name (first parameter)"
             }
         }
 
         command("quit") {
-            help = {
+            help {
                 "Quits JvmSearch"
+            }
+
+            handle {
+                quit()
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.client.cli
+package com.mktiti.fsearch.client.cli.util
 /*
 import io.swagger.client.infrastructure.ClientException
 import io.swagger.client.infrastructure.ServerException

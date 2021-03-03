@@ -1,5 +1,9 @@
-package com.mktiti.fsearch.client.cli
+package com.mktiti.fsearch.client.cli.search
 
+import com.mktiti.fsearch.client.cli.context.Context
+import com.mktiti.fsearch.client.cli.job.BackgroundJob
+import com.mktiti.fsearch.client.cli.job.voidBackgroundJob
+import com.mktiti.fsearch.client.cli.util.contextDto
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.SearchApi
 import com.mktiti.fsearch.client.rest.Service
@@ -21,7 +25,7 @@ class SearchHandler(
     }
 
     fun searchJob(context: Context, query: String): BackgroundJob {
-        return {
+        return voidBackgroundJob {
             printer.print("Searching... ")
 
             val callRes = searchApi.search(constructDto(context, query))

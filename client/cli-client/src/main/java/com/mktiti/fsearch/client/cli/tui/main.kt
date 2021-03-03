@@ -1,12 +1,19 @@
-package com.mktiti.fsearch.client.cli
+package com.mktiti.fsearch.client.cli.tui
 
+import com.mktiti.fsearch.client.cli.*
 import com.mktiti.fsearch.client.cli.command.CommandStore
+import com.mktiti.fsearch.client.cli.context.Context
+import com.mktiti.fsearch.client.cli.context.ContextImports
+import com.mktiti.fsearch.client.cli.context.ContextManager
+import com.mktiti.fsearch.client.cli.job.DefaultJobHandler
+import com.mktiti.fsearch.client.cli.search.SearchHandler
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.fuel.FuelService
 import org.jline.console.impl.SystemRegistryImpl
-import org.jline.reader.*
-import org.jline.reader.impl.DefaultParser
-import org.jline.reader.impl.DefaultParser.Bracket
+import org.jline.reader.Completer
+import org.jline.reader.EndOfFileException
+import org.jline.reader.LineReaderBuilder
+import org.jline.reader.UserInterruptException
 import org.jline.terminal.Size
 import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
@@ -18,9 +25,10 @@ fun main(args: Array<String>) {
     //val client = RestClient.forPath(basePath)
     val client = FuelService(basePath)
 
-    val parser: Parser = DefaultParser().apply {
+    /*val parser: Parser = DefaultParser().apply {
         eofOnUnclosedBracket(Bracket.ANGLE, Bracket.CURLY, Bracket.ROUND, Bracket.SQUARE)
     }
+     */
 
     val terminal: Terminal = with(TerminalBuilder.builder()) {
         system(true)
@@ -39,6 +47,7 @@ fun main(args: Array<String>) {
     )
 
     val lineReader = with(LineReaderBuilder.builder()) {
+        // parser(parser)
         appName("JvmSearch TUI Client")
         terminal(terminal)
         completer(completer)
@@ -50,7 +59,7 @@ fun main(args: Array<String>) {
     val printer = terminal.writer()
 
     printer.println("JvmSearch CLI Client v${ProjectInfo.version}")
-    printer.println("Running API health check...")
+    printer.print("Running API health check... ")
 
     when (val checkRes = client.searchApi.healthCheck()) {
         is ApiCallResult.Success -> printer.println(checkRes.result.message)
@@ -63,8 +72,9 @@ fun main(args: Array<String>) {
 
     DefaultJobHandler(printer, contextManager).use { jobHandler ->
         terminal.handle(Terminal.Signal.INT) {
-            jobHandler.cancel()
-            printer.println("Interrupted")
+            if (jobHandler.cancel()) {
+                printer.println("Interrupted")
+            }
         }
 
         val context = AtomicReference(
@@ -72,37 +82,33 @@ fun main(args: Array<String>) {
         )
 
         fun runCommand(line: String): Boolean {
-            return if (line.startsWith(":")) {
-                if (line == ":quit") {
-                    printer.println("Quitting")
-                    true
-                } else {
-                    val job = commandStore.handle(line.removePrefix(":").split("\\s+".toRegex()))
-                    jobHandler.setJob(job)
-                    false
-                }
+            val job = if (line.startsWith(":")) {
+                commandStore.handle(line.removePrefix(":").split("\\s+".toRegex()))
             } else {
-                jobHandler.setJob(searchHandler.searchJob(context.get(), line))
-                false
+                searchHandler.searchJob(context.get(), line)
             }
+            return jobHandler.runJob(job)
         }
 
         while (true) {
             try {
                 val line = lineReader.readLine("λ>")?.trim() ?: break
-                if (runCommand(line)) {
-                    break
+                if (line.isNotBlank()) {
+                    if (runCommand(line)) {
+                        break
+                    }
                 }
             } catch (interrupt: UserInterruptException) {
-                //printer.println("Quiting")
-                //break
+                if (!jobHandler.cancel()) {
+                    printer.println("No active job to kill, use :quit to exit JvmSearch")
+                }
             } catch (fileEnd: EndOfFileException) {
                 fileEnd.partialLine?.let(::runCommand)
                 break
             }
         }
 
-        println("Exiting")
+        printer.println("Exiting")
     }
 
 }

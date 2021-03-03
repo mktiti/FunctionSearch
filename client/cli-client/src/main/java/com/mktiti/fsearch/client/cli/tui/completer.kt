@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.client.cli
+package com.mktiti.fsearch.client.cli.tui
 
 import org.jline.reader.Candidate
 import org.jline.reader.Completer
@@ -17,10 +17,18 @@ interface KotlinCompleter : Completer {
         override fun complete(parts: List<String>, current: String): List<String> = values
     }
 
+    class ConcatCompleter(
+            private val primary: KotlinCompleter,
+            private val secondary: KotlinCompleter
+    ) : KotlinCompleter {
+        override fun complete(parts: List<String>, current: String): List<String>
+            = primary.complete(parts, current) + secondary.complete(parts, current)
+    }
+
     fun complete(parts: List<String>, current: String): List<String>
 
     override fun complete(reader: LineReader, line: ParsedLine, candidates: MutableList<Candidate>) {
-        candidates += complete(line.words().drop(line.wordIndex() + 1), line.word()).map {
+        candidates += complete(line.words().take(line.wordIndex()), line.word()).map {
             Candidate(it)
         }
     }
@@ -36,15 +44,32 @@ class CommandQueryCompleter(
         private const val commandPrefix = ":"
     }
 
+    private fun completeCommand(parts: List<String>, current: String): List<String> {
+        val (cleanedParts, cleanedCurrent) = if (parts.isEmpty()) {
+            emptyList<String>() to current.removePrefix(commandPrefix)
+        } else {
+            val cleanedParts = parts.mapIndexed { i, p ->
+                if (i == 0) p.removePrefix(commandPrefix) else p
+            }
+            cleanedParts to current
+        }
+
+        val options = commandCompleter.complete(cleanedParts, cleanedCurrent)
+        return if (parts.isEmpty()) {
+            options.map { "$commandPrefix$it" }
+        } else {
+            options
+        }
+    }
+
     override fun complete(parts: List<String>, current: String): List<String> {
+        if (parts.isEmpty() && current.isBlank()) {
+            return completeCommand(parts, current)
+        }
+
         val root = parts.firstOrNull() ?: current
         return if (root.startsWith(commandPrefix)) {
-            val options = commandCompleter.complete(parts, current.removePrefix(commandPrefix))
-            if (parts.isEmpty()) {
-                options.map { "$commandPrefix$it" }
-            } else {
-                options
-            }
+            completeCommand(parts, current)
         } else {
             queryCompleter.complete(parts, current)
         }

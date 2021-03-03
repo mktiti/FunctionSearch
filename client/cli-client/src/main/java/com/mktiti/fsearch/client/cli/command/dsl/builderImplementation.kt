@@ -20,7 +20,7 @@ private class DefaultCommandBuilder : CommandBuilder {
 
     private val commandMap = mutableMapOf<String, CommandContext>()
 
-    private var handler: TransformCommandHandle = nopTransformCommandHandle
+    private val handlers: MutableHandlerStore = DefaultHandlerStore()
 
     private var helper: CommandHelper? = null
 
@@ -56,7 +56,7 @@ private class DefaultCommandBuilder : CommandBuilder {
 
         return DefaultCommandContext(
                 subCommands = commandMap,
-                selfHandle = handler,
+                selfHandlers = handlers,
                 selfComplete = finalCompleter,
                 selfHelper = finalHelper
         )
@@ -69,8 +69,8 @@ private class DefaultCommandBuilder : CommandBuilder {
         }
     }
 
-    override fun handleTransform(handler: TransformCommandHandle) {
-        this.handler = handler
+    override fun handleTransformRange(paramRange: IntRange, handler: TransformCommandHandle) {
+        this.handlers[paramRange] = handler
     }
 
     override fun help(helpCreator: (args: List<String>) -> String) {
@@ -90,7 +90,7 @@ private class DefaultRootBuilder : RootBuilder {
     fun build(): CommandContext {
         return DefaultCommandContext(
                 subCommands = commandMap,
-                selfHandle = nopTransformCommandHandle,
+                selfHandlers = HandlerStore.NOP,
                 selfComplete = KotlinCompleter.StringCompleter(commandMap.keys.sorted()),
                 selfHelper = { "" }
         )

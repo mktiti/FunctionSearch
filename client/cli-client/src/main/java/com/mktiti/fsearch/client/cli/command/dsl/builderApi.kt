@@ -16,13 +16,21 @@ typealias CommandCompleter = (parts: List<String>, current: String) -> List<Stri
 
 interface CommandBuilder {
 
+    companion object {
+        fun Int?.asRange(): IntRange = if (this == null) IntRange.EMPTY else (this..this)
+    }
+
     fun subCommand(name: String, paramCount: Int? = null, setup: CommandSetup)
 
     fun help(helpCreator: CommandHelper)
 
-    fun handle(handler: VoidCommandHandle) = handleTransform(handler.asTransform())
+    fun handle(paramCount: Int? = null, handler: VoidCommandHandle) = handleRange(paramCount.asRange(), handler)
 
-    fun handleTransform(handler: TransformCommandHandle)
+    fun handleRange(paramRange: IntRange = IntRange.EMPTY, handler: VoidCommandHandle) = handleTransformRange(paramRange, handler.asTransform())
+
+    fun handleTransform(paramCount: Int? = null, handler: TransformCommandHandle) = handleTransformRange(paramCount.asRange(), handler)
+
+    fun handleTransformRange(paramRange: IntRange = IntRange.EMPTY, handler: TransformCommandHandle)
 
     fun complete(appendSubCommands: Boolean = true, completer: CommandCompleter)
 

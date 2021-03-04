@@ -5,13 +5,11 @@ import com.mktiti.fsearch.client.cli.util.MutableIntRangeMap
 
 interface HandlerStore {
 
-    companion object {
-        val NOP: HandlerStore = object : HandlerStore {
-            override val default: TransformCommandHandle
-                get() = nopTransformCommandHandle
+    object NOP : HandlerStore {
+        override val default: TransformCommandHandle
+            get() = nopTransformCommandHandle
 
-            override fun get(paramCount: Int) = nopTransformCommandHandle
-        }
+        override fun get(paramCount: Int) = nopTransformCommandHandle
     }
 
     val default: TransformCommandHandle?

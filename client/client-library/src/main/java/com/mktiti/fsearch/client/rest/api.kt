@@ -4,6 +4,8 @@ import com.mktiti.fsearch.dto.*
 
 interface Service {
 
+    val address: String?
+
     val searchApi: SearchApi
     val infoApi: InfoApi
     val artifactApi: ArtifactApi

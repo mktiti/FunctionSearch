@@ -16,6 +16,41 @@ private class SubCommandCompleter(
 
 }
 
+private fun completeCommandNames(commands: Set<String>) = (commands + "help").sorted()
+
+private fun createCompleter(
+        commandNames: List<String>,
+        completer: CommandCompleter? = null,
+        completeWithSubs: Boolean = true
+): KotlinCompleter {
+    return if (completeWithSubs) {
+        val commands = SubCommandCompleter(commandNames)
+        completer?.let {
+            KotlinCompleter.ConcatCompleter(it.wrap(), commands)
+        } ?: commands
+    } else {
+        completer?.wrap() ?: KotlinCompleter.NOP
+    }
+}
+
+private fun createHelper(commands: List<String>, helper: CommandHelper?): CommandHelper {
+    val commandHelp = if (commands.isEmpty()) {
+        ""
+    } else {
+        buildString {
+            appendLine("Available subcommands:")
+            commands.forEach {
+                append("\t")
+                appendLine(it)
+            }
+        }
+    }
+
+    return helper?.let { setHelper ->
+        { args -> setHelper(args) + "\n\n" + commandHelp }
+    } ?: { commandHelp }
+}
+
 private class DefaultCommandBuilder : CommandBuilder {
 
     private val commandMap = mutableMapOf<String, CommandContext>()
@@ -28,37 +63,13 @@ private class DefaultCommandBuilder : CommandBuilder {
     private var completer: CommandCompleter? = null
 
     fun build(): CommandContext {
-        val commandNames = (commandMap.keys + "help").sorted()
-        val finalCompleter: KotlinCompleter = if (completeWithSubs) {
-            val commands = SubCommandCompleter(commandNames)
-            completer?.let {
-                KotlinCompleter.ConcatCompleter(it.wrap(), commands)
-            } ?: commands
-        } else {
-            completer?.wrap() ?: KotlinCompleter.NOP
-        }
-
-        val commandHelp = if (commandNames.isEmpty()) {
-            ""
-        } else {
-            buildString {
-                appendLine("Available subcommands:")
-                commandNames.forEach {
-                    append("\t")
-                    appendLine(it)
-                }
-            }
-        }
-
-        val finalHelper: CommandHelper = helper?.let { setHelper ->
-            { args -> setHelper(args) + "\n\n" + commandHelp }
-        } ?: { commandHelp }
+        val commandNames = completeCommandNames(commandMap.keys)
 
         return DefaultCommandContext(
                 subCommands = commandMap,
                 selfHandlers = handlers,
-                selfComplete = finalCompleter,
-                selfHelper = finalHelper
+                selfComplete = createCompleter(commandNames, completer, completeWithSubs),
+                selfHelper = createHelper(commandNames, helper)
         )
     }
 
@@ -85,22 +96,42 @@ private class DefaultCommandBuilder : CommandBuilder {
 
 private class DefaultRootBuilder : RootBuilder {
 
+    companion object {
+        private val defaultUnknownHandler: CommandHelper = { args -> "Unknown command ${args.firstOrNull() ?: ""}" }
+    }
+
+    private var helper: CommandHelper? = null
+    private var unknownHandler: CommandHelper = defaultUnknownHandler
     private val commandMap = mutableMapOf<String, CommandContext>()
 
     fun build(): CommandContext {
+        val handler: HandlerStore = DefaultHandlerStore().apply {
+            default = unknownHandler.asHandle()
+        }
+
+        val commandNames = completeCommandNames(commandMap.keys)
+
         return DefaultCommandContext(
                 subCommands = commandMap,
-                selfHandlers = HandlerStore.NOP,
-                selfComplete = KotlinCompleter.StringCompleter(commandMap.keys.sorted()),
-                selfHelper = { "" }
+                selfHandlers = handler,
+                selfComplete = createCompleter(commandNames),
+                selfHelper = createHelper(commandNames, helper)
         )
     }
 
-    override fun command(name: String, paramCount: Int?, setup: CommandSetup) {
+    override fun help(helpCreator: CommandHelper) {
+        helper = helpCreator
+    }
+
+    override fun command(name: String, setup: CommandSetup) {
         commandMap[name] = DefaultCommandBuilder().let { subContext ->
             subContext.setup()
             subContext.build()
         }
+    }
+
+    override fun unknownCommand(helper: CommandHelper) {
+        unknownHandler = helper
     }
 
 }

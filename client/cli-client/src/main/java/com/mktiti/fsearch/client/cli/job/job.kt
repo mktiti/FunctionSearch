@@ -1,6 +1,9 @@
 package com.mktiti.fsearch.client.cli.job
 
 import com.mktiti.fsearch.client.cli.context.Context
+import com.mktiti.fsearch.client.rest.ArtifactApi
+import com.mktiti.fsearch.client.rest.InfoApi
+import com.mktiti.fsearch.client.rest.SearchApi
 import java.io.PrintWriter
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -20,6 +23,15 @@ interface BackgroundJobContext {
     val context: Context
     val printer: JobPrinter
     val isCancelled: Boolean
+
+    val infoApi: InfoApi
+        get() = context.service.infoApi
+
+    val searchApi: SearchApi
+        get() = context.service.searchApi
+
+    val artifactApi: ArtifactApi
+        get() = context.service.artifactApi
 
     fun quit()
 

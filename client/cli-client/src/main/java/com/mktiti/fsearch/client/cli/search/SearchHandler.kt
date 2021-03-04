@@ -5,17 +5,10 @@ import com.mktiti.fsearch.client.cli.job.BackgroundJob
 import com.mktiti.fsearch.client.cli.job.voidBackgroundJob
 import com.mktiti.fsearch.client.cli.util.contextDto
 import com.mktiti.fsearch.client.rest.ApiCallResult
-import com.mktiti.fsearch.client.rest.SearchApi
-import com.mktiti.fsearch.client.rest.Service
 import com.mktiti.fsearch.dto.QueryRequestDto
 import com.mktiti.fsearch.dto.QueryResult
 
-class SearchHandler(
-        private val searchApi: SearchApi
-) {
-
-    //constructor(client: RestClient) : this(client.search)
-    constructor(client: Service) : this(client.searchApi)
+class SearchHandler {
 
     companion object {
         private fun constructDto(context: Context, query: String) = QueryRequestDto(
@@ -24,7 +17,7 @@ class SearchHandler(
         )
     }
 
-    fun searchJob(context: Context, query: String): BackgroundJob {
+    fun searchJob(query: String): BackgroundJob {
         return voidBackgroundJob {
             printer.print("Searching... ")
 

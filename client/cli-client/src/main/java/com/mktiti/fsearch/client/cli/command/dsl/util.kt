@@ -4,7 +4,12 @@ import com.mktiti.fsearch.client.cli.job.BackgroundJob
 import com.mktiti.fsearch.client.cli.job.printJob
 import com.mktiti.fsearch.client.cli.tui.KotlinCompleter
 
-val nopTransformCommandHandle: TransformCommandHandle = { this.context }
+val nopTransformCommandHandle: TransformCommandHandle = { context }
+
+fun CommandHelper.asHandle(): TransformCommandHandle = { args ->
+    printer.println(this@asHandle(args))
+    context
+}
 
 fun CommandCompleter.wrap(): KotlinCompleter = object : KotlinCompleter {
     override fun complete(parts: List<String>, current: String) = invoke(parts, current)

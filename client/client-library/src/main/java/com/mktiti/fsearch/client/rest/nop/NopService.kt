@@ -7,6 +7,9 @@ import com.mktiti.fsearch.client.rest.Service
 
 object NopService : Service {
 
+    override val address: String?
+        get() = null
+
     override val searchApi: SearchApi
         get() = NopSearchApi
 

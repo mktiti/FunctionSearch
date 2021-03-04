@@ -102,6 +102,9 @@
                 <configuration>
                     <packageName>com.mktiti.fsearch.client.cli</packageName>
                     <type>kotlin</type>
+                    <values>
+                        <versionedName>JvmSearch CLI Client v${project.version}</versionedName>
+                    </values>
                 </configuration>
 
                 <executions>

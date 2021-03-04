@@ -1,5 +1,7 @@
 package com.mktiti.fsearch.client.cli.context
 
+import com.mktiti.fsearch.client.rest.Service
+import com.mktiti.fsearch.client.rest.nop.NopService
 import com.mktiti.fsearch.dto.ArtifactIdDto
 import com.mktiti.fsearch.dto.QueryCtxDto
 import com.mktiti.fsearch.dto.TypeDto
@@ -23,12 +25,13 @@ data class ContextImports(
 }
 
 data class Context(
+        val service: Service,
         val artifacts: Set<ArtifactIdDto>,
         val imports: ContextImports
 ) {
 
     companion object {
-        fun empty() = Context(emptySet(), ContextImports.empty())
+        fun empty() = Context(NopService, emptySet(), ContextImports.empty())
     }
 
     val artifactsDto: QueryCtxDto

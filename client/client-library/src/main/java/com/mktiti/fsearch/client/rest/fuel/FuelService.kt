@@ -10,6 +10,9 @@ class FuelService(
         basePath: String
 ) : Service {
 
+    override val address: String?
+        get() = fuelInstance.basePath
+
     private val fuelInstance = FuelManager().apply {
         this.basePath = basePath
     }

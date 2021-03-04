@@ -1,16 +1,24 @@
 package com.mktiti.fsearch.client.cli.command
 
+import com.mktiti.fsearch.client.cli.ProjectInfo
 import com.mktiti.fsearch.client.cli.command.dsl.createCommands
 import com.mktiti.fsearch.client.cli.job.BackgroundJob
 import com.mktiti.fsearch.client.cli.tui.KotlinCompleter
 import com.mktiti.fsearch.client.cli.util.parseArtifactId
+import com.mktiti.fsearch.client.cli.util.runHealthCheck
 import com.mktiti.fsearch.client.rest.ApiCallResult
-import com.mktiti.fsearch.client.rest.Service
+import com.mktiti.fsearch.client.rest.fuel.FuelService
+import com.mktiti.fsearch.client.rest.nop.NopService
 import com.mktiti.fsearch.dto.TypeDto
 
-class CommandStore(service: Service) {
+object CommandStore {
 
     private val commands = createCommands {
+
+        unknownCommand { args ->
+            "Unknown command (${args.firstOrNull()}), see :help for available commands!"
+        }
+
         command("load") {
             help {
                 "Loads a given maven artifact given by format \${group}:\${name}:\${version}"
@@ -21,7 +29,7 @@ class CommandStore(service: Service) {
                 if (artifact == null) {
                     printer.println("Artifact id must be in format \${group}:\${name}:\${version}")
                 } else {
-                    when (val callRes = service.artifactApi.load(artifact)) {
+                    when (val callRes = artifactApi.load(artifact)) {
                         is ApiCallResult.Success -> {
                             printer.println("Successfully loaded artifact $artifact")
                         }
@@ -42,9 +50,9 @@ class CommandStore(service: Service) {
                 "Lists available artifacts, optionally filtered by name (first parameter)"
             }
 
-            handleRange(0..1) { _ ->
+            handleRange(0..1) {
                 // TODO
-                when (val callRes = service.artifactApi.all()) {
+                when (val callRes = artifactApi.all()) {
                     is ApiCallResult.Success -> {
                         callRes.result.forEach(printer::println)
                     }
@@ -118,7 +126,7 @@ class CommandStore(service: Service) {
             }
 
             handleRange(0..1) { args ->
-                when (val callRes = service.infoApi.types(context.artifactsDto, args.firstOrNull())) {
+                when (val callRes = infoApi.types(context.artifactsDto, args.firstOrNull())) {
                     is ApiCallResult.Success -> {
                         callRes.result.forEach {
                             printer.println(it.type.packageName + "." + it.type.simpleName)
@@ -134,6 +142,53 @@ class CommandStore(service: Service) {
         command("functions") {
             help {
                 "Lists available functions, optionally filtered by name (first parameter)"
+            }
+        }
+
+        command("version") {
+            help {
+                "Prints version info about JvmSearch"
+            }
+
+            handle(paramCount = 0) {
+                printer.println(ProjectInfo.versionedName)
+            }
+        }
+
+        command("service") {
+            help {
+                """
+                    Backing service information and configuration
+                    By default prints the currently used service.
+                """.trimIndent()
+            }
+
+            handle(paramCount = 0) {
+                printer.println(context.service.address ?: "Not set!")
+            }
+
+            subCommand("clear") {
+                help { "Unsets the backing service path" }
+
+                handleTransform(paramCount = 0) {
+                    context.copy(service = NopService)
+                }
+            }
+
+            subCommand("set") {
+                help { "Sets the backing service path" }
+
+                handleTransform(paramCount = 1) { args ->
+                    val newService = FuelService(args.first())
+                    val check = runHealthCheck(newService, printer)
+                    if (check) {
+                        printer.println("Health check passed, service updated")
+                        context.copy(service = newService)
+                    } else {
+                        printer.println("Health check failed, service not updated")
+                        context
+                    }
+                }
             }
         }
 

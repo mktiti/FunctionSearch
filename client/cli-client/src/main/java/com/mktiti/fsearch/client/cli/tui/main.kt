@@ -1,14 +1,17 @@
 package com.mktiti.fsearch.client.cli.tui
 
-import com.mktiti.fsearch.client.cli.*
+import com.mktiti.fsearch.client.cli.ProjectInfo
 import com.mktiti.fsearch.client.cli.command.CommandStore
 import com.mktiti.fsearch.client.cli.context.Context
 import com.mktiti.fsearch.client.cli.context.ContextImports
 import com.mktiti.fsearch.client.cli.context.ContextManager
 import com.mktiti.fsearch.client.cli.job.DefaultJobHandler
+import com.mktiti.fsearch.client.cli.job.PrintWriterJobPrinter
 import com.mktiti.fsearch.client.cli.search.SearchHandler
+import com.mktiti.fsearch.client.cli.util.runHealthCheck
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.fuel.FuelService
+import com.mktiti.fsearch.client.rest.nop.NopService
 import org.jline.console.impl.SystemRegistryImpl
 import org.jline.reader.Completer
 import org.jline.reader.EndOfFileException
@@ -17,18 +20,8 @@ import org.jline.reader.UserInterruptException
 import org.jline.terminal.Size
 import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
-import java.util.concurrent.atomic.AtomicReference
 
 fun main(args: Array<String>) {
-
-    val basePath = args.firstOrNull() ?: error("API path (first param) missing!")
-    //val client = RestClient.forPath(basePath)
-    val client = FuelService(basePath)
-
-    /*val parser: Parser = DefaultParser().apply {
-        eofOnUnclosedBracket(Bracket.ANGLE, Bracket.CURLY, Bracket.ROUND, Bracket.SQUARE)
-    }
-     */
 
     val terminal: Terminal = with(TerminalBuilder.builder()) {
         system(true)
@@ -40,10 +33,9 @@ fun main(args: Array<String>) {
         }
     }
 
-    val commandStore = CommandStore(client)
     val completer: Completer = CommandQueryCompleter(
         queryCompleter = KotlinCompleter.NOP,
-        commandCompleter = commandStore.completer
+        commandCompleter = CommandStore.completer
     )
 
     val lineReader = with(LineReaderBuilder.builder()) {
@@ -57,18 +49,22 @@ fun main(args: Array<String>) {
     SystemRegistryImpl(null, terminal, { null }, null)
 
     val printer = terminal.writer()
+    printer.println(ProjectInfo.versionedName)
 
-    printer.println("JvmSearch CLI Client v${ProjectInfo.version}")
-    printer.print("Running API health check... ")
-
-    when (val checkRes = client.searchApi.healthCheck()) {
-        is ApiCallResult.Success -> printer.println(checkRes.result.message)
-        is ApiCallResult.Exception -> printer.println("[${checkRes.code}] - ${checkRes.message}")
+    val initialService = when (val backend = args.firstOrNull()) {
+        null -> {
+            printer.println("WARNING: Service path not set (program argument), use ':service set' to define")
+            NopService
+        }
+        else -> {
+            FuelService(backend).apply {
+                runHealthCheck(this, PrintWriterJobPrinter(printer))
+            }
+        }
     }
 
-    val searchHandler = SearchHandler(client)
-
-    val contextManager = ContextManager()
+    val searchHandler = SearchHandler()
+    val contextManager = ContextManager(Context(initialService, emptySet(), ContextImports.empty()))
 
     DefaultJobHandler(printer, contextManager).use { jobHandler ->
         terminal.handle(Terminal.Signal.INT) {
@@ -77,15 +73,11 @@ fun main(args: Array<String>) {
             }
         }
 
-        val context = AtomicReference(
-                Context(emptySet(), ContextImports.empty())
-        )
-
         fun runCommand(line: String): Boolean {
             val job = if (line.startsWith(":")) {
-                commandStore.handle(line.removePrefix(":").split("\\s+".toRegex()))
+                CommandStore.handle(line.removePrefix(":").split("\\s+".toRegex()))
             } else {
-                searchHandler.searchJob(context.get(), line)
+                searchHandler.searchJob(line)
             }
             return jobHandler.runJob(job)
         }

@@ -17,7 +17,7 @@ typealias CommandCompleter = (parts: List<String>, current: String) -> List<Stri
 interface CommandBuilder {
 
     companion object {
-        fun Int?.asRange(): IntRange = if (this == null) IntRange.EMPTY else (this..this)
+        private fun Int?.asRange(): IntRange = if (this == null) IntRange.EMPTY else (this..this)
     }
 
     fun subCommand(name: String, paramCount: Int? = null, setup: CommandSetup)
@@ -45,5 +45,9 @@ interface CommandContext {
 }
 
 interface RootBuilder {
-    fun command(name: String, paramCount: Int? = null, setup: CommandSetup)
+    fun help(helpCreator: CommandHelper)
+
+    fun command(name: String, setup: CommandSetup)
+
+    fun unknownCommand(helper: CommandHelper)
 }

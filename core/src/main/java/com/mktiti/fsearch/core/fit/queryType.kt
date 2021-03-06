@@ -12,10 +12,17 @@ data class QueryType(
 ) {
 
     companion object {
+        fun wildcard(infoRepo: JavaInfoRepo) = DirectType(
+                minInfo = MinimalInfo.anyWildcard,
+                superTypes = listOf(infoRepo.objectType.complete().holder()),
+                samType = null,
+                virtual = true
+        )
+
         fun functionType(inputs: List<NonGenericType>, output: NonGenericType, infoRepo: JavaInfoRepo): NonGenericType {
             val funTemplate = TypeTemplate(
                     info = infoRepo.funInfo(inputs.size),
-                    typeParams = (0 .. inputs.size).map { TypeParameter(('A' + it).toString(), TypeBounds(emptySet())) },
+                    typeParams = (0..inputs.size).map { TypeParameter(('A' + it).toString(), TypeBounds(emptySet())) },
                     superTypes = emptyList(),
                     samType = null,
                     virtual = true

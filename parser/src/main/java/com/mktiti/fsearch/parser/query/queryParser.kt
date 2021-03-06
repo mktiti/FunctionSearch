@@ -98,15 +98,24 @@ class AntlrQueryParser(
             paramVirtualTypes: VirtParamTable,
             imports: List<MinimalInfo>
     ): NonGenericType {
-        val name = completeName.fullName().text
+        val type: NonGenericType = if (completeName.WILDCARD() != null) {
+            QueryType.wildcard(infoRepo)
+        } else {
+            val name = completeName.fullName().text
+            val templateSignature = completeName.templateSignature()
 
-        paramVirtualTypes[name]?.let { virtual ->
-            return ifArray(virtual, completeName.ARRAY_LITERAL())
-        }
+            paramVirtualTypes[name]?.let { virtual ->
+                if (templateSignature != null) {
+                    throw TypeException("Type parameter '$name' cannot have type arguments")
+                }
+                return ifArray(virtual, completeName.ARRAY_LITERAL())
+            }
 
-        val type: NonGenericType = when (val typeSignature = completeName.templateSignature()) {
-            null -> buildNonGeneric(name, imports)
-            else -> buildGeneric(name, typeSignature, paramVirtualTypes, imports)
+            if (templateSignature == null) {
+                buildNonGeneric(name, imports)
+            } else {
+                buildGeneric(name, templateSignature, paramVirtualTypes, imports)
+            }
         }
 
         return ifArray(type, completeName.ARRAY_LITERAL())

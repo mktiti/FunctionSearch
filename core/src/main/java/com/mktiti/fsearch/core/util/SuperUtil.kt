@@ -21,9 +21,17 @@ object SuperUtil {
         }
 
         val bases = infos.flatMap { info ->
-            when (val asPrimitive = infoRepo.ifPrimitive(info)) {
-                null -> listOf(info)
-                else -> listOf(info, infoRepo.boxed(asPrimitive))
+            if (info.virtual) {
+                if (info === MinimalInfo.anyWildcard) {
+                    listOf(infoRepo.objectType)
+                } else {
+                    emptyList()
+                }
+            } else {
+                when (val asPrimitive = infoRepo.ifPrimitive(info)) {
+                    null -> listOf(info)
+                    else -> listOf(info, infoRepo.boxed(asPrimitive))
+                }
             }
         }
         return bases.flatMap { resolveSupersInner(it) }.toSet()

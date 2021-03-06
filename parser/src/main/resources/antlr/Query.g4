@@ -6,7 +6,7 @@ virtualDeclarations :   TEMPLATE_OPEN virtualDeclaration? (ARG_SEP virtualDeclar
 virtualDeclaration  :   SIMPLE_NAME (TYPE_BOUND declarationBounds)? ;
 declarationBounds   :   completeName (ARG_SEP completeName)* ;
 
-completeName        :   fullName templateSignature? ARRAY_LITERAL* ;
+completeName        :   ((fullName templateSignature?) | WILDCARD) ARRAY_LITERAL* ;
 fullName            :   FULL_PACKAGE? SIMPLE_NAME ;
 templateSignature   :   TEMPLATE_OPEN completeName (ARG_SEP completeName)* TEMPLATE_CLOSE ;
 
@@ -22,6 +22,7 @@ PAREN_CLOSE  : ')' ;
 ARROW   : ('->' | '=>') ;
 ARG_SEP : ',' ;
 TYPE_BOUND : ':' ;
+WILDCARD : '?' | '_' | '*' ;
 
 SIMPLE_NAME :   JavaLetterOrDigit+ ;
 

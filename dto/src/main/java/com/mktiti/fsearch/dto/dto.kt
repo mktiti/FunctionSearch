@@ -24,7 +24,8 @@ data class ArtifactIdDto(
 }
 
 data class QueryCtxDto(
-        val artifacts: List<ArtifactIdDto>
+        val artifacts: List<ArtifactIdDto>,
+        val imports: List<TypeDto>
 )
 
 data class TypeDto(

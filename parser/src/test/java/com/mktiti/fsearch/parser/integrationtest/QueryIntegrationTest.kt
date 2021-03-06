@@ -99,7 +99,7 @@ class QueryIntegrationTest {
 
             testResource(dataRes).forEach { (queryStr, results) ->
                 println("Fit testing $queryStr")
-                val (query, virtuals) = queryParser.parse(queryStr)
+                val (query, virtuals) = queryParser.parse(queryStr, emptyList())
 
                 val queryResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
                 val fitter: QueryFitter = JavaQueryFitter(infoRepo, queryResolver)

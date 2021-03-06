@@ -11,7 +11,7 @@ interface JavaRepo {
 
     val voidType: TypeHolder.Static
 
-    fun primitive(primitive: PrimitiveType): TypeHolder.Static
+    fun primitive(primitive: PrimitiveType): TypeHolder.Static.Direct
 
     fun boxed(primitive: PrimitiveType): TypeHolder.Static
 

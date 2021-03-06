@@ -3,7 +3,6 @@ package com.mktiti.fsearch.client.cli.search
 import com.mktiti.fsearch.client.cli.context.Context
 import com.mktiti.fsearch.client.cli.job.BackgroundJob
 import com.mktiti.fsearch.client.cli.job.voidBackgroundJob
-import com.mktiti.fsearch.client.cli.util.contextDto
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.dto.QueryRequestDto
 import com.mktiti.fsearch.dto.QueryResult
@@ -12,7 +11,7 @@ class SearchHandler {
 
     companion object {
         private fun constructDto(context: Context, query: String) = QueryRequestDto(
-                context = context.contextDto(),
+                context = context.asDto(),
                 query = query
         )
     }

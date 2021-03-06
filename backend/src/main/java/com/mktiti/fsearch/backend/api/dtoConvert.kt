@@ -10,7 +10,11 @@ import com.mktiti.fsearch.modules.ArtifactId
 
 fun ArtifactIdDto.toId() = ArtifactId(group.split('.'), name, version)
 
-fun QueryCtxDto.toId() = ContextId(artifacts.map { it.toId() }.toSet())
+fun QueryCtxDto.artifactsId() = ContextId(artifacts.map { it.toId() }.toSet())
+
+fun QueryCtxDto.imports(): List<MinimalInfo> {
+    return imports.map { MinimalInfo(it.packageName.split('.'), it.simpleName) }
+}
 
 fun relationDtoFromModel(rel: FunInstanceRelation): FunRelationDto = when (rel) {
     FunInstanceRelation.INSTANCE -> FunRelationDto.INSTANCE

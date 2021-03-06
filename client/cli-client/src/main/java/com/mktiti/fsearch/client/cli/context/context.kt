@@ -14,6 +14,8 @@ data class ContextImports(
         fun empty() = ContextImports(emptyMap())
     }
 
+    fun dto(): List<TypeDto> = importMap.values.toList()
+
     operator fun plus(type: TypeDto) = ContextImports(
             importMap + (type.simpleName to type)
     )
@@ -34,8 +36,7 @@ data class Context(
         fun empty() = Context(NopService, emptySet(), ContextImports.empty())
     }
 
-    val artifactsDto: QueryCtxDto
-        get() = QueryCtxDto(artifacts.toList())
+    fun asDto(): QueryCtxDto = QueryCtxDto(artifacts.toList(), imports.dto())
 
     fun import(type: TypeDto) = copy(imports = imports + type)
 

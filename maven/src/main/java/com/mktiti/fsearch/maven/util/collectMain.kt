@@ -176,7 +176,7 @@ fun main(args: Array<String>) {
             }
         } else {
             try {
-                val (query, virtuals) = context.queryParser.parse(input)
+                val (query, virtuals) = context.queryParser.parse(input, emptyList())
                 print("Parsed as: ")
                 context.typePrint.print(query)
                 println("Started searching...")

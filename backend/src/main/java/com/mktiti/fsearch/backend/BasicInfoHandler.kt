@@ -2,7 +2,7 @@ package com.mktiti.fsearch.backend
 
 import com.mktiti.fsearch.backend.api.InfoHandler
 import com.mktiti.fsearch.backend.api.asDto
-import com.mktiti.fsearch.backend.api.toId
+import com.mktiti.fsearch.backend.api.artifactsId
 import com.mktiti.fsearch.dto.FunId
 import com.mktiti.fsearch.dto.QueryCtxDto
 import com.mktiti.fsearch.dto.TypeInfoDto
@@ -12,7 +12,7 @@ class BasicInfoHandler(
         private val contextManager: ContextManager
 ) : InfoHandler {
 
-    private fun context(context: QueryCtxDto): QueryContext = contextManager[context.toId()]
+    private fun context(context: QueryCtxDto): QueryContext = contextManager[context.artifactsId()]
 
     private fun <T> Sequence<T>.limited() = take(50).toList()
 

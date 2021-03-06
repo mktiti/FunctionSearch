@@ -20,7 +20,7 @@ class BasicSearchHandler(
     private val service = Executors.newCachedThreadPool()
 
     override fun typeHint(contextId: QueryCtxDto, namePart: String): List<TypeHint> {
-        return with(contextManager[contextId.toId()]) {
+        return with(contextManager[contextId.artifactsId()]) {
             domain.typeResolver.allSemis().filter {
                 with(it.info) {
                     simpleName.startsWith(namePart, true) || fullName.startsWith(namePart, true)
@@ -36,7 +36,7 @@ class BasicSearchHandler(
 
     // TODO primitive
     override fun preloadContext(contextId: QueryCtxDto): ContextLoadStatus {
-        val id = contextId.toId()
+        val id = contextId.artifactsId()
         return if (id in contextManager) {
             ContextLoadStatus.LOADED
         } else {
@@ -48,9 +48,9 @@ class BasicSearchHandler(
     }
 
     override fun syncQuery(contextId: QueryCtxDto, query: String): QueryResult = try {
-        with(contextManager[contextId.toId()]) {
+        with(contextManager[contextId.artifactsId()]) {
             val (parsedQuery, virtuals) = try {
-                queryParser.parse(query)
+                queryParser.parse(query, contextId.imports())
             } catch (te: TypeException) {
                 return@with QueryResult.Error.Query(query, "Failed to parse query - ${te.message}")
             } catch (pe: ParseCancellationException) {

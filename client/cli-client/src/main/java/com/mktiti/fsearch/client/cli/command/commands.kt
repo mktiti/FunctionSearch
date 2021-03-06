@@ -70,8 +70,8 @@ object CommandStore {
         command("import") {
             help {
                 """
-                    |Imports a type so that it can be referenced without fully qualified name in queries.
-                    |For imported types, see :imports list 
+                    Imports a type so that it can be referenced without fully qualified name in queries.
+                    For imported types, see :imports list 
                 """.trimMargin()
             }
 
@@ -126,7 +126,7 @@ object CommandStore {
             }
 
             handleRange(0..1) { args ->
-                when (val callRes = infoApi.types(context.artifactsDto, args.firstOrNull())) {
+                when (val callRes = infoApi.types(context.asDto(), args.firstOrNull())) {
                     is ApiCallResult.Success -> {
                         callRes.result.forEach {
                             printer.println(it.type.packageName + "." + it.type.simpleName)

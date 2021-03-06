@@ -4,10 +4,12 @@ import com.mktiti.fsearch.core.fit.QueryType
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
+import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.core.type.Type.NonGenericType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.type.TypeHolder
+import com.mktiti.fsearch.core.util.InfoHelper
 import com.mktiti.fsearch.core.util.TypeException
 import com.mktiti.fsearch.core.util.forceStaticApply
 import com.mktiti.fsearch.parser.generated.QueryLexer
@@ -26,7 +28,7 @@ interface QueryParser {
             val virtualTypes: List<DirectType>
     )
 
-    fun parse(query: String): ParseResult
+    fun parse(query: String, imports: List<MinimalInfo>): ParseResult
 }
 
 class AntlrQueryParser(
@@ -45,7 +47,57 @@ class AntlrQueryParser(
         buildArrayOf(javaRepo.arrayOf(type.holder()), depth - 1)
     }
 
-    private fun buildFullType(completeName: CompleteNameContext, paramVirtualTypes: VirtParamTable): NonGenericType {
+    private fun <T> getTypeBase(
+            name: String,
+            imports: List<MinimalInfo>,
+            getter: TypeResolver.(info: MinimalInfo) -> T?,
+            simpleGetter: TypeResolver.(name: String) -> T?
+    ): T {
+        val info = InfoHelper.minimalInfo(name) ?: throw TypeException("Minimal info '$name' invalid")
+        return if (info.packageName.isEmpty()) {
+            val simpleName = info.simpleName
+
+            imports.find { it.simpleName == simpleName }?.let { imported ->
+                typeResolver.getter(imported)?.let {
+                    return it
+                }
+            }
+
+            typeResolver.simpleGetter(simpleName) ?: throw TypeException("Type $simpleName not found")
+        } else {
+            typeResolver.getter(info) ?: throw TypeException("Type $name not found")
+        }
+    }
+
+    private fun buildNonGeneric(name: String, imports: List<MinimalInfo>): NonGenericType {
+        PrimitiveType.fromNameSafe(name)?.let {
+            return javaRepo.primitive(it).with(typeResolver)
+        }
+
+        return getTypeBase(name, imports, getter = TypeResolver::get) {
+            typeResolver.get(it, allowSimple = true)
+        }
+    }
+
+    private fun buildGeneric(
+            name: String,
+            templateContext: TemplateSignatureContext,
+            paramVirtualTypes: VirtParamTable,
+            imports: List<MinimalInfo>
+    ): NonGenericType {
+        val template = getTypeBase(name, imports, getter = TypeResolver::template) {
+            typeResolver.template(it, allowSimple = true)
+        }
+
+        val typeArgs = templateContext.completeName().map { buildFullType(it, paramVirtualTypes, imports) }
+        return template.forceStaticApply(TypeHolder.staticDirects(typeArgs))
+    }
+
+    private fun buildFullType(
+            completeName: CompleteNameContext,
+            paramVirtualTypes: VirtParamTable,
+            imports: List<MinimalInfo>
+    ): NonGenericType {
         val name = completeName.fullName().text
 
         paramVirtualTypes[name]?.let { virtual ->
@@ -53,42 +105,42 @@ class AntlrQueryParser(
         }
 
         val type: NonGenericType = when (val typeSignature = completeName.templateSignature()) {
-            null -> {
-                PrimitiveType.fromNameSafe(name)?.let(javaRepo::primitive)?.with(typeResolver)
-                        ?: typeResolver.get(name, allowSimple = true)
-                        ?: throw TypeException("Simple type $name not found")
-            }
-            else -> {
-                val typeArgs = typeSignature.completeName().map { buildFullType(it, paramVirtualTypes) }
-                typeResolver.template(name, allowSimple = true, paramCount = typeArgs.size)
-                        ?.forceStaticApply(TypeHolder.staticDirects(typeArgs))
-                        ?: throw TypeException("Generic type $name not found")
-            }
+            null -> buildNonGeneric(name, imports)
+            else -> buildGeneric(name, typeSignature, paramVirtualTypes, imports)
         }
 
         return ifArray(type, completeName.ARRAY_LITERAL())
     }
 
-    private fun buildFunArg(funCtx: FunSignatureContext, paramVirtualTypes: VirtParamTable): NonGenericType {
-        val query = buildFunSignature(funCtx, paramVirtualTypes)
+    private fun buildFunArg(
+            funCtx: FunSignatureContext,
+            paramVirtualTypes: VirtParamTable,
+            imports: List<MinimalInfo>
+    ): NonGenericType {
+        val query = buildFunSignature(funCtx, paramVirtualTypes, imports)
         return QueryType.functionType(query.inputParameters, query.output, infoRepo)
     }
 
-    private tailrec fun buildArg(par: WrappedFunArgContext, paramVirtualTypes: VirtParamTable): NonGenericType {
+    private tailrec fun buildArg(
+            par: WrappedFunArgContext,
+            paramVirtualTypes: VirtParamTable,
+            imports: List<MinimalInfo>
+    ): NonGenericType {
         val nested = par.funArg()
 
         return when {
-            nested.completeName() != null -> buildFullType(nested.completeName(), paramVirtualTypes)
-            nested.funSignature() != null -> ifArray(buildFunArg(nested.funSignature(), paramVirtualTypes), nested.ARRAY_LITERAL())
-            else -> buildArg(par.wrappedFunArg(), paramVirtualTypes)
+            nested.completeName() != null -> buildFullType(nested.completeName(), paramVirtualTypes, imports)
+            nested.funSignature() != null -> ifArray(buildFunArg(nested.funSignature(), paramVirtualTypes, imports), nested.ARRAY_LITERAL())
+            else -> buildArg(par.wrappedFunArg(), paramVirtualTypes, imports)
         }
     }
 
     private fun buildFunSignature(
             funSignature: FunSignatureContext,
-            paramVirtualTypes: VirtParamTable
+            paramVirtualTypes: VirtParamTable,
+            imports: List<MinimalInfo>
     ): QueryType {
-        fun WrappedFunArgContext.mapArg() = buildArg(this, paramVirtualTypes)
+        fun WrappedFunArgContext.mapArg() = buildArg(this, paramVirtualTypes, imports)
 
         val inArgs = (funSignature.inArgs().wrappedFunArg() ?: emptyList()).map { it.mapArg() }
         val outArg = funSignature.outArg().wrappedFunArg()?.mapArg() ?: javaRepo.voidType.with(typeResolver) ?: error("Void not found")
@@ -96,7 +148,12 @@ class AntlrQueryParser(
         return QueryType(inArgs, outArg)
     }
 
-    private fun buildVirtual(context: VirtualDeclarationContext, virtualMap: Map<String, NonGenericType>, defaultRoot: TypeHolder.Static): Pair<String, DirectType> {
+    private fun buildVirtual(
+            context: VirtualDeclarationContext,
+            virtualMap: Map<String, NonGenericType>,
+            defaultRoot: TypeHolder.Static,
+            imports: List<MinimalInfo>
+    ): Pair<String, DirectType> {
         val name = context.SIMPLE_NAME().text
 
         return name to when (val boundNames = context.declarationBounds()?.completeName()) {
@@ -108,14 +165,19 @@ class AntlrQueryParser(
                 QueryType.virtualType(name, mutBounds).also {
                     val updatedVirtMap = virtualMap + (name to it)
                     boundNames.map { boundName ->
-                        mutBounds += buildFullType(boundName, updatedVirtMap).holder()
+                        mutBounds += buildFullType(boundName, updatedVirtMap, imports).holder()
                     }
                 }
             }
         }
     }
 
-    private fun buildVirtuals(context: QueryContext, names: Set<String>, defaultRoot: TypeHolder.Static): Map<String, DirectType> {
+    private fun buildVirtuals(
+            context: QueryContext,
+            names: Set<String>,
+            defaultRoot: TypeHolder.Static,
+            imports: List<MinimalInfo>
+    ): Map<String, DirectType> {
         val explicitDeclarations = context.virtualDeclarations()?.virtualDeclaration() ?: emptyList()
         val explicitNames = explicitDeclarations.mapNotNull { it.SIMPLE_NAME().text }
 
@@ -124,7 +186,7 @@ class AntlrQueryParser(
         }.toMap()
 
         val explicits = explicitDeclarations.fold(implicits) { alreadyDone, toCreate ->
-            val created = buildVirtual(toCreate, alreadyDone, defaultRoot)
+            val created = buildVirtual(toCreate, alreadyDone, defaultRoot, imports)
             implicits + created
         }
 
@@ -132,7 +194,7 @@ class AntlrQueryParser(
     }
 
     @Throws(TypeException::class)
-    override fun parse(query: String): QueryParser.ParseResult {
+    override fun parse(query: String, imports: List<MinimalInfo>): QueryParser.ParseResult {
         val lexer = QueryLexer(CharStreams.fromString(query))
         lexer.removeErrorListeners()
         lexer.addErrorListener(ExceptionErrorListener)
@@ -145,9 +207,9 @@ class AntlrQueryParser(
 
         val typeParams = QueryTypeParameterSelector.visit(parseTree)
         val root = javaRepo.objectType
-        val paramVirtualTypes = buildVirtuals(parseTree, typeParams, root)
+        val paramVirtualTypes = buildVirtuals(parseTree, typeParams, root, imports)
 
-        val queryType = buildFunSignature(parseTree.funSignature(), paramVirtualTypes)
+        val queryType = buildFunSignature(parseTree.funSignature(), paramVirtualTypes, imports)
         return QueryParser.ParseResult(queryType, paramVirtualTypes.map { it.value })
     }
 

@@ -22,21 +22,21 @@ interface SearchApi {
 
 interface InfoApi {
 
-    fun types(context: QueryCtxDto, namePartOpt: String?): ApiCallResult<Collection<TypeInfoDto>>
+    fun types(context: QueryCtxDto, namePartOpt: String?): ApiCallResult<ResultList<TypeInfoDto>>
 
-    fun functions(context: QueryCtxDto, namePartOpt: String?): ApiCallResult<Collection<FunId>>
+    fun functions(context: QueryCtxDto, namePartOpt: String?): ApiCallResult<ResultList<FunId>>
 
 }
 
 interface ArtifactApi {
 
-    fun all(): ApiCallResult<Collection<ArtifactIdDto>>
+    fun all(): ApiCallResult<ResultList<ArtifactIdDto>>
 
     fun load(id: ArtifactIdDto): ApiCallResult<Unit>
 
-    fun byGroup(group: String): ApiCallResult<Collection<ArtifactIdDto>>
+    fun byGroup(group: String): ApiCallResult<ResultList<ArtifactIdDto>>
 
-    fun byName(group: String, name: String): ApiCallResult<Collection<ArtifactIdDto>>
+    fun byName(group: String, name: String): ApiCallResult<ResultList<ArtifactIdDto>>
 
     fun get(group: String, name: String, version: String): ApiCallResult<ArtifactIdDto?>
 

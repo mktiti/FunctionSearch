@@ -3,6 +3,7 @@ package com.mktiti.fsearch.backend.spring.handler
 import com.mktiti.fsearch.backend.api.ArtifactHandler
 import com.mktiti.fsearch.dto.ArtifactIdDto
 import com.mktiti.fsearch.dto.MessageDto
+import com.mktiti.fsearch.dto.ResultList
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
@@ -16,18 +17,18 @@ class SpringArtifactHandler @Autowired constructor(private val backingHandler: A
 
     @RequestMapping("/artifacts", method = [RequestMethod.GET])
     @ResponseBody
-    fun artifacts(): Collection<ArtifactIdDto> = backingHandler.all()
+    fun artifacts(): ResultList<ArtifactIdDto> = backingHandler.all()
 
     @RequestMapping("/artifacts/{group}", method = [RequestMethod.GET])
     @ResponseBody
-    fun byGroup(@PathVariable("group") group: String): Collection<ArtifactIdDto> = backingHandler.byGroup(group)
+    fun byGroup(@PathVariable("group") group: String): ResultList<ArtifactIdDto> = backingHandler.byGroup(group)
 
     @RequestMapping("/artifacts/{group}/{name}", method = [RequestMethod.GET])
     @ResponseBody
     fun byName(
             @PathVariable("group") group: String,
             @PathVariable("name") name: String
-    ): Collection<ArtifactIdDto> = backingHandler.byName(group, name)
+    ): ResultList<ArtifactIdDto> = backingHandler.byName(group, name)
 
     @RequestMapping("/artifacts/{group}/{name}/{version}", method = [RequestMethod.GET])
     @ResponseBody

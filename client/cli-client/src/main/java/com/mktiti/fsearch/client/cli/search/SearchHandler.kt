@@ -3,6 +3,7 @@ package com.mktiti.fsearch.client.cli.search
 import com.mktiti.fsearch.client.cli.context.Context
 import com.mktiti.fsearch.client.cli.job.BackgroundJob
 import com.mktiti.fsearch.client.cli.job.voidBackgroundJob
+import com.mktiti.fsearch.client.cli.util.onResults
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.dto.QueryRequestDto
 import com.mktiti.fsearch.dto.QueryResult
@@ -28,7 +29,7 @@ class SearchHandler {
                             is QueryResult.Success -> {
                                 printer.println("done!")
                                 printer.println("Matching functions:")
-                                queryRes.results.forEach {
+                                onResults(queryRes.results) {
                                     if (!isCancelled) {
                                         printer.println("========")
                                         printer.println(it.file)

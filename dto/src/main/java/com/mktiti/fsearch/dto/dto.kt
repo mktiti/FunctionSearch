@@ -18,7 +18,7 @@ data class ArtifactIdDto(
 ) {
 
     override fun toString(): String {
-        return "$group:$name$version"
+        return "$group:$name:$version"
     }
 
 }
@@ -31,7 +31,11 @@ data class QueryCtxDto(
 data class TypeDto(
         val packageName: String,
         val simpleName: String
-)
+) {
+
+    override fun toString() = listOf(packageName, simpleName).joinToString(".")
+
+}
 
 data class TypeInfoDto(
         val type: TypeDto,
@@ -83,6 +87,15 @@ data class QueryFitResult(
         val doc: FunDocDto
 )
 
+data class ResultList<T>(
+        val results: List<T>,
+        val trimmed: Boolean
+) {
+    companion object {
+        fun <T> empty(): ResultList<T> = ResultList(emptyList(), false)
+    }
+}
+
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
@@ -117,7 +130,7 @@ sealed class QueryResult {
     @Schema(name = "QueryResultSuccess")
     class Success(
             override val query: String,
-            val results: List<QueryFitResult>
+            val results: ResultList<QueryFitResult>
     ) : QueryResult()
 
 }

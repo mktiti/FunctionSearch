@@ -4,6 +4,7 @@ import com.github.kittinunf.fuel.core.RequestFactory
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.ArtifactApi
 import com.mktiti.fsearch.dto.ArtifactIdDto
+import com.mktiti.fsearch.dto.ResultList
 
 internal class FuelArtifactApi(
         private val fuel: RequestFactory.Convenience
@@ -20,7 +21,7 @@ internal class FuelArtifactApi(
         return "$artifactsPath/$endPath"
     }
 
-    override fun all(): ApiCallResult<Collection<ArtifactIdDto>> {
+    override fun all(): ApiCallResult<ResultList<ArtifactIdDto>> {
         return fuel.getJson(artifactsPath)
     }
 
@@ -28,11 +29,11 @@ internal class FuelArtifactApi(
         return fuel.postUnit(artifactsPath, id)
     }
 
-    override fun byGroup(group: String): ApiCallResult<Collection<ArtifactIdDto>> {
+    override fun byGroup(group: String): ApiCallResult<ResultList<ArtifactIdDto>> {
         return fuel.getJson(path(group))
     }
 
-    override fun byName(group: String, name: String): ApiCallResult<Collection<ArtifactIdDto>> {
+    override fun byName(group: String, name: String): ApiCallResult<ResultList<ArtifactIdDto>> {
         return fuel.getJson(path(group, name))
     }
 

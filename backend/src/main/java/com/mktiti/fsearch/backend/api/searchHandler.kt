@@ -1,14 +1,11 @@
 package com.mktiti.fsearch.backend.api
 
-import com.mktiti.fsearch.dto.ContextLoadStatus
-import com.mktiti.fsearch.dto.QueryCtxDto
-import com.mktiti.fsearch.dto.QueryResult
-import com.mktiti.fsearch.dto.TypeHint
+import com.mktiti.fsearch.dto.*
 
 interface SearchHandler {
 
     object Nop : SearchHandler {
-        override fun typeHint(contextId: QueryCtxDto, namePart: String): List<TypeHint> = emptyList()
+        override fun typeHint(contextId: QueryCtxDto, namePart: String): ResultList<TypeHint> = ResultList.empty()
 
         override fun preloadContext(contextId: QueryCtxDto): ContextLoadStatus = ContextLoadStatus.LOADING
 
@@ -17,7 +14,7 @@ interface SearchHandler {
         )
     }
 
-    fun typeHint(contextId: QueryCtxDto, namePart: String): List<TypeHint>
+    fun typeHint(contextId: QueryCtxDto, namePart: String): ResultList<TypeHint>
 
     fun preloadContext(contextId: QueryCtxDto): ContextLoadStatus
 

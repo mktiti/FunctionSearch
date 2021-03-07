@@ -4,33 +4,31 @@ import com.mktiti.fsearch.backend.api.*
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
-import com.mktiti.fsearch.dto.ContextLoadStatus
-import com.mktiti.fsearch.dto.QueryCtxDto
-import com.mktiti.fsearch.dto.QueryResult
-import com.mktiti.fsearch.dto.TypeHint
+import com.mktiti.fsearch.dto.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.util.concurrent.Executors
-import kotlin.streams.toList
+import kotlin.streams.asSequence
 
 class BasicSearchHandler(
+        private val resultLimit: Int = 50,
         private val contextManager: ContextManager,
         private val fitPresenter: FitPresenter
 ) : SearchHandler {
 
     private val service = Executors.newCachedThreadPool()
 
-    override fun typeHint(contextId: QueryCtxDto, namePart: String): List<TypeHint> {
+    override fun typeHint(contextId: QueryCtxDto, namePart: String): ResultList<TypeHint> {
         return with(contextManager[contextId.artifactsId()]) {
             domain.typeResolver.allSemis().filter {
                 with(it.info) {
                     simpleName.startsWith(namePart, true) || fullName.startsWith(namePart, true)
                 }
-            }.take(50).map { semi ->
+            }.map { semi ->
                 TypeHint(
                         file = semi.info.fullName,
                         typeParamCount = semi.typeParamCount
                 )
-            }.toList()
+            }.limitedResult(resultLimit)
         }
     }
 
@@ -60,9 +58,11 @@ class BasicSearchHandler(
             val resolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver)
             val fitter = JavaQueryFitter(infoRepo, resolver)
 
-            val results = fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions).map { (function, fit) ->
-                fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
-            }.limit(50).toList()
+            val results = fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions)
+                    .asSequence()
+                    .map{ (function, fit) ->
+                        fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
+                    }.limitedResult(resultLimit)
 
             QueryResult.Success(query, results)
         }

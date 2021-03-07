@@ -11,15 +11,13 @@
     <div id="footer">
       <div id="separator"></div>
       <div class="content">
-        Created by <a class="mono" title="Kotlin, Java, etc | Hire me!" href="https://github.com/mktiti" target="_blank">@mktiti</a>
+        Created by <a class="mono" title="Kotlin, Java, etc | Hire me!" href="https://github.com/mktiti" target="_blank">@mktiti</a>with
+        <a href="https://kotlinlang.org/" target="_blank">Kotlin</a>&
+        <a href="https://vuejs.org/" target="_blank">Vue.js</a>
         <span>
           <a class="icon" title="LinkedIn" target="_blank" href="https://www.linkedin.com/in/kriszti%C3%A1n-m%C3%A1rkus/"><fa-icon :icon="['fab', 'linkedin']" /></a>
           <a class="icon" title="GitHub" target="_blank" href="https://github.com/mktiti/FunctionSearch"><fa-icon :icon="['fab', 'github']" /></a>
         </span>
-        <br>
-        Written in
-        <a href="https://kotlinlang.org/" target="_blank">Kotlin</a>&
-        <a href="https://vuejs.org/" target="_blank">Vue.js</a>
       </div>
     </div>
   </div>
@@ -34,7 +32,7 @@ body {
 }
 
 #app {
-  font-family: Avenir, Helvetica, Arial, serif;
+  font-family: Helvetica, Roboto, serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
@@ -70,11 +68,25 @@ body {
   font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: 1px;
-  padding: 17px 15px 10px 20px;
+  padding: 17px 15px 12px 20px;
+}
+
+@-moz-document url-prefix() {
+  #nav li a {
+    padding-bottom: 10px;
+  }
 }
 
 #nav li.right:hover, #nav li.right:focus {
   background-color: #32337d;
+}
+
+@media only screen and (max-width: 600px) {
+  #nav li a {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 12px;
+  }
 }
 
 @media screen and (max-width: 350px) {

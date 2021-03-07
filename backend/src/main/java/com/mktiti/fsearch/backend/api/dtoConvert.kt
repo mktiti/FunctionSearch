@@ -38,3 +38,13 @@ fun SemiType.asDto(): TypeInfoDto = TypeInfoDto(
         type = info.asDto(),
         typeParamCount = typeParamCount
 )
+
+fun <T> Sequence<T>.limitedResult(limit: Int): ResultList<T> {
+    val extraLimit = limit + 1
+    val limited = take(extraLimit).toList()
+    return if (limited.size == extraLimit) {
+        ResultList(limited.take(limit), true)
+    } else {
+        ResultList(limited, false)
+    }
+}

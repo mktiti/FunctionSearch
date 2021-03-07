@@ -10,10 +10,11 @@
         Search results
       </div>
       <ul id="results">
-        <li v-for="(item, index) in result.results" v-bind:key="index">
+        <li v-for="(item, index) in result.results.results" v-bind:key="index">
           <ResultEntry :entry="item"></ResultEntry>
         </li>
       </ul>
+      <div id="res-trim-message" v-if="result.results.trimmed">Some results omitted</div>
     </div>
     <div v-else>
       <div class="message error">
@@ -70,6 +71,14 @@ export default class SearchResults extends ResultBase {
 </script>
 
 <style scoped>
+#res-trim-message {
+  color: #e7e7e7;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 15px;
+  text-align: center;
+}
+
 .message {
   font-weight: bold;
   font-size: 20px;

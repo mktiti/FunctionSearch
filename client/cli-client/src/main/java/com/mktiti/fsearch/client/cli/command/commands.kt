@@ -4,11 +4,13 @@ import com.mktiti.fsearch.client.cli.ProjectInfo
 import com.mktiti.fsearch.client.cli.command.dsl.createCommands
 import com.mktiti.fsearch.client.cli.job.BackgroundJob
 import com.mktiti.fsearch.client.cli.tui.KotlinCompleter
+import com.mktiti.fsearch.client.cli.util.onResults
 import com.mktiti.fsearch.client.cli.util.parseArtifactId
 import com.mktiti.fsearch.client.cli.util.runHealthCheck
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.fuel.FuelService
 import com.mktiti.fsearch.client.rest.nop.NopService
+import com.mktiti.fsearch.dto.FunRelationDto
 import com.mktiti.fsearch.dto.TypeDto
 
 object CommandStore {
@@ -54,7 +56,7 @@ object CommandStore {
                 // TODO
                 when (val callRes = artifactApi.all()) {
                     is ApiCallResult.Success -> {
-                        callRes.result.forEach(printer::println)
+                        onResults(callRes.result, printer::println)
                     }
                     is ApiCallResult.Exception -> {
                         printer.println("Error while fetching artifacts - [${callRes.code}] ${callRes.message}")
@@ -128,8 +130,8 @@ object CommandStore {
             handleRange(0..1) { args ->
                 when (val callRes = infoApi.types(context.asDto(), args.firstOrNull())) {
                     is ApiCallResult.Success -> {
-                        callRes.result.forEach {
-                            printer.println(it.type.packageName + "." + it.type.simpleName)
+                        onResults(callRes) {
+                            printer.println(it.type)
                         }
                     }
                     is ApiCallResult.Exception -> {
@@ -142,6 +144,25 @@ object CommandStore {
         command("functions") {
             help {
                 "Lists available functions, optionally filtered by name (first parameter)"
+            }
+
+            handleRange(0..1) { args ->
+                when (val callRes = infoApi.functions(context.asDto(), args.firstOrNull())) {
+                    is ApiCallResult.Success -> {
+                        onResults(callRes) {
+                            printer.print(it.type)
+                            val typedName = when (it.relation) {
+                                FunRelationDto.STATIC -> "::${it.name}"
+                                FunRelationDto.CONSTRUCTOR -> "::<init>"
+                                FunRelationDto.INSTANCE -> ".${it.name}"
+                            }
+                            printer.println(typedName)
+                        }
+                    }
+                    is ApiCallResult.Exception -> {
+                        printer.println("Error while fetching artifacts - [${callRes.code}] ${callRes.message}")
+                    }
+                }
             }
         }
 

@@ -1,13 +1,16 @@
 package com.mktiti.fsearch.backend
 
 import com.mktiti.fsearch.backend.api.ArtifactHandler
+import com.mktiti.fsearch.backend.api.limitedResult
 import com.mktiti.fsearch.backend.api.toId
 import com.mktiti.fsearch.dto.ArtifactIdDto
+import com.mktiti.fsearch.dto.ResultList
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.ArtifactManager
 
 // TODO - efficient artifact filtering
 class BasicArtifactHandler(
+        private val resultLimit: Int = 50,
         private val artifactManager: ArtifactManager,
         private val contextManager: ContextManager
 ) : ArtifactHandler {
@@ -20,25 +23,23 @@ class BasicArtifactHandler(
         )
     }
 
-    private fun <T> Sequence<T>.limited() = take(50).toList()
-
     private fun rawAll(): Sequence<ArtifactIdDto> = artifactManager.allStored()
             .asSequence()
             .map { it.asDto() }
 
-    override fun all(): Collection<ArtifactIdDto> = rawAll().limited()
+    override fun all(): ResultList<ArtifactIdDto> = rawAll().limitedResult(resultLimit)
 
     override fun create(id: ArtifactIdDto) {
         contextManager[ContextId(setOf(id.toId()))]
     }
 
-    override fun byGroup(group: String): Collection<ArtifactIdDto> = rawAll().filter {
+    override fun byGroup(group: String): ResultList<ArtifactIdDto> = rawAll().filter {
         it.group == group
-    }.limited()
+    }.limitedResult(resultLimit)
 
-    override fun byName(group: String, name: String): Collection<ArtifactIdDto> = rawAll().filter {
+    override fun byName(group: String, name: String): ResultList<ArtifactIdDto> = rawAll().filter {
         it.group == group && it.name == name
-    }.limited()
+    }.limitedResult(resultLimit)
 
     override fun get(group: String, name: String, version: String): ArtifactIdDto? = rawAll().find {
         it.group == group && it.name == name && it.version == version

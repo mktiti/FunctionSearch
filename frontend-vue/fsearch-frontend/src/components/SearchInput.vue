@@ -1,7 +1,7 @@
 <template>
   <div id="search-bar">
     <input class="code-in" maxlength="256"
-           type="search" autocomplete="off"
+           type="search" autocomplete="off" autofocus
            placeholder="Search for functions" title="Search for function"
            v-model="query" v-on:keyup.enter="initSearch" >
 

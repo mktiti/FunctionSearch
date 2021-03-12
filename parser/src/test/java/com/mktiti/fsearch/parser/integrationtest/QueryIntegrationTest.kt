@@ -9,6 +9,7 @@ import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.parser.function.DirectoryFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
+import com.mktiti.fsearch.parser.query.QueryImports
 import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.type.DirectoryInfoCollector
 import com.mktiti.fsearch.util.cutLast
@@ -99,7 +100,7 @@ class QueryIntegrationTest {
 
             testResource(dataRes).forEach { (queryStr, results) ->
                 println("Fit testing $queryStr")
-                val (query, virtuals) = queryParser.parse(queryStr, emptyList())
+                val (query, virtuals) = queryParser.parse(queryStr, QueryImports.none)
 
                 val queryResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
                 val fitter: QueryFitter = JavaQueryFitter(infoRepo, queryResolver)

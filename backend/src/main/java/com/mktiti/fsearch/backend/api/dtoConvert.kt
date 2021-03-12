@@ -7,13 +7,23 @@ import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.dto.*
 import com.mktiti.fsearch.modules.ArtifactId
+import com.mktiti.fsearch.parser.query.QueryImport
+import com.mktiti.fsearch.parser.query.QueryImports
 
 fun ArtifactIdDto.toId() = ArtifactId(group.split('.'), name, version)
 
 fun QueryCtxDto.artifactsId() = ContextId(artifacts.map { it.toId() }.toSet())
 
-fun QueryCtxDto.imports(): List<MinimalInfo> {
-    return imports.map { MinimalInfo(it.packageName.split('.'), it.simpleName) }
+fun QueryCtxDto.imports(): QueryImports {
+    val imports = imports.map {
+        val packageName = it.packageName.split(".")
+        if (it.simpleName == "*") {
+            QueryImport.PackageImport(packageName)
+        } else {
+            QueryImport.TypeImport(MinimalInfo(packageName, it.simpleName))
+        }
+    }
+    return QueryImports(imports)
 }
 
 fun relationDtoFromModel(rel: FunInstanceRelation): FunRelationDto = when (rel) {

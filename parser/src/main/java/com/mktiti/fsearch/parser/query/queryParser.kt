@@ -28,7 +28,7 @@ interface QueryParser {
             val virtualTypes: List<DirectType>
     )
 
-    fun parse(query: String, imports: List<MinimalInfo>): ParseResult
+    fun parse(query: String, imports: QueryImports): ParseResult
 }
 
 class AntlrQueryParser(
@@ -49,7 +49,7 @@ class AntlrQueryParser(
 
     private fun <T> getTypeBase(
             name: String,
-            imports: List<MinimalInfo>,
+            imports: QueryImports,
             getter: TypeResolver.(info: MinimalInfo) -> T?,
             simpleGetter: TypeResolver.(name: String) -> T?
     ): T {
@@ -57,10 +57,10 @@ class AntlrQueryParser(
         return if (info.packageName.isEmpty()) {
             val simpleName = info.simpleName
 
-            imports.find { it.simpleName == simpleName }?.let { imported ->
-                typeResolver.getter(imported)?.let {
-                    return it
-                }
+            imports.potentialInfos(simpleName).mapNotNull {
+                typeResolver.getter(it)
+            }.firstOrNull()?.let {
+                return it
             }
 
             typeResolver.simpleGetter(simpleName) ?: throw TypeException("Type $simpleName not found")
@@ -69,7 +69,7 @@ class AntlrQueryParser(
         }
     }
 
-    private fun buildNonGeneric(name: String, imports: List<MinimalInfo>): NonGenericType {
+    private fun buildNonGeneric(name: String, imports: QueryImports): NonGenericType {
         PrimitiveType.fromNameSafe(name)?.let {
             return javaRepo.primitive(it).with(typeResolver)
         }
@@ -83,7 +83,7 @@ class AntlrQueryParser(
             name: String,
             templateContext: TemplateSignatureContext,
             paramVirtualTypes: VirtParamTable,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): NonGenericType {
         val template = getTypeBase(name, imports, getter = TypeResolver::template) {
             typeResolver.template(it, allowSimple = true)
@@ -96,7 +96,7 @@ class AntlrQueryParser(
     private fun buildFullType(
             completeName: CompleteNameContext,
             paramVirtualTypes: VirtParamTable,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): NonGenericType {
         val type: NonGenericType = if (completeName.WILDCARD() != null) {
             QueryType.wildcard(infoRepo)
@@ -124,7 +124,7 @@ class AntlrQueryParser(
     private fun buildFunArg(
             funCtx: FunSignatureContext,
             paramVirtualTypes: VirtParamTable,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): NonGenericType {
         val query = buildFunSignature(funCtx, paramVirtualTypes, imports)
         return QueryType.functionType(query.inputParameters, query.output, infoRepo)
@@ -133,7 +133,7 @@ class AntlrQueryParser(
     private tailrec fun buildArg(
             par: WrappedFunArgContext,
             paramVirtualTypes: VirtParamTable,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): NonGenericType {
         val nested = par.funArg()
 
@@ -147,7 +147,7 @@ class AntlrQueryParser(
     private fun buildFunSignature(
             funSignature: FunSignatureContext,
             paramVirtualTypes: VirtParamTable,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): QueryType {
         fun WrappedFunArgContext.mapArg() = buildArg(this, paramVirtualTypes, imports)
 
@@ -161,7 +161,7 @@ class AntlrQueryParser(
             context: VirtualDeclarationContext,
             virtualMap: Map<String, NonGenericType>,
             defaultRoot: TypeHolder.Static,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): Pair<String, DirectType> {
         val name = context.SIMPLE_NAME().text
 
@@ -185,7 +185,7 @@ class AntlrQueryParser(
             context: QueryContext,
             names: Set<String>,
             defaultRoot: TypeHolder.Static,
-            imports: List<MinimalInfo>
+            imports: QueryImports
     ): Map<String, DirectType> {
         val explicitDeclarations = context.virtualDeclarations()?.virtualDeclaration() ?: emptyList()
         val explicitNames = explicitDeclarations.mapNotNull { it.SIMPLE_NAME().text }
@@ -203,7 +203,7 @@ class AntlrQueryParser(
     }
 
     @Throws(TypeException::class)
-    override fun parse(query: String, imports: List<MinimalInfo>): QueryParser.ParseResult {
+    override fun parse(query: String, imports: QueryImports): QueryParser.ParseResult {
         val lexer = QueryLexer(CharStreams.fromString(query))
         lexer.removeErrorListeners()
         lexer.addErrorListener(ExceptionErrorListener)

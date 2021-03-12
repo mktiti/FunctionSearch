@@ -86,9 +86,14 @@ object CommandStore {
 
                 fun List<String>.joined() = joinToString(prefix = "", separator = ".", postfix = "")
 
+                val simpleName = when (val parsed = nameParts.joined()) {
+                    "" -> "*"
+                    else -> parsed
+                }
+
                 val data = TypeDto(
                         packageName = packageParts.joined(),
-                        simpleName = nameParts.joined()
+                        simpleName = simpleName
                 )
                 context.import(data)
             }
@@ -110,11 +115,16 @@ object CommandStore {
                 }
 
                 handle(paramCount = 0) {
-                    if (context.imports.importMap.isEmpty()) {
+                    if (context.imports.isEmpty()) {
                         printer.println("No type imported")
                     } else {
-                        context.imports.importMap.forEach { (type, full) ->
-                            printer.println("${full.packageName}.${full.simpleName} as $type")
+                        context.imports.forEach { type ->
+                            printer.print("${type.packageName}.${type.simpleName}")
+                            if (type.simpleName == "*") {
+                                printer.println()
+                            } else {
+                                printer.print(" as ${type.simpleName}")
+                            }
                         }
                     }
                 }

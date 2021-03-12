@@ -14,6 +14,7 @@ import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.modules.*
 import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
+import com.mktiti.fsearch.parser.query.QueryImports
 import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.service.FunctionCollector
 import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
@@ -176,7 +177,7 @@ fun main(args: Array<String>) {
             }
         } else {
             try {
-                val (query, virtuals) = context.queryParser.parse(input, emptyList())
+                val (query, virtuals) = context.queryParser.parse(input, QueryImports.none)
                 print("Parsed as: ")
                 context.typePrint.print(query)
                 println("Started searching...")

@@ -3,13 +3,11 @@ package com.mktiti.fsearch.client.cli.tui
 import com.mktiti.fsearch.client.cli.ProjectInfo
 import com.mktiti.fsearch.client.cli.command.CommandStore
 import com.mktiti.fsearch.client.cli.context.Context
-import com.mktiti.fsearch.client.cli.context.ContextImports
 import com.mktiti.fsearch.client.cli.context.ContextManager
 import com.mktiti.fsearch.client.cli.job.DefaultJobHandler
 import com.mktiti.fsearch.client.cli.job.PrintWriterJobPrinter
 import com.mktiti.fsearch.client.cli.search.SearchHandler
 import com.mktiti.fsearch.client.cli.util.runHealthCheck
-import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.fuel.FuelService
 import com.mktiti.fsearch.client.rest.nop.NopService
 import org.jline.console.impl.SystemRegistryImpl
@@ -64,7 +62,7 @@ fun main(args: Array<String>) {
     }
 
     val searchHandler = SearchHandler()
-    val contextManager = ContextManager(Context(initialService, emptySet(), ContextImports.empty()))
+    val contextManager = ContextManager(Context(initialService, emptySet(), emptyList()))
 
     DefaultJobHandler(printer, contextManager).use { jobHandler ->
         terminal.handle(Terminal.Signal.INT) {

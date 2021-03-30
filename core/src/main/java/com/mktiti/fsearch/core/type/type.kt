@@ -167,7 +167,7 @@ class TypeTemplate(
         get() = typeParams.size
 
     fun asDynamicApplied(): DynamicAppliedType = forceDynamicApply(
-            (0 until typeParams.size).map { ParamSubstitution(it) }
+            typeParams.indices.map { ParamSubstitution(it) }
     )
 
     override fun staticApply(typeArgs: List<TypeHolder.Static>): StaticAppliedType? {

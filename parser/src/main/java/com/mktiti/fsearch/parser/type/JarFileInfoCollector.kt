@@ -17,11 +17,12 @@ object JarCollectorUtil {
                 }
 
                 val ordered = if (sorted) {
+                    entries
+                } else {
+                    // Sorted so that nested (non-static) classes are parsed after their respective containers
                     entries.sortedBy {
                         it.name.removeSuffix(".class")
                     }
-                } else {
-                    entries
                 }
 
                 ordered.forEach { entry ->

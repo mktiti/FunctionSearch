@@ -23,7 +23,13 @@ const defaultContext: QueryCtxDto = {
   artifacts: [
     {group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'},
     {group: 'com.google.guava', name: 'guava', version: '30.0-jre'}
-  ], imports: []
+  ], imports: [
+    {packageName: 'java.lang', simpleName: '*'},
+    {packageName: 'java.io', simpleName: '*'},
+    {packageName: 'java.math', simpleName: '*'},
+    {packageName: 'java.util', simpleName: '*'},
+    {packageName: 'java.util.stream', simpleName: '*'}
+  ]
 }
 
 @Component({

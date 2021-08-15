@@ -6,7 +6,7 @@ import com.mktiti.fsearch.client.rest.InfoApi
 import com.mktiti.fsearch.client.rest.SearchApi
 import com.mktiti.fsearch.client.rest.Service
 
-class FuelService(
+internal class FuelService(
         basePath: String
 ) : Service {
 

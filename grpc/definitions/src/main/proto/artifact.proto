@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+package fsearch;
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.mktiti.fsearch.grpc";
+
+service ArtifactService {
+
+  rpc Load (ArtifactId) returns (google.protobuf.Empty) {}
+
+  rpc List (ArtifactFilterMessage) returns (ArtifactListResult) {}
+
+  rpc Get (ArtifactSelectMessage) returns (ArtifactGetResult) {}
+
+  rpc Remove (ArtifactId) returns (BooleanMessage) {}
+
+}
+
+message ArtifactFilterMessage {
+  optional string group = 1;
+  optional string name = 2;
+}
+
+message ArtifactSelectMessage {
+  required string group = 1;
+  required string name = 2;
+  required string version = 3;
+}
+
+message ArtifactListResult {
+  repeated ArtifactId results = 1;
+  required bool trimmed = 2;
+}
+
+message ArtifactGetResult {
+  optional ArtifactId result = 1;
+}

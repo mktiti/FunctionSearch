@@ -31,6 +31,16 @@
 
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>grpc-definitions</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
+            <artifactId>grpc-converter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mktiti.signature-search</groupId>
             <artifactId>backend</artifactId>
             <!-- Build order forcing for swagger doc generation -->
             <optional>true</optional>
@@ -46,6 +56,13 @@
             <groupId>com.github.kittinunf.fuel</groupId>
             <artifactId>fuel-jackson</artifactId>
             <version>${fuel.version}</version>
+        </dependency>
+
+        <!-- Workaround to silence gRPC console logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>1.7.32</version>
         </dependency>
 <!--
         <dependency>

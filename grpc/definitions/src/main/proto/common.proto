@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+package fsearch;
+
+option java_package = "com.mktiti.fsearch.grpc";
+
+message StringMessage {
+  required string message = 1;
+}
+
+message BooleanMessage {
+  required bool message = 1;
+}
+
+message ArtifactId {
+  required string group = 1;
+  required string name = 2;
+  required string version = 3;
+}
+
+message Type {
+  required string packageName = 1;
+  required string simpleName = 2;
+}
+
+message QueryContext {
+  repeated ArtifactId artifactsIds = 1;
+  repeated Type imports = 2;
+}
+
+enum FunRelation {
+  STATIC = 1;
+  CONSTRUCTOR = 2;
+  INSTANCE = 3;
+}

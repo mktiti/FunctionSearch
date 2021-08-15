@@ -5,6 +5,9 @@ package com.mktiti.fsearch.backend.spring
 import com.mktiti.fsearch.backend.ContextManager
 import com.mktiti.fsearch.backend.ProjectInfo
 import com.mktiti.fsearch.backend.SimpleMapContextManager
+import com.mktiti.fsearch.backend.grpc.GrpcArtifactService
+import com.mktiti.fsearch.backend.grpc.GrpcInfoService
+import com.mktiti.fsearch.backend.grpc.GrpcSearchService
 import com.mktiti.fsearch.core.javadoc.DocStore
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
@@ -26,12 +29,14 @@ import io.swagger.v3.oas.models.info.Info
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.streams.toList
 
 @SpringBootApplication
+@Import(GrpcSearchService::class, GrpcInfoService::class, GrpcArtifactService::class)
 class SpringMain {
 
     @Bean

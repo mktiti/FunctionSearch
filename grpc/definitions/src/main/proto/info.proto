@@ -1,0 +1,42 @@
+syntax = "proto2";
+
+package fsearch;
+
+import "common.proto";
+
+option java_package = "com.mktiti.fsearch.grpc";
+
+service InfoService {
+
+  rpc Types (InfoRequest) returns (TypeInfoResult) {}
+
+  rpc Functions (InfoRequest) returns (FunInfoResult) {}
+
+}
+
+message InfoRequest {
+  required QueryContext context = 1;
+  optional string namePart = 2;
+}
+
+message TypeInfo {
+  required Type type = 1;
+  required int32 typeParamCount = 2;
+}
+
+message TypeInfoResult {
+  repeated TypeInfo results = 1;
+  required bool trimmed = 2;
+}
+
+message FunInfo {
+  required Type type = 1;
+  required string name = 2;
+  required string signature = 3;
+  required FunRelation relation = 4;
+}
+
+message FunInfoResult {
+  repeated FunInfo results = 1;
+  required bool trimmed = 2;
+}

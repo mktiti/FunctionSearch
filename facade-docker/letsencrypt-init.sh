@@ -77,4 +77,4 @@ docker-compose run --rm --entrypoint "\
 echo
 
 echo "### Reloading nginx ..."
-docker-compose exec facade nginx -s reload
+docker-compose exec fsearch-facade nginx -s reload

@@ -1,0 +1,57 @@
+syntax = "proto2";
+
+package fsearch;
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.mktiti.fsearch.grpc";
+
+service SearchService {
+
+  rpc Search (QueryRequest) returns (QueryResult) {}
+
+  rpc HealthCheck (google.protobuf.Empty) returns (StringMessage) {}
+
+}
+
+message QueryRequest {
+  required QueryContext context = 1;
+  required string query = 2;
+}
+
+message FunDoc {
+  optional string shortInfo = 1;
+  optional string details = 2;
+}
+
+message QueryFitResult {
+  required string file = 1;
+  required string funName = 2;
+  required FunRelation relation = 3;
+  required string header = 4;
+  required FunDoc doc = 5;
+}
+
+message Success {
+  repeated QueryFitResult results = 1;
+  required bool trimmed = 2;
+}
+
+message Error {
+  enum ErrorType {
+    INTERNAL = 1;
+    QUERY = 2;
+  }
+
+  required string message = 1;
+  required ErrorType type = 2;
+}
+
+message QueryResult {
+  required string query = 1;
+  oneof Result {
+    Success success = 2;
+    Error error = 3;
+  }
+}

@@ -8,7 +8,8 @@ import com.mktiti.fsearch.client.cli.job.DefaultJobHandler
 import com.mktiti.fsearch.client.cli.job.PrintWriterJobPrinter
 import com.mktiti.fsearch.client.cli.search.SearchHandler
 import com.mktiti.fsearch.client.cli.util.runHealthCheck
-import com.mktiti.fsearch.client.rest.fuel.FuelService
+import com.mktiti.fsearch.client.rest.ClientFactory
+import com.mktiti.fsearch.client.rest.ClientFactory.Config.RestConfig
 import com.mktiti.fsearch.client.rest.nop.NopService
 import org.jline.console.impl.SystemRegistryImpl
 import org.jline.reader.Completer
@@ -55,7 +56,7 @@ fun main(args: Array<String>) {
             NopService
         }
         else -> {
-            FuelService(backend).apply {
+            ClientFactory.create(RestConfig(backend)).apply {
                 runHealthCheck(this, PrintWriterJobPrinter(printer))
             }
         }

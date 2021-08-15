@@ -2,13 +2,18 @@ package com.mktiti.fsearch.client.cli.command
 
 import com.mktiti.fsearch.client.cli.ProjectInfo
 import com.mktiti.fsearch.client.cli.command.dsl.createCommands
+import com.mktiti.fsearch.client.cli.context.Context
 import com.mktiti.fsearch.client.cli.job.BackgroundJob
+import com.mktiti.fsearch.client.cli.job.BackgroundJobContext
 import com.mktiti.fsearch.client.cli.tui.KotlinCompleter
 import com.mktiti.fsearch.client.cli.util.onResults
 import com.mktiti.fsearch.client.cli.util.parseArtifactId
 import com.mktiti.fsearch.client.cli.util.runHealthCheck
 import com.mktiti.fsearch.client.rest.ApiCallResult
-import com.mktiti.fsearch.client.rest.fuel.FuelService
+import com.mktiti.fsearch.client.rest.ClientFactory
+import com.mktiti.fsearch.client.rest.ClientFactory.Config.GrpcConfig
+import com.mktiti.fsearch.client.rest.ClientFactory.Config.RestConfig
+import com.mktiti.fsearch.client.rest.Service
 import com.mktiti.fsearch.client.rest.nop.NopService
 import com.mktiti.fsearch.dto.FunRelationDto
 import com.mktiti.fsearch.dto.TypeDto
@@ -206,18 +211,37 @@ object CommandStore {
                 }
             }
 
-            subCommand("set") {
-                help { "Sets the backing service path" }
+            fun BackgroundJobContext.setService(newService: Service): Context {
+                val check = runHealthCheck(newService, printer)
+                return if (check) {
+                    printer.println("Health check passed, service updated")
+                    context.copy(service = newService)
+                } else {
+                    printer.println("Health check failed, service not updated")
+                    context
+                }
+            }
+
+            subCommand("set-rest") {
+                help { "Sets the backing RESTful service path" }
 
                 handleTransform(paramCount = 1) { args ->
-                    val newService = FuelService(args.first())
-                    val check = runHealthCheck(newService, printer)
-                    if (check) {
-                        printer.println("Health check passed, service updated")
-                        context.copy(service = newService)
-                    } else {
-                        printer.println("Health check failed, service not updated")
+                    val newService = ClientFactory.create(RestConfig(args.first()))
+                    setService(newService)
+                }
+            }
+
+            subCommand("set-grpc") {
+                help { "Sets the backing gRPC service path (address port)" }
+
+                handleTransform(paramCount = 2) { args ->
+                    val port = args[1].toIntOrNull()
+                    if (port == null) {
+                        printer.println("gRPC port must be an integer!")
                         context
+                    } else {
+                        val newService = ClientFactory.create(GrpcConfig(args.first(), port))
+                        setService(newService)
                     }
                 }
             }

@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.integrationtest
-
+/*
 import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
@@ -124,3 +124,5 @@ class QueryIntegrationTest {
     }
 
 }
+
+ */

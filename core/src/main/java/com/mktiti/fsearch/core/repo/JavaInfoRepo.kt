@@ -13,6 +13,8 @@ interface JavaInfoRepo {
 
     val arrayType: MinimalInfo
 
+    val explicitSamAnnotations: List<MinimalInfo>
+
     fun isInternal(info: MinimalInfo): Boolean
 
     fun primitive(primitive: PrimitiveType): MinimalInfo
@@ -75,6 +77,10 @@ object MapJavaInfoRepo : JavaInfoRepo {
     override val objectType = inLang("Object")
     override val voidType = internal("void")
     override val arrayType = internal("Array")
+
+    override val explicitSamAnnotations = listOf(
+            MinimalInfo(listOf("java", "lang"), "FunctionalInterface")
+    )
 
     private val primitiveMap = EnumMap.eager(this::primitiveType)
     private val boxMap = EnumMap.eager(this::boxInfo)

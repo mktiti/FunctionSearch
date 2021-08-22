@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.type
-
+/*
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.core.type.Type
@@ -62,3 +62,6 @@ class TemplateCreator(
         samTypeCreator: SamTypeCreator.Dat?,
         val templateSuperAppender: (Type.DynamicAppliedType) -> Unit
 ) : TypeCreator<TypeTemplate, SamTypeCreator.Dat>(unfinishedType, directSuperAppender, directSupers, templateSupers, samTypeCreator)
+
+
+ */

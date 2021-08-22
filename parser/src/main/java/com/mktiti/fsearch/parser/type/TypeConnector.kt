@@ -1,173 +1,427 @@
 package com.mktiti.fsearch.parser.type
 
-import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.parser.service.JclCollector
-import com.mktiti.fsearch.util.MutablePrefixTree
+import com.mktiti.fsearch.core.repo.*
+import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
+import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection.*
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
+import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
+import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.liftNull
+import com.mktiti.fsearch.parser.service.indirect.*
+import com.mktiti.fsearch.parser.util.JavaTypeParseLog
+import com.mktiti.fsearch.util.orElse
 
-interface TypeConnector {
+class JavaTypeInfoConnector(
+        private val infoRepo: JavaInfoRepo,
+        private val log: JavaTypeParseLog
+) : TypeInfoConnector {
 
-    fun connectJcl(
-            imDirectTypes: MutablePrefixTree<String, DirectCreator>,
-            imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            jclArtifact: String
-    ): JclCollector.Result
+    private fun <T> useOneshot(
+            rawInfoResults: RawTypeInfoResult,
+            code: OneshotConnector.() -> T
+    ) = OneshotConnector(infoRepo, rawInfoResults).code()
 
-    fun connectArtifact(
-            imDirectTypes: MutablePrefixTree<String, DirectCreator>,
-            imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            javaRepo: JavaRepo,
-            depsRepos: Collection<TypeRepo>
-    ): TypeRepo
+    override fun connectJcl(rawInfoResults: RawTypeInfoResult) = useOneshot(rawInfoResults) {
+        connectJcl()
+    }
+
+    override fun connectArtifact(rawInfoResults: RawTypeInfoResult) = useOneshot(rawInfoResults) {
+        connectArtifact()
+    }
 
 }
 
-/*
+private sealed class SemiResult<out S : SemiType> {
 
-class JavaTypeConnector(
-        private val infoRepo: JavaInfoRepo,
-        private val log: JavaTypeParseLog
-) : TypeConnector {
+    class NotFound<S : SemiType> : SemiResult<S>()
 
-    private fun <T> useOneshot(
-            imDirectTypes: MutablePrefixTree<String, DirectCreator>,
-            imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            depsRepos: Collection<TypeRepo>,
-            code: OneshotConnector.() -> T
-    ) = OneshotConnector(log, infoRepo, depsRepos, imDirectTypes, imTemplateTypes).code()
+    data class Ready<S : SemiType>(val readySemi: S) : SemiResult<S>()
 
-    override fun connectJcl(
-            imDirectTypes: MutablePrefixTree<String, DirectCreator>,
-            imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            jclArtifact: String
-    ): JclCollector.JclResult = useOneshot(imDirectTypes, imTemplateTypes, emptyList()) {
-        connectJcl(jclArtifact)
-    }
-
-    override fun connectArtifact(
-            imDirectTypes: MutablePrefixTree<String, DirectCreator>,
-            imTemplateTypes: MutablePrefixTree<String, TemplateCreator>,
-            javaRepo: JavaRepo,
-            depsRepos: Collection<TypeRepo>
-    ): TypeRepo = useOneshot(imDirectTypes, imTemplateTypes, depsRepos) {
-        connectArtifact(javaRepo)
-    }
+    data class Unready<S : SemiType>(val creator: SemiCreator<S>) : SemiResult<S>()
 
 }
 
 private class OneshotConnector(
-        private val log: JavaTypeParseLog,
         private val infoRepo: JavaInfoRepo,
-        private val depsRepos: Collection<TypeRepo>,
-        private val imDirectTypes: MutablePrefixTree<String, DirectCreator>,
-        private val imTemplateTypes: MutablePrefixTree<String, TemplateCreator>
+        rawInfoResults: RawTypeInfoResult
 ) {
 
-    private val directTypes: MutablePrefixTree<String, DirectType> = mapMutablePrefixTree()
-    private val typeTemplates: MutablePrefixTree<String, TypeTemplate> = mapMutablePrefixTree()
+    companion object {
+        fun SemiInfo.DirectInfo.initCreator(): DirectCreator {
+            val supers: MutableList<TypeHolder.Static> = ArrayList(nonGenericSuperCount)
+            val sam = samType?.let { samInfo ->
+                SamType.DirectSam(
+                        explicit = samInfo.explicit,
+                        inputs = samInfo.signature.inputs.map { it.second.holder() },
+                        output = samInfo.signature.output.holder()
+                )
+            }
+            val unreadyType = DirectType(
+                    minInfo = info,
+                    virtual = false,
+                    superTypes = supers,
+                    samType = sam
+            )
 
-    private fun anyDirect(info: MinimalInfo): DirectType? {
-        return directTypes[info] ?: imDirectTypes[info]?.unfinishedType ?: depsRepos.anyDirect(info)
+            return DirectCreator(
+                    unfinishedType = unreadyType,
+                    directSupers = directSupers.toMutableList(),
+                    satSupers = satSupers.toMutableList(),
+                    nonGenericAppend = supers::add
+            )
+        }
+
+        fun SemiInfo.TemplateInfo.initCreator(): TemplateCreator {
+            val supers: MutableList<TypeHolder<*, *>> = ArrayList(nonGenericSuperCount + datSupers.size)
+
+            fun TypeParamInfo.toAp(): ApplicationParameter? {
+                return when (this) {
+                    TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
+                    TypeParamInfo.SelfRef -> SelfSubstitution
+                    is TypeParamInfo.BoundedWildcard -> {
+                        val bound = bound.toAp() as? Substitution ?: return null
+                        val dir = if (this is TypeParamInfo.BoundedWildcard.UpperWildcard) UPPER else LOWER
+                        BoundedWildcard.Dynamic(param = bound, direction = dir)
+                    }
+                    is TypeParamInfo.Direct -> StaticTypeSubstitution(arg.complete().holder())
+                    is TypeParamInfo.Sat -> StaticTypeSubstitution(sat.holder())
+                    is TypeParamInfo.Dat -> {
+                        val convertedArgs = dat.args.map { it.toAp() }.liftNull() ?: return null
+                        val convertedDat = TypeHolder.Dynamic.Indirect(
+                                CompleteMinInfo.Dynamic(dat.template, convertedArgs)
+                        )
+                        TypeSubstitution(convertedDat)
+                    }
+                    is TypeParamInfo.Param -> Substitution.ParamSubstitution(param)
+                }
+            }
+
+            val sam = samType?.let { samInfo ->
+                SamType.GenericSam(
+                        explicit = samInfo.explicit,
+                        inputs = samInfo.signature.inputs.map { it.second.toAp() }.liftNull() ?: return@let null,
+                        output = samInfo.signature.output.toAp() ?: return@let null
+                )
+            }
+
+            val convertedTps = typeParams.map { tp ->
+                val bounds: List<Substitution> = tp.bounds.map { it.toAp() as? Substitution }.liftNull() ?: emptyList()
+                TypeParameter(
+                        sign = tp.sign,
+                        bounds = TypeBounds(bounds.toSet())
+                )
+            }
+
+            val unreadyType = TypeTemplate(
+                    info = info,
+                    typeParams = convertedTps,
+                    superTypes = supers,
+                    samType = sam,
+                    virtual = false
+            )
+
+            return TemplateCreator(
+                    unfinishedType = unreadyType,
+                    mutableSupers = supers,
+                    directSupers = directSupers.toMutableList(),
+                    satSupers = satSupers.toMutableList(),
+                    datSupers = datSupers.toMutableList()
+            )
+        }
+
+        fun <I : SemiInfo<*>, C : SemiCreator<*>> creators(
+                infos: Collection<I>,
+                creatorInit: (I) -> C
+        ): MutableMap<MinimalInfo, C> {
+            return infos.groupBy(
+                    keySelector = SemiInfo<*>::info,
+                    valueTransform = creatorInit
+            ).mapValues { (_, v) -> v.first() }.toMutableMap()
+        }
+
+        fun directCreators(infos: RawTypeInfoResult): MutableMap<MinimalInfo, DirectCreator> {
+            return creators(infos.directInfos) { it.initCreator() }
+        }
+
+        fun templateCreators(infos: RawTypeInfoResult): MutableMap<MinimalInfo, TemplateCreator> {
+            return creators(infos.templateInfos) { it.initCreator() }
+        }
     }
 
-    private fun readyTemplate(info: MinimalInfo): TypeTemplate? {
-        return typeTemplates[info] ?: depsRepos.anyTemplate(info)
-    }
+    private val directCreators: MutableMap<MinimalInfo, DirectCreator> = directCreators(rawInfoResults)
+    private val templateCreators: MutableMap<MinimalInfo, TemplateCreator> = templateCreators(rawInfoResults)
+    private val allCreators: Collection<SemiCreator<*>>
+        get() = listOf(directCreators, templateCreators).flatMap { it.values }
 
-    private fun anyTemplate(info: MinimalInfo): TypeTemplate? {
-        return readyTemplate(info) ?: imTemplateTypes[info]?.unfinishedType
-    }
+    private val readyDirects: MutableMap<MinimalInfo, DirectType> = HashMap()
+    private val readyTemplates: MutableMap<MinimalInfo, TypeTemplate> = HashMap()
 
-    fun connectArtifact(javaRepo: JavaRepo): TypeRepo {
+    fun connectArtifact(): TypeResolver {
         connect()
 
-        return RadixTypeRepo(
-                javaRepo = javaRepo,
-                directs = directTypes,
-                templates = typeTemplates
+        val repo = MapTypeRepo(
+                directs = readyDirects,
+                templates = readyTemplates
         )
+        return SingleRepoTypeResolver(repo)
     }
 
-    fun connectJcl(jclArtifact: String): JclCollector.JclResult {
-        val arraySupers = ArrayList<SuperType.StaticSuper>(1)
-        val arrayTemplate = TypeTemplate(
-                info = infoRepo.arrayType.full(jclArtifact),
-                superTypes = arraySupers,
+    fun connectJcl(): TypeInfoConnector.JclResult {
+        readyTemplates[infoRepo.arrayType] = TypeTemplate(
+                info = infoRepo.arrayType,
+                superTypes = listOf(infoRepo.objectType.complete().holder()),
                 typeParams = listOf(TypeParameter("X", TypeBounds(emptySet()))),
                 samType = null
         )
-        imTemplateTypes[infoRepo.arrayType.packageName, infoRepo.arrayType.simpleName] = TemplateCreator(
-                unfinishedType = arrayTemplate,
-                directSupers = listOf(infoRepo.objectType),
-                templateSupers = mutableListOf(),
-                directSuperAppender = { arraySupers += SuperType.StaticSuper.EagerStatic(it) },
-                templateSuperAppender = {}
-        )
+
         PrimitiveType.values().map(infoRepo::primitive).forEach { primitive ->
-            directTypes[primitive.packageName, primitive.simpleName] = DirectType(primitive.full(jclArtifact), emptyList(), samType = null)
+            readyDirects[primitive] = DirectType(minInfo = primitive, superTypes = emptyList(), samType = null, virtual = false)
         }
 
         connect()
 
-        val javaRepo = RadixJavaRepo(
-                artifact = jclArtifact,
-                infoRepo = infoRepo,
-                directs = directTypes
+        val jclTypeRepo = MapTypeRepo(
+                directs = readyDirects,
+                templates = readyTemplates
         )
 
-        val jclTypeRepo = RadixTypeRepo(
-                javaRepo = javaRepo,
-                directs = directTypes,
-                templates = typeTemplates
-        )
+        val javaRepo = DefaultJavaRepo.fromNullable(infoRepo, readyDirects::get)
 
-        return JclCollector.JclResult(javaRepo, jclTypeRepo)
+        return TypeInfoConnector.JclResult(javaRepo, jclTypeRepo)
     }
 
-    private fun connect() {
-        resolveDirectSupers(imDirectTypes)
-        resolveDirectSupers(imTemplateTypes)
-
-        while (!imDirectTypes.empty || !imTemplateTypes.empty) {
-            var removeCount = 0
-            resolveTemplateSupers(imDirectTypes)
-            resolveTemplateSupers(imTemplateTypes)
-
-            imDirectTypes.removeIf { direct ->
-                (direct.templateSupers.isEmpty()).also { done ->
-                    if (done) {
-                        val type = direct.unfinishedType
-                        val info = type.info
-                        // directTypes.mutableSubtreeSafe(info.packageName)[info.name] = type
-                        directTypes[info.packageName, info.name] = type
-                        removeCount++
-                    }
+    init {
+        allCreators.forEach { creator ->
+            creator.directSupers.forEach { directSuper ->
+                val unfinishedSuper = directCreators[directSuper]?.unfinishedType
+                if (unfinishedSuper != null) {
+                    creator.nonGenericAppend(unfinishedSuper.holder())
+                } else {
+                    creator.nonGenericAppend(directSuper.complete().holder())
                 }
             }
+            creator.directSupers.clear()
+        }
+    }
 
-            imTemplateTypes.removeIf { template ->
-                (template.templateSupers.isEmpty()).also { done ->
-                    if (done) {
-                        val type = template.unfinishedType
-                        val info = type.info
-                        // directTypes.mutableSubtreeSafe(info.packageName)[info.name] = type
-                        typeTemplates[info.packageName, info.name] = type
-                        removeCount++
-                    }
-                }
+    private fun <S : SemiType> findSemi(
+            info: MinimalInfo,
+            readyMap: Map<MinimalInfo, S>,
+            creatorMap: Map<MinimalInfo, SemiCreator<S>>
+    ): SemiResult<S> {
+        readyMap[info]?.let { return SemiResult.Ready(it) }
+        creatorMap[info]?.let { return SemiResult.Unready(it) }
+        return SemiResult.NotFound()
+    }
+
+    private fun direct(info: MinimalInfo): SemiResult<DirectType> = findSemi(info, readyDirects, directCreators)
+
+    private fun template(info: MinimalInfo): SemiResult<TypeTemplate> = findSemi(info, readyTemplates, templateCreators)
+
+    private fun CompleteMinInfo.Static.convertAllowIndirect(): TypeHolder.Static {
+        return if (args.isEmpty()) {
+            when (val simpleDirect = direct(base)) {
+                is SemiResult.Ready -> simpleDirect.readySemi.holder()
+                is SemiResult.NotFound -> base.complete().holder()
+                is SemiResult.Unready -> holder()
             }
+        } else {
+            when (val baseTemplate = template(base)) {
+                is SemiResult.Ready -> {
+                    val convertedArgs: List<TypeHolder.Static> = args.map { arg ->
+                        arg.convertAllowIndirect()
+                    }
 
-            if (removeCount == 0) {
-                println("Still present ==========>")
-                imDirectTypes.forEach { direct ->
-                       println(direct.unfinishedType)
+                    baseTemplate.readySemi.staticApply(convertedArgs)?.holder()
                 }
-                break
-                // error("Failed to remove during iteration")
+                else -> null
+            } ?: holder()
+        }
+    }
+
+    private fun CompleteMinInfo.Static.convert(rootIno: MinimalInfo): TypeHolder.Static? {
+        if (base == rootIno) {
+            return convertAllowIndirect()
+        }
+
+        return if (args.isEmpty()) {
+            when (val simpleDirect = direct(base)) {
+                is SemiResult.Ready -> simpleDirect.readySemi.holder()
+                is SemiResult.NotFound -> base.complete().holder()
+                is SemiResult.Unready -> null
+            }
+        } else {
+            when (val baseTemplate = template(base)) {
+                is SemiResult.Ready -> {
+                    val convertedArgs: List<TypeHolder.Static> = args.map { arg ->
+                        arg.convert(rootIno)
+                    }.liftNull() ?: return null
+
+                    baseTemplate.readySemi.staticApply(convertedArgs)?.holder()
+                }
+                is SemiResult.NotFound -> convertAllowIndirect()
+                is SemiResult.Unready -> null
             }
         }
     }
 
+    private fun TypeParamInfo.convertAllowIndirect(): ApplicationParameter {
+        return when (this) {
+            TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
+            TypeParamInfo.SelfRef -> SelfSubstitution
+            is TypeParamInfo.BoundedWildcard -> {
+                val convertedBound = bound.convertAllowIndirect() as? Substitution ?: return TypeSubstitution.unboundedWildcard
+                BoundedWildcard.Dynamic(
+                        direction = if (this is TypeParamInfo.BoundedWildcard.UpperWildcard) UPPER else LOWER,
+                        param = convertedBound
+                )
+            }
+            is TypeParamInfo.Direct -> {
+                when (val readyDirect = direct(arg)) {
+                    is SemiResult.Ready -> StaticTypeSubstitution(readyDirect.readySemi.holder())
+                    else -> StaticTypeSubstitution(arg.complete().holder())
+                }
+            }
+            is TypeParamInfo.Sat -> StaticTypeSubstitution(sat.convertAllowIndirect())
+            is TypeParamInfo.Dat -> TypeSubstitution(dat.convertAllowIndirect())
+            is TypeParamInfo.Param -> Substitution.ParamSubstitution(param)
+        }
+    }
+
+    private fun TypeParamInfo.convert(rootInfo: MinimalInfo): ApplicationParameter? {
+        return when (this) {
+            TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
+            TypeParamInfo.SelfRef -> SelfSubstitution
+            is TypeParamInfo.BoundedWildcard -> {
+                val convertedBoundRaw = bound.convert(rootInfo) ?: return TypeSubstitution.unboundedWildcard
+                val convertedBoundSub = convertedBoundRaw as? Substitution ?: StaticTypeSubstitution.unboundedWildcard
+                BoundedWildcard.Dynamic(
+                        direction = if (this is TypeParamInfo.BoundedWildcard.UpperWildcard) UPPER else LOWER,
+                        param = convertedBoundSub
+                )
+            }
+            is TypeParamInfo.Direct -> {
+                if (arg == rootInfo) {
+                    return StaticTypeSubstitution(arg.complete().holder())
+                }
+
+                when (val readyDirect = direct(arg)) {
+                    is SemiResult.Ready -> StaticTypeSubstitution(readyDirect.readySemi.holder())
+                    is SemiResult.NotFound -> StaticTypeSubstitution(arg.complete().holder())
+                    is SemiResult.Unready -> null
+                }
+            }
+            is TypeParamInfo.Sat -> {
+                val convertedSat = sat.convert(rootInfo) ?: return null
+                StaticTypeSubstitution(convertedSat)
+            }
+            is TypeParamInfo.Dat -> {
+                val convertedDat = dat.convert(rootInfo) ?: return null
+                TypeSubstitution(convertedDat)
+            }
+            is TypeParamInfo.Param -> Substitution.ParamSubstitution(param)
+        }
+    }
+
+    private fun DatInfo.convertAllowIndirect(): TypeHolder.Dynamic {
+        val convertedArgs: List<ApplicationParameter> = args.map { arg ->
+            arg.convertAllowIndirect()
+        }
+
+        return when (val baseTemplate = template(template)) {
+            is SemiResult.Ready -> {
+                baseTemplate.readySemi.dynamicApply(convertedArgs)?.holder()
+            }
+            else -> null
+        }.orElse {
+            CompleteMinInfo.Dynamic(template, convertedArgs).holder()
+        }
+    }
+
+    private fun DatInfo.convert(rootInfo: MinimalInfo): TypeHolder.Dynamic? {
+        if (template == rootInfo) {
+            return convertAllowIndirect()
+        }
+
+        return when (val baseTemplate = template(template)) {
+            is SemiResult.Ready -> {
+                val convertedArgs: List<ApplicationParameter> = args.map { arg ->
+                    arg.convert(rootInfo)
+                }.liftNull() ?: return null
+
+                baseTemplate.readySemi.dynamicApply(convertedArgs)?.holder()
+            }
+            is SemiResult.NotFound -> convertAllowIndirect()
+            is SemiResult.Unready -> null
+        }
+    }
+
+    private fun connect() {
+        fun <S: SemiType, C : SemiCreator<S>> moveDone(
+                creators: MutableMap<MinimalInfo, C>,
+                doneMap: MutableMap<MinimalInfo, S>
+        ): Boolean {
+            val removed = creators.mapNotNull { (info, creator) ->
+                if (creator.done) {
+                    doneMap[info] = creator.unfinishedType
+                    info
+                } else {
+                    null
+                }
+            }
+
+            removed.forEach { toRemove ->
+                creators.remove(toRemove)
+            }
+
+            return removed.isNotEmpty()
+        }
+
+        while (allCreators.isNotEmpty()) {
+            var iterationStat: HasUpdated = HasUpdated.None
+
+            allCreators.forEach { creator ->
+                iterationStat += creator.satSupers.removeIf { satSuper ->
+                    satSuper.convert(creator.unfinishedType.info)?.also {
+                        creator.nonGenericAppend(it)
+                    } != null
+                }
+            }
+
+            templateCreators.values.forEach { templateCreator ->
+                iterationStat += templateCreator.datSupers.removeIf { datSuper ->
+                    datSuper.convert(templateCreator.unfinishedType.info)?.also {
+                        templateCreator.datSuperAppend(it)
+                    } != null
+                }
+            }
+
+            iterationStat += moveDone(directCreators, readyDirects)
+            iterationStat += moveDone(templateCreators, readyTemplates)
+
+            if (!iterationStat.hadUpdate) {
+                println("Still present after direct connecting ==========>")
+                allCreators.forEach { println(it.unfinishedType.info) }
+                break
+            }
+        }
+
+        allCreators.forEach { creator ->
+            creator.satSupers.forEach { satSuper ->
+                creator.nonGenericAppend(satSuper.convertAllowIndirect())
+            }
+        }
+
+        templateCreators.values.forEach { templateCreator ->
+            templateCreator.datSupers.forEach { datSuper ->
+                templateCreator.datSuperAppend(datSuper.convertAllowIndirect())
+            }
+        }
+    }
+
+    /*
     private fun rawUse(template: TypeTemplate) = DatCreator(
             template = MinimalInfo.fromFull(template.info),
             args = template.typeParams.map {
@@ -290,7 +544,7 @@ private class OneshotConnector(
                         when (creator) {
                             is DirectCreator -> {
                                 when (superType) {
-                                    is Type.DynamicAppliedType -> {
+                                    is DynamicAppliedType -> {
                                         println("Non-generic type ${creator.unfinishedType} has generic super type $superType")
                                     }
                                     is Type.NonGenericType -> {
@@ -301,7 +555,7 @@ private class OneshotConnector(
                             is TemplateCreator -> {
                                 when (superType) {
                                     is Type.NonGenericType -> creator.addNonGenericSuper(superType)
-                                    is Type.DynamicAppliedType -> creator.templateSuperAppender(superType)
+                                    is DynamicAppliedType -> creator.templateSuperAppender(superType)
                                 }
                             }
                         }
@@ -312,6 +566,6 @@ private class OneshotConnector(
         }
     }
 
-}
+     */
 
- */
+}

@@ -1,45 +1,58 @@
 package com.mktiti.fsearch.parser.asm
-/*
+
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.type.*
-import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
-import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
+import com.mktiti.fsearch.core.type.CompleteMinInfo
+import com.mktiti.fsearch.core.type.MinimalInfo
+import com.mktiti.fsearch.parser.intermediate.DefaultJavaSamInfoParser
 import com.mktiti.fsearch.parser.intermediate.DefaultTypeParser
-import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
+import com.mktiti.fsearch.parser.intermediate.JavaSamInfoParser
 import com.mktiti.fsearch.parser.intermediate.JavaSignatureTypeParser
-import com.mktiti.fsearch.parser.service.IndirectInfoCollector
+import com.mktiti.fsearch.parser.service.indirect.*
 import com.mktiti.fsearch.parser.type.JavaSamUtil
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.FieldVisitor
-import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
-import kotlin.math.max
+import org.objectweb.asm.*
+import kotlin.collections.ArrayList
+import kotlin.collections.Collection
+import kotlin.collections.HashMap
+import kotlin.collections.List
+import kotlin.collections.MutableMap
+import kotlin.collections.addAll
+import kotlin.collections.dropLast
+import kotlin.collections.emptyList
+import kotlin.collections.fold
+import kotlin.collections.joinToString
+import kotlin.collections.last
+import kotlin.collections.map
+import kotlin.collections.plus
+import kotlin.collections.set
+import kotlin.collections.takeLast
 
-object AsmInfoCollector {
+object AsmRawTypeInfoCollector {
 
-    fun collect(infoRepo: JavaInfoRepo, load: AsmCollectorView.() -> Unit): IndirectInfoCollector.IndirectInitialData {
-        val visitor = AsmInfoCollectorVisitor(infoRepo)
+    fun collect(infoRepo: JavaInfoRepo, load: AsmCollectorView.() -> Unit): RawTypeInfoResult {
+        val visitor = AsmRawTypeInfoCollectorVisitor(infoRepo)
         DefaultAsmCollectorView(visitor).load()
-        return IndirectInfoCollector.IndirectInitialData(visitor.loadedDirectTypes, visitor.loadedTemplates)
+        return RawTypeInfoResult(visitor.loadedDirectInfos, visitor.loadedTemplateInfos)
     }
 
 }
 
-private class AsmInfoCollectorVisitor(
+private class AsmRawTypeInfoCollectorVisitor(
         infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
 
+    private val samAnnotations = infoRepo.explicitSamAnnotations.map(AsmUtil::annotationDescriptor)
+
     private val typeParser: JavaSignatureTypeParser = DefaultTypeParser(infoRepo)
+    //private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
+    private val samParser: JavaSamInfoParser = DefaultJavaSamInfoParser(infoRepo)
 
-    private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
+    private val directInfos: MutableMap<MinimalInfo, SemiInfo.DirectInfo> = HashMap()
+    val loadedDirectInfos: Collection<SemiInfo.DirectInfo>
+        get() = directInfos.values
 
-    private val directTypes: MutableMap<MinimalInfo, DirectType> = HashMap()
-    val loadedDirectTypes: Map<MinimalInfo, DirectType>
-        get() = directTypes
-
-    private val typeTemplates: MutableMap<MinimalInfo, TypeTemplate> = HashMap()
-    val loadedTemplates: Map<MinimalInfo, TypeTemplate>
-        get() = typeTemplates
+    private val templateInfos: MutableMap<MinimalInfo, SemiInfo.TemplateInfo> = HashMap()
+    val loadedTemplateInfos: Collection<SemiInfo.TemplateInfo>
+        get() = templateInfos.values
 
     private sealed class AbstractCount {
         object NoAbstract : AbstractCount() {
@@ -65,47 +78,53 @@ private class AsmInfoCollectorVisitor(
             val signature: String?,
             val superNames: List<String>,
             val nestDepth: Int? = null,
-            val abstractCount: AbstractCount = AbstractCount.NoAbstract
+            val abstractCount: AbstractCount = AbstractCount.NoAbstract,
+            val explicitSam: Boolean = false
     )
 
     private var currentType: TypeMeta? = null
 
-    private fun addDirect(type: DirectType) {
-        directTypes[type.info] = type
+    private fun addDirect(
+            directInfo: SemiInfo.DirectInfo
+    ) {
+        directInfos[directInfo.info] = directInfo
     }
 
     private fun addDirect(
             info: MinimalInfo,
-            superTypes: List<CompleteMinInfo.Static>,
-            samType: SamType.DirectSam?
+            directSupers: List<MinimalInfo>,
+            samType: SamInfo.Direct?
     ) {
         addDirect(
-            DirectType(
-                minInfo = info,
-                superTypes = TypeHolder.staticIndirects(superTypes),
-                samType = samType,
-                virtual = false
+            SemiInfo.DirectInfo(
+                    info = info,
+                    directSupers = directSupers,
+                    satSupers = emptyList(),
+                    samInfo = samType
             )
         )
     }
 
-    private fun addTemplate(template: TypeTemplate) {
-        typeTemplates[template.info] = template
+    private fun addTemplate(templateInfo: SemiInfo.TemplateInfo) {
+        templateInfos[templateInfo.info] = templateInfo
     }
 
     private fun addTemplate(
             info: MinimalInfo,
-            superTypes: List<CompleteMinInfo<*>>,
-            typeParams: List<TypeParameter>,
-            samType: SamType.GenericSam?
+            typeParams: List<TemplateTypeParamInfo>,
+            directSupers: Collection<MinimalInfo>,
+            satSupers: Collection<CompleteMinInfo.Static>,
+            datSupers: Collection<DatInfo>,
+            samType: SamInfo.Generic?
     ) {
         addTemplate(
-            TypeTemplate(
-                info = info,
-                superTypes = TypeHolder.anyIndirects(superTypes),
-                typeParams = typeParams,
-                samType = samType,
-                virtual = false
+            SemiInfo.TemplateInfo(
+                    info = info,
+                    typeParams = typeParams,
+                    directSupers = directSupers,
+                    satSupers = satSupers,
+                    datSupers = datSupers,
+                    samInfo = samType
             )
         )
     }
@@ -130,8 +149,18 @@ private class AsmInfoCollectorVisitor(
         currentType = TypeMeta(info, isInterface, signature, superNames)
     }
 
+    override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
+        currentType?.let {
+            if (descriptor in samAnnotations) {
+                currentType = it.copy(explicitSam = true)
+            }
+        }
+        return null
+    }
+
     override fun visitInnerClass(name: String?, outerName: String?, innerName: String?, access: Int) {
         // TODO
+        /*
         currentType?.let { current ->
             val parsedInfo = AsmUtil.parseName(name ?: return)
             if (parsedInfo == current.info) {
@@ -143,6 +172,8 @@ private class AsmInfoCollectorVisitor(
                 currentType = current.copy(isInterface = false, nestDepth = newNest)
             }
         }
+
+         */
     }
 
     override fun visitField(access: Int, name: String, descriptor: String?, signature: String?, value: Any?): FieldVisitor? {
@@ -181,9 +212,9 @@ private class AsmInfoCollectorVisitor(
     }
 
     private fun createInitials(meta: TypeMeta) {
-        val (info, _, signature, superNames, nestDepth, abstractCount) = meta
+        val (info, _, signature, superNames, nestDepth, abstractCount, explicitSam) = meta
 
-        val nestContext: List<TypeParameter> = if (nestDepth != null) {
+        val nestContext: List<TemplateTypeParamInfo> = if (nestDepth != null) {
             val nests = info.simpleName.split(".").dropLast(1)
             val depth = Integer.min(nestDepth, nests.size)
 
@@ -193,10 +224,10 @@ private class AsmInfoCollectorVisitor(
                 else -> "$prefix."
             }
 
-            affectingNests.fold(emptyList<TypeParameter>() to nestPrefix) { (params, name), nest ->
+            affectingNests.fold(emptyList<TemplateTypeParamInfo>() to nestPrefix) { (params, name), nest ->
                 val newName = name + nest
                 val nestInfo = info.copy(simpleName = newName)
-                val nestParams = typeTemplates[nestInfo]?.typeParams ?: emptyList()
+                val nestParams = templateInfos[nestInfo]?.typeParams ?: emptyList()
 
                 (params + nestParams) to "$newName."
             }.first
@@ -204,32 +235,45 @@ private class AsmInfoCollectorVisitor(
             emptyList()
         }
 
-        fun directSam(): SamType.DirectSam? = when (abstractCount) {
-            is AbstractCount.OneAbstract -> funParser.parseDirectSam(null, abstractCount.signature)
+        fun directSam(): SamInfo.Direct? = when (abstractCount) {
+            is AbstractCount.OneAbstract -> {
+                samParser.parseDirectSam(null, abstractCount.signature)?.let { signature ->
+                    SamInfo.Direct(explicitSam, signature)
+                }
+            }
             else -> null
         }
 
-        fun genericSam(typeParams: List<TypeParameter>): SamType.GenericSam?  {
+        fun genericSam(typeParams: List<TemplateTypeParamInfo>): SamInfo.Generic?  {
             return when (abstractCount) {
-                is AbstractCount.OneAbstract -> funParser.parseGenericSam(null, abstractCount.signature, info, typeParams)
+                is AbstractCount.OneAbstract -> {
+                    samParser.parseGenericSam(null, abstractCount.signature, info, typeParams)?.let { signature ->
+                        SamInfo.Generic(explicitSam, signature)
+                    }
+                }
                 else -> null
             }
         }
 
         if (signature == null) {
+            val directSupers = superNames.map(AsmUtil::parseName)
+
+            // No explicit type parameters defined
             if (nestContext.isEmpty()) {
+                // Direct type
                 addDirect(
                         info = info,
-                        superTypes = superNames.map(AsmUtil::parseCompleteStaticName),
+                        directSupers = directSupers,
                         samType = directSam()
                 )
             } else {
+                // Nested in template parent
                 addTemplate(
                         info = info,
                         typeParams = nestContext,
-                        superTypes = superNames.map { directSuper ->
-                            AsmUtil.parseName(directSuper).complete()
-                        },
+                        directSupers = directSupers,
+                        satSupers = emptyList(),
+                        datSupers = emptyList(),
                         samType = genericSam(nestContext)
                 )
             }
@@ -246,5 +290,3 @@ private class AsmInfoCollectorVisitor(
     }
 
 }
-
- */

@@ -1,20 +1,14 @@
 package com.mktiti.fsearch.parser.asm
-/*
+
 import com.mktiti.fsearch.core.fit.FunInstanceRelation
 import com.mktiti.fsearch.core.fit.FunInstanceRelation.*
-import com.mktiti.fsearch.core.fit.FunctionInfo
-import com.mktiti.fsearch.core.fit.FunctionObj
-import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
-import com.mktiti.fsearch.core.type.TypeTemplate
-import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.liftNull
-import com.mktiti.fsearch.parser.intermediate.DefaultFunctionParser
-import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionParser
-import com.mktiti.fsearch.parser.service.FunctionCollector.FunctionCollection
+import com.mktiti.fsearch.parser.function.FunctionInfoUtil
+import com.mktiti.fsearch.parser.intermediate.DefaultJavaSamInfoParser
+import com.mktiti.fsearch.parser.intermediate.JavaSignatureFunctionInfoParser
+import com.mktiti.fsearch.parser.service.indirect.*
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -22,15 +16,14 @@ import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-object AsmFunctionCollector {
+object AsmFunctionInfoCollector {
 
-    fun collect(infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver, load: AsmCollectorView.() -> Unit): FunctionCollection {
-        val visitor = AsmFunctionCollectorVisitor(dependencyResolver, infoRepo)
+    fun collect(infoRepo: JavaInfoRepo, typeParamResolver: TypeParamResolver, load: AsmCollectorView.() -> Unit): FunctionInfoCollector.FunctionInfoCollection {
+        val visitor = AsmFunctionInfoCollectorVisitor(infoRepo, typeParamResolver)
         DefaultAsmCollectorView(visitor).load()
-        return FunctionCollection(
+        return FunctionInfoCollector.FunctionInfoCollection(
                 staticFunctions = visitor.staticFuns,
-                //instanceMethods = InfoMap.fromPrefix(visitor.instanceFuns)
-                instanceMethods = InfoMap.fromMap(visitor.instanceFuns)
+                instanceMethods = visitor.instanceFuns
         )
     }
 
@@ -52,24 +45,28 @@ private class AsmFunParamNamesVisitor(
 
 }
 
-private class AsmFunctionCollectorVisitor(
-        private val dependencyResolver: TypeResolver,
-        private val infoRepo: JavaInfoRepo
+private class AsmFunctionInfoCollectorVisitor(
+        private val infoRepo: JavaInfoRepo,
+        private val typeParamResolver: TypeParamResolver
 ) : ClassVisitor(Opcodes.ASM8) {
 
-    private sealed class ContextInfo<T>(
-            val info: MinimalInfo,
-            val thisType: T
+    private sealed class ContextInfo(
+            val thisInfo: MinimalInfo
     ) {
+
+        abstract val thisTypeParams: List<TemplateTypeParamInfo>
+
         class Direct(
-                info: MinimalInfo,
-                thisType: CompleteMinInfo.Static
-        ) : ContextInfo<CompleteMinInfo.Static>(info, thisType)
+                info: MinimalInfo
+        ) : ContextInfo(info) {
+            override val thisTypeParams: List<TemplateTypeParamInfo>
+                get() = emptyList()
+        }
 
         class Template(
                 info: MinimalInfo,
-                thisType: TypeTemplate
-        ) : ContextInfo<TypeTemplate>(info, thisType)
+                override val thisTypeParams: List<TemplateTypeParamInfo>
+        ) : ContextInfo(info)
     }
 
     companion object {
@@ -82,28 +79,28 @@ private class AsmFunctionCollectorVisitor(
         }
     }
 
-    private val funParser: JavaSignatureFunctionParser = DefaultFunctionParser(infoRepo)
+    private val funParser: JavaSignatureFunctionInfoParser = DefaultJavaSamInfoParser(infoRepo)
 
-    private lateinit var context: ContextInfo<*>
+    private lateinit var context: ContextInfo
 
-    private val collectedStaticFuns: MutableList<FunctionObj> = ArrayList()
-    val staticFuns: List<FunctionObj>
+    private val collectedStaticFuns: MutableList<RawFunInfo<*>> = ArrayList()
+    val staticFuns: List<RawFunInfo<*>>
         get() = collectedStaticFuns
 
     //private val collectedInstanceFuns: MutablePrefixTree<String, MutableCollection<FunctionObj>> = mapMutablePrefixTree()
     //val instanceFuns: PrefixTree<String, Collection<FunctionObj>>
         //get() = collectedInstanceFuns
 
-    private val collectedInstanceFuns: MutableMap<MinimalInfo, MutableCollection<FunctionObj>> = HashMap()
-    val instanceFuns: Map<MinimalInfo, Collection<FunctionObj>>
+    private val collectedInstanceFuns: MutableMap<MinimalInfo, MutableCollection<RawFunInfo<*>>> = HashMap()
+    val instanceFuns: Map<MinimalInfo, Collection<RawFunInfo<*>>>
         get() = collectedInstanceFuns
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         val info = AsmUtil.parseName(name)
 
-        context = when (val template = dependencyResolver.template(info)) {
-            null -> ContextInfo.Direct(info, info.complete())
-            else -> ContextInfo.Template(info, template)
+        context = when (val typeParams = typeParamResolver[info]) {
+            null -> ContextInfo.Direct(info)
+            else -> ContextInfo.Template(info, typeParams)
         }
     }
 
@@ -112,7 +109,7 @@ private class AsmFunctionCollectorVisitor(
             val instanceRel = functionRelation(name, access)
 
             with(context) {
-                if (info.nameParts.any { it.firstOrNull()?.isDigit() != false } && instanceRel != STATIC) {
+                if (thisInfo.nameParts.any { it.firstOrNull()?.isDigit() != false } && instanceRel != STATIC) {
                     // Skip anonymous and local types
                     return null
                 }
@@ -120,34 +117,28 @@ private class AsmFunctionCollectorVisitor(
                 val toParse = signature ?: descriptor
                 AsmFunParamNamesVisitor { paramNames ->
                     try {
-                        val parsedSignature: TypeSignature = when (instanceRel) {
+                        val parsedSignature: FunSignatureInfo<*> = when (instanceRel) {
                             STATIC -> funParser.parseStaticFunction(name, paramNames, toParse)
                             CONSTRUCTOR -> when (this) {
-                                is ContextInfo.Direct -> funParser.parseDirectConstructor(thisType, toParse, paramNames)
-                                is ContextInfo.Template -> funParser.parseTemplateConstructor(thisType, toParse, paramNames)
+                                is ContextInfo.Direct -> funParser.parseDirectConstructor(thisInfo, toParse, paramNames)
+                                is ContextInfo.Template -> funParser.parseTemplateConstructor(thisInfo, thisTypeParams, toParse, paramNames)
                             }
                             INSTANCE -> when (this) {
-                                is ContextInfo.Direct -> funParser.parseDirectFunction(name, paramNames, toParse, thisType)
-                                is ContextInfo.Template -> funParser.parseTemplateFunction(name, paramNames, toParse, thisType)
+                                is ContextInfo.Direct -> funParser.parseDirectFunction(name, paramNames, toParse, thisInfo)
+                                is ContextInfo.Template -> funParser.parseTemplateFunction(name, paramNames, toParse, thisInfo, thisTypeParams)
                             }
                         }
 
-                        val typeParams = (when (this) {
-                            is ContextInfo.Direct -> emptyList()
-                            is ContextInfo.Template -> thisType.typeParams
-                        } + parsedSignature.typeParameters).map { it.sign }
-
-                        val funInfo = FunctionInfo.fromSignature(
-                                file = info,
+                        val funInfo = FunctionInfoUtil.fromSignatureInfo(
+                                file = thisInfo,
                                 name = name,
                                 signature = parsedSignature,
                                 instanceRelation = instanceRel,
-                                typeParams = typeParams,
                                 infoRepo = infoRepo
-                        ) ?: error("Cannot create function info! ($info::$name)")
+                        ) ?: error("Cannot create function info! ($thisInfo::$name)")
 
                         if (instanceRel != INSTANCE) {
-                            collectedStaticFuns += FunctionObj(funInfo, parsedSignature)
+                            collectedStaticFuns += RawFunInfo(funInfo, parsedSignature)
                         } else {
                             //val id = info.packageName + info.simpleName
                             /*val store: MutableCollection<FunctionObj> = collectedInstanceFuns[id].orElse {
@@ -156,10 +147,10 @@ private class AsmFunctionCollectorVisitor(
                                 }
                             }
                              */
-                            collectedInstanceFuns.getOrPut(info) { LinkedList() } += FunctionObj(funInfo, parsedSignature)
+                            collectedInstanceFuns.getOrPut(thisInfo) { LinkedList() } += RawFunInfo(funInfo, parsedSignature)
                         }
                     } catch (e: NotImplementedError) {
-                        System.err.println("Failed to parse $info $name :: ${signature ?: descriptor}")
+                        System.err.println("Failed to parse $thisInfo $name :: ${signature ?: descriptor}")
                         e.printStackTrace()
                     }
                 }
@@ -170,5 +161,3 @@ private class AsmFunctionCollectorVisitor(
     }
 
 }
-
- */

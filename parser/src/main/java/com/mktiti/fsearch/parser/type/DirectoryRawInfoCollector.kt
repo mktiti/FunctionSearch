@@ -1,13 +1,15 @@
 package com.mktiti.fsearch.parser.type
-/*
+
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
+import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.parser.asm.AsmCollectorView
-import com.mktiti.fsearch.parser.asm.AsmInfoCollector
-import com.mktiti.fsearch.parser.service.IndirectInfoCollector
+import com.mktiti.fsearch.parser.asm.AsmRawTypeInfoCollector
+import com.mktiti.fsearch.parser.service.indirect.ArtifactTypeInfoCollector
+import com.mktiti.fsearch.parser.service.indirect.RawTypeInfoResult
 import java.io.FileInputStream
 import java.nio.file.Path
 
-object DirectoryCollectorUtil {
+object DirectoryInfoCollectorUtil {
 
     fun iterate(path: Path, asmCollectorView: AsmCollectorView) {
         path.toFile().walk().filter {
@@ -21,13 +23,12 @@ object DirectoryCollectorUtil {
 
 class DirectoryInfoCollector(
         private val infoRepo: JavaInfoRepo
-) : IndirectInfoCollector<Path> {
+) : ArtifactTypeInfoCollector<Path> {
 
-    override fun collectInitial(info: Path): IndirectInfoCollector.IndirectInitialData {
-        return AsmInfoCollector.collect(infoRepo) {
-            DirectoryCollectorUtil.iterate(info, this)
+    override fun collectRawInfo(info: Path): RawTypeInfoResult {
+        return AsmRawTypeInfoCollector.collect(infoRepo) {
+            DirectoryInfoCollectorUtil.iterate(info, this)
         }
     }
 
 }
- */

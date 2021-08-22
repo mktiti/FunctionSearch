@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.service
-
+/*
 import com.mktiti.fsearch.parser.type.DirectCreator
 import com.mktiti.fsearch.parser.type.TemplateCreator
 import com.mktiti.fsearch.util.MutablePrefixTree
@@ -16,4 +16,6 @@ interface InfoCollector<I> {
     fun collectInitial(info: I): InitialData
 
 }
+
+ */
 

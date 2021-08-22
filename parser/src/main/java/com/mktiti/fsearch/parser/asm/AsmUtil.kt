@@ -6,6 +6,9 @@ import com.mktiti.fsearch.util.cutLast
 
 object AsmUtil {
 
+    fun annotationDescriptor(info: MinimalInfo) = (info.packageName + info.fullName)
+            .joinToString(prefix = "L", separator = "/", postfix = ";")
+
     fun parseName(type: String): MinimalInfo {
         val splitName = type.split('/')
         val (packageName, simpleName) = splitName.cutLast()

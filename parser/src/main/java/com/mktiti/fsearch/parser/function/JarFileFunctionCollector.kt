@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.function
-
+/*
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.repo.TypeResolver
@@ -23,3 +23,5 @@ object JarFileFunctionCollector : FunctionCollector<JarFileInfoCollector.JarInfo
 
 }
 
+
+ */

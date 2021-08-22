@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.type
-
+/*
 import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.util.MutablePrefixTree
@@ -29,7 +29,7 @@ sealed class CreatorInfo(
     ) : CreatorInfo(info, directSupers)
 
 }
-/*
+
 class TwoPhaseCollector<in I>(
         private val infoRepo: JavaInfoRepo,
         private val log: JavaTypeParseLog,

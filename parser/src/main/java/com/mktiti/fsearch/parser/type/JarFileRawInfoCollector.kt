@@ -1,13 +1,14 @@
 package com.mktiti.fsearch.parser.type
-/*
+
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.parser.asm.AsmCollectorView
-import com.mktiti.fsearch.parser.asm.AsmInfoCollector
-import com.mktiti.fsearch.parser.service.IndirectInfoCollector
+import com.mktiti.fsearch.parser.asm.AsmRawTypeInfoCollector
+import com.mktiti.fsearch.parser.service.indirect.ArtifactTypeInfoCollector
+import com.mktiti.fsearch.parser.service.indirect.RawTypeInfoResult
 import java.nio.file.Path
 import java.util.zip.ZipFile
 
-object JarCollectorUtil {
+object JarInfoCollectorUtil {
 
     fun iterate(info: JarFileInfoCollector.JarInfo, asmCollectorView: AsmCollectorView, sorted: Boolean) {
         info.paths.forEach { jarPath ->
@@ -40,19 +41,26 @@ object JarCollectorUtil {
 
 class JarFileInfoCollector(
         private val infoRepo: JavaInfoRepo
-) : IndirectInfoCollector<JarFileInfoCollector.JarInfo> {
+) : ArtifactTypeInfoCollector<JarFileInfoCollector.JarInfo> {
 
     data class JarInfo(
             val name: String,
             val paths: Collection<Path>
-    )
+    ) {
 
-    override fun collectInitial(info: JarInfo): IndirectInfoCollector.IndirectInitialData {
-        return AsmInfoCollector.collect(infoRepo) {
-            JarCollectorUtil.iterate(info, this, true)
+        companion object {
+            fun single(path: Path) = JarInfo(
+                    name = path.fileName.toString(),
+                    paths = listOf(path)
+            )
+        }
+
+    }
+
+    override fun collectRawInfo(info: JarInfo): RawTypeInfoResult {
+        return AsmRawTypeInfoCollector.collect(infoRepo) {
+            JarInfoCollectorUtil.iterate(info, this, sorted = false)
         }
     }
 
 }
-
- */

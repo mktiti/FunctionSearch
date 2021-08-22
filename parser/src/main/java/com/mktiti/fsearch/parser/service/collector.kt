@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.service
-
+/*
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.util.InfoMap
@@ -27,6 +27,7 @@ interface JarTypeCollector<in I> {
 
 }
 
+
 interface FunctionCollector<in I> {
 
     data class FunctionCollection(
@@ -46,6 +47,8 @@ interface FunctionCollector<in I> {
 
 }
 
+ */
+/*
 interface CombinedCollector<in I> {
 
     companion object {
@@ -64,7 +67,8 @@ interface CombinedCollector<in I> {
     fun collectCombined(info: I, javaRepo: JavaRepo, infoRepo: JavaInfoRepo, dependencyResolver: TypeResolver): Result
 
 }
-
+ */
+/*
 class FallbackCombinedCollector<in I>(
         private val typeCollector: JarTypeCollector<I>,
         private val functionCollector: FunctionCollector<I>
@@ -78,3 +82,4 @@ class FallbackCombinedCollector<in I>(
     }
 
 }
+ */

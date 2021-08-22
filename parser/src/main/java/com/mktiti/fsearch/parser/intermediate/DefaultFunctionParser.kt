@@ -8,11 +8,12 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubsti
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.generated.SignatureLexer
 import com.mktiti.fsearch.parser.generated.SignatureParser
+import com.mktiti.fsearch.parser.service.indirect.SamInfo
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
 import com.mktiti.fsearch.util.repeat
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-
+/*
 class DefaultFunctionParser(
         private val infoRepo: JavaInfoRepo,
         private val signatureParser: JavaSignatureParser = DefaultSignatureParser(infoRepo)
@@ -146,7 +147,7 @@ class DefaultFunctionParser(
         return parseStaticArgs(parseBase, paramNames, null) ?: parseDynamicArgs(parseBase, paramNames, null)
     }
 
-    override fun parseDirectSam(paramNames: List<String>?, signature: String): SamType.DirectSam? {
+    override fun parseDirectSam(paramNames: List<String>?, signature: String): SamInfo.Direct? {
         val parseBase = try {
             parseFunctionBase(signature, emptyList())
         } catch (typeError: UndeclaredTypeArgReference) {
@@ -156,10 +157,10 @@ class DefaultFunctionParser(
 
         return if (parseBase.typeParams.isEmpty()) {
             parseStaticArgs(parseBase, paramNames, null)?.run {
-                SamType.DirectSam(
+                SamInfo.Direct(
                         explicit = false,
-                        inputs = inputParameters.map { it.second.holder.info.holder() }, // TODO ...
-                        output = output.holder.info.holder()
+                        inputs = inputParameters.map { it.second.holder.info },
+                        output = output.holder.info
                 )
             }
         } else {
@@ -167,12 +168,12 @@ class DefaultFunctionParser(
         }
     }
 
-    override fun parseGenericSam(paramNames: List<String>?, signature: String, implicitThis: MinimalInfo, implicitThisTps: List<TypeParameter>): SamType.GenericSam? {
+    override fun parseGenericSam(paramNames: List<String>?, signature: String, implicitThis: MinimalInfo, implicitThisTps: List<TypeParameter>): SamInfo.Generic? {
         val parseBase = parseFunctionBase(signature, implicitThisTps)
         val parsed = parseDynamicArgs(parseBase, paramNames, null)
 
         return if (parsed.typeParameters.size == implicitThisTps.size) {
-            SamType.GenericSam(
+            SamInfo.Generic(
                     explicit = false,
                     inputs = parsed.inputParameters.map { it.second },
                     output = parsed.output
@@ -182,3 +183,6 @@ class DefaultFunctionParser(
         }
     }
 }
+
+
+ */

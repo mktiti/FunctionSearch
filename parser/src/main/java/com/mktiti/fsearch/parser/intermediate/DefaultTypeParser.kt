@@ -1,18 +1,23 @@
 package com.mktiti.fsearch.parser.intermediate
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.type.*
+import com.mktiti.fsearch.core.type.CompleteMinInfo
+import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.parser.generated.SignatureLexer
 import com.mktiti.fsearch.parser.generated.SignatureParser
+import com.mktiti.fsearch.parser.service.indirect.DatInfo
+import com.mktiti.fsearch.parser.service.indirect.SamInfo
+import com.mktiti.fsearch.parser.service.indirect.SemiInfo
+import com.mktiti.fsearch.parser.service.indirect.TemplateTypeParamInfo
 import com.mktiti.fsearch.parser.util.ExceptionErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 
 class DefaultTypeParser(
-        private val signatureParser: JavaSignatureParser
+        private val signatureParser: JavaSignatureInfoParser
 ) : JavaSignatureTypeParser {
 
-    constructor(infoRepo: JavaInfoRepo) : this(DefaultSignatureParser(infoRepo))
+    constructor(infoRepo: JavaInfoRepo) : this(DefaultSignatureInfoParser(infoRepo))
 
     private data class TypeSignatureParse(
             val signature: SignatureParser.ClassSignatureContext,
@@ -36,12 +41,21 @@ class DefaultTypeParser(
         return TypeSignatureParse(signatureCtx, listOf(parentClass) + interfaces)
     }
 
+    private sealed class SuperKindHelper<I>(val info: I) {
+        class Dat(dat: DatInfo) : SuperKindHelper<DatInfo>(dat)
+        class Sat(sat: CompleteMinInfo.Static) : SuperKindHelper<CompleteMinInfo.Static>(sat)
+        class Direct(info: MinimalInfo) : SuperKindHelper<MinimalInfo>(info)
+    }
+
+    private inline fun <I, reified H : SuperKindHelper<I>> List<SuperKindHelper<*>>.superKind(): List<I>
+        = filterIsInstance<H>().map { it.info }
+
     override fun parseTemplateSignature(
             info: MinimalInfo,
             signature: String,
-            externalTypeParams: List<TypeParameter>,
-            samTypeCreator: (typeParams: List<TypeParameter>) -> SamType.GenericSam?
-    ): TypeTemplate {
+            externalTypeParams: List<TemplateTypeParamInfo>,
+            samTypeCreator: (typeParams: List<TemplateTypeParamInfo>) -> SamInfo.Generic?
+    ): SemiInfo.TemplateInfo {
         val (signatureCtx, superContexts) = parseTypeSignatureBase(signature)
 
         val externalTpNames = externalTypeParams.map { it.sign }
@@ -49,35 +63,49 @@ class DefaultTypeParser(
         val typeParamNames = externalTpNames + selfTypeParams.map { it.sign }
 
         val supers = superContexts.map {
-            signatureParser.parseDefinedType(it, typeParamNames, selfParamName = null).holder()
+            val asStatic = signatureParser.parseDefinedStaticType(it)
+            when {
+                asStatic == null -> {
+                    SuperKindHelper.Dat(signatureParser.parseDefinedDynamicType(it, typeParamNames, selfParamName = null))
+                }
+                asStatic.args.isEmpty() -> {
+                    SuperKindHelper.Direct(asStatic.base)
+                }
+                else -> {
+                    SuperKindHelper.Sat(asStatic)
+                }
+            }
         }
 
         val typeParams = externalTypeParams + selfTypeParams
-        return TypeTemplate(
+        return SemiInfo.TemplateInfo(
                 info = info,
                 typeParams = typeParams,
-                superTypes = supers,
-                virtual = false,
-                samType = samTypeCreator(typeParams)
+                directSupers = supers.superKind<MinimalInfo, SuperKindHelper.Direct>(),
+                satSupers = supers.superKind<CompleteMinInfo.Static, SuperKindHelper.Sat>(),
+                datSupers = supers.superKind<DatInfo, SuperKindHelper.Dat>(),
+                samInfo = samTypeCreator(typeParams)
         )
     }
 
-    override fun parseDirectTypeSignature(info: MinimalInfo, signature: String, samType: SamType.DirectSam?): Type.NonGenericType.DirectType? {
+    override fun parseDirectTypeSignature(info: MinimalInfo, signature: String, samInfo: SamInfo.Direct?): SemiInfo.DirectInfo? {
         val (signatureCtx, superContexts) = parseTypeSignatureBase(signature)
 
         if (signatureCtx.typeParameters()?.isEmpty == false) {
             return null
         }
 
-        val supers = superContexts.map {
+        val (directSupers, satSupers) = superContexts.map {
             signatureParser.parseDefinedStaticType(it) ?: return null
+        }.partition {
+            it.args.isEmpty()
         }
 
-        return Type.NonGenericType.DirectType(
-                minInfo = info,
-                superTypes = TypeHolder.staticIndirects(supers),
-                samType = samType,
-                virtual = false
+        return SemiInfo.DirectInfo(
+                info = info,
+                directSupers = directSupers.map { it.base },
+                satSupers = satSupers,
+                samInfo = samInfo
         )
     }
 

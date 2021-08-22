@@ -1,5 +1,5 @@
 package com.mktiti.fsearch.parser.type
-
+/*
 import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
 
@@ -23,3 +23,6 @@ sealed class IntermediateTypeData {
     ) : IntermediateTypeData()
 
 }
+
+
+ */

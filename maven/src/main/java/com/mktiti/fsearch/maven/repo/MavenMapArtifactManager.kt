@@ -7,9 +7,9 @@ import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.ArtifactManager
 import com.mktiti.fsearch.modules.DomainRepo
 import com.mktiti.fsearch.modules.SimpleDomainRepo
-import com.mktiti.fsearch.parser.service.FunctionCollector
-import com.mktiti.fsearch.parser.service.IndirectInfoCollector
-import com.mktiti.fsearch.parser.type.JarFileInfoCollector
+import com.mktiti.fsearch.parser.intermediate.FunctionCollector
+import com.mktiti.fsearch.parser.intermediate.IndirectInfoCollector
+import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
 import com.mktiti.fsearch.util.orElse
 import java.io.File
 import java.util.stream.Collectors

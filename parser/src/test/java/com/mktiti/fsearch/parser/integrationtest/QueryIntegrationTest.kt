@@ -1,17 +1,23 @@
 package com.mktiti.fsearch.parser.integrationtest
-/*
+
 import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import com.mktiti.fsearch.core.repo.MapTypeRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
-import com.mktiti.fsearch.parser.function.DirectoryFunctionCollector
+import com.mktiti.fsearch.core.util.InfoMap
+import com.mktiti.fsearch.parser.connect.TypeInfoConnector
+import com.mktiti.fsearch.parser.connect.function.JavaFunctionConnector
+import com.mktiti.fsearch.parser.connect.type.JavaTypeInfoConnector
+import com.mktiti.fsearch.parser.intermediate.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.parser.intermediate.TypeParamResolver
+import com.mktiti.fsearch.parser.intermediate.function.DirectoryFunctionInfoCollector
+import com.mktiti.fsearch.parser.intermediate.type.DirectoryInfoCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryImports
 import com.mktiti.fsearch.parser.query.QueryParser
-import com.mktiti.fsearch.parser.type.DirectoryInfoCollector
+import com.mktiti.fsearch.parser.util.InMemTypeParseLog
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.orElse
 import org.junit.jupiter.api.Tag
@@ -78,20 +84,22 @@ class QueryIntegrationTest {
         fun verify(dataRes: String, codeBase: String) {
             val codebasePath = Paths.get(QueryIntegrationTest::class.java.getResource(codeBase).path)
             val infoRepo: JavaInfoRepo = MapJavaInfoRepo
+
+            val typeInfoCollector = DirectoryInfoCollector(infoRepo)
+            val typeInfoConnector: TypeInfoConnector = JavaTypeInfoConnector(infoRepo, InMemTypeParseLog())
+
             val (javaRepo, typeResolver, functions) = CompilerUtil.withCompiled(codebasePath) { path ->
                 val (javaRepo, baseResolver) = RepoTestUtil.minimalRepos(infoRepo)
 
-                val (directs, templates) = DirectoryInfoCollector(infoRepo).collectInitial(path)
-                val typeRepo = MapTypeRepo(
-                        directs = directs,
-                        templates = templates
-                )
+                val typeInfoRes = typeInfoCollector.collectTypeInfo(path)
+                val loadedTypeResolver = typeInfoConnector.connectArtifact(typeInfoRes)
 
-                println("Loaded direct types: " + typeRepo.allTypes)
-                println("Loaded type templates: " + typeRepo.allTemplates)
+                println("Loaded SemiTypes: " + loadedTypeResolver.allSemis())
 
-                val typeResolver = FallbackResolver(typeRepo, baseResolver)
-                val functions = DirectoryFunctionCollector.collectFunctions(path, javaRepo, infoRepo, typeResolver)
+                val typeResolver = FallbackResolver(loadedTypeResolver, baseResolver)
+                val typeParamResolver: TypeParamResolver = TypeInfoTypeParamResolver(typeInfoRes.templateInfos)
+                val funInfos = DirectoryFunctionInfoCollector.collectFunctions(path, infoRepo, typeParamResolver)
+                val functions = JavaFunctionConnector.connect(funInfos)
 
                 Triple(javaRepo, typeResolver, functions)
             }
@@ -105,7 +113,7 @@ class QueryIntegrationTest {
                 val queryResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
                 val fitter: QueryFitter = JavaQueryFitter(infoRepo, queryResolver)
 
-                val fitting = fitter.findFittings(query, functions.staticFunctions.stream(), functions.instanceMethods).map {
+                val fitting = fitter.findFittings(query, functions.staticFunctions.stream(), InfoMap.fromMap(functions.instanceMethods)).map {
                     it.first.info
                 }.collect(Collectors.toSet())
 
@@ -124,5 +132,3 @@ class QueryIntegrationTest {
     }
 
 }
-
- */

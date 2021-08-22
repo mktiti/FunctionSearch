@@ -4,34 +4,32 @@ import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.repo.*
-import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.TypePrint
-import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
-import com.mktiti.fsearch.parser.function.JavaFunctionConnector
+import com.mktiti.fsearch.parser.connect.FunctionCollection
+import com.mktiti.fsearch.parser.connect.function.JavaFunctionConnector
+import com.mktiti.fsearch.parser.connect.type.JavaTypeInfoConnector
+import com.mktiti.fsearch.parser.intermediate.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionInfoCollector
+import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryImports
 import com.mktiti.fsearch.parser.query.QueryParser
-import com.mktiti.fsearch.parser.service.indirect.FunctionConnector
-import com.mktiti.fsearch.parser.service.indirect.TemplateTypeParamInfo
-import com.mktiti.fsearch.parser.service.indirect.TypeParamResolver
-import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import com.mktiti.fsearch.parser.type.JavaTypeInfoConnector
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.streams.toList
 
-fun printLoadResults(typeRepo: TypeRepo, functions: FunctionConnector.FunctionCollection) {
+internal fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollection) {
     println("==== Loading Done ====")
     println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
     println("\tLoaded ${functions.staticFunctions.size} static functions")
     println("\tLoaded ${functions.instanceMethods.flatMap { it.value }.count()} instance functions")
 }
 
-fun printLog(log: InMemTypeParseLog) {
+internal fun printLog(log: InMemTypeParseLog) {
     println("\t${log.allCount} warnings")
 
     println("\t== Type not found errors (${log.typeNotFounds.size}):")
@@ -99,14 +97,10 @@ fun main(args: Array<String>) {
     val funConnector = JavaFunctionConnector
 
     val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
-    val rawTypeInfo = jarTypeLoader.collectRawInfo(jclJarInfo)
+    val rawTypeInfo = jarTypeLoader.collectTypeInfo(jclJarInfo)
+    val typeParamResolver = TypeInfoTypeParamResolver(rawTypeInfo.templateInfos)
 
-    val tpr = object : TypeParamResolver {
-        override fun typeParams(info: MinimalInfo): List<TemplateTypeParamInfo>? {
-            return rawTypeInfo.templateInfos.find { it.info == info }?.typeParams
-        }
-    }
-    val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, MapJavaInfoRepo, tpr)
+    val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, MapJavaInfoRepo, typeParamResolver)
 
     val (javaRepo, jclRepo) = typeConnector.connectJcl(rawTypeInfo)
     val funs = funConnector.connect(rawFunInfo)

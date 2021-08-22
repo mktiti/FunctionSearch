@@ -5,7 +5,7 @@ import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.InfoMap
-import com.mktiti.fsearch.parser.service.FunctionCollector
+import com.mktiti.fsearch.parser.intermediate.FunctionCollector
 import java.util.stream.Stream
 
 data class ArtifactId(

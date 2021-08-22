@@ -19,9 +19,9 @@ import com.mktiti.fsearch.maven.util.printLoadResults
 import com.mktiti.fsearch.maven.util.printLog
 import com.mktiti.fsearch.modules.ArtifactManager
 import com.mktiti.fsearch.modules.SimpleDomainRepo
-import com.mktiti.fsearch.parser.function.JarFileFunctionCollector
-import com.mktiti.fsearch.parser.type.IndirectJarTypeCollector
-import com.mktiti.fsearch.parser.type.JarFileInfoCollector
+import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionCollector
+import com.mktiti.fsearch.parser.intermediate.type.IndirectJarTypeCollector
+import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.util.InMemTypeParseLog
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI

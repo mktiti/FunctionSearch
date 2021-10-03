@@ -1,6 +1,5 @@
 package com.mktiti.fsearch.parser.intermediate
 
-import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 
 interface ArtifactTypeInfoCollector<in I> {
@@ -25,11 +24,6 @@ class TypeInfoTypeParamResolver(private val templateInfos: Collection<SemiInfo.T
 
 interface FunctionInfoCollector<in I> {
 
-    data class FunctionInfoCollection(
-            val staticFunctions: Collection<RawFunInfo<*>>,
-            val instanceMethods: Map<MinimalInfo, Collection<RawFunInfo<*>>>
-    )
-
-    fun collectFunctions(info: I, infoRepo: JavaInfoRepo, typeParamResolver: TypeParamResolver): FunctionInfoCollection
+    fun collectFunctions(info: I, typeParamResolver: TypeParamResolver): FunctionInfoResult
 
 }

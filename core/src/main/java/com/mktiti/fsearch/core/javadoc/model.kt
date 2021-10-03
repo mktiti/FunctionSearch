@@ -1,9 +1,22 @@
 package com.mktiti.fsearch.core.javadoc
 
-import java.net.URI
+import com.mktiti.fsearch.core.fit.FunctionInfo
+import kotlinx.serialization.Serializable
 
+@Serializable
+data class FunDocMap(
+        val map: Map<FunctionInfo, FunctionDoc>
+) {
+
+    companion object {
+        fun empty() = FunDocMap(emptyMap())
+    }
+
+}
+
+@Serializable
 data class FunctionDoc(
-        val link: URI? = null,
+        val link: String? = null,
         val paramNames: List<String>? = null,
         val shortInfo: String? = null,
         val longInfo: String? = null

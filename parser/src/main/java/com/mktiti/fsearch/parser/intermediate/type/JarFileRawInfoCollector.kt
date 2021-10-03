@@ -5,12 +5,12 @@ import com.mktiti.fsearch.parser.intermediate.ArtifactTypeInfoCollector
 import com.mktiti.fsearch.parser.intermediate.TypeInfoResult
 import com.mktiti.fsearch.parser.intermediate.asm.AsmCollectorView
 import com.mktiti.fsearch.parser.intermediate.asm.AsmTypeInfoCollector
-import java.nio.file.Path
+import com.mktiti.fsearch.parser.intermediate.parse.JarInfo
 import java.util.zip.ZipFile
 
 object JarInfoCollectorUtil {
 
-    fun iterate(info: JarFileInfoCollector.JarInfo, asmCollectorView: AsmCollectorView, sorted: Boolean) {
+    fun iterate(info: JarInfo, asmCollectorView: AsmCollectorView, sorted: Boolean) {
         info.paths.forEach { jarPath ->
             ZipFile(jarPath.toFile()).use { jar ->
                 val entries = jar.entries().toList().filter {
@@ -41,21 +41,7 @@ object JarInfoCollectorUtil {
 
 class JarFileInfoCollector(
         private val infoRepo: JavaInfoRepo
-) : ArtifactTypeInfoCollector<JarFileInfoCollector.JarInfo> {
-
-    data class JarInfo(
-            val name: String,
-            val paths: Collection<Path>
-    ) {
-
-        companion object {
-            fun single(path: Path) = JarInfo(
-                    name = path.fileName.toString(),
-                    paths = listOf(path)
-            )
-        }
-
-    }
+) : ArtifactTypeInfoCollector<JarInfo> {
 
     override fun collectTypeInfo(info: JarInfo): TypeInfoResult {
         return AsmTypeInfoCollector.collect(infoRepo) {

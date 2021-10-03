@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.parser.connect
 
 import com.mktiti.fsearch.core.repo.TypeResolver
-import com.mktiti.fsearch.parser.intermediate.FunctionInfoCollector
+import com.mktiti.fsearch.parser.intermediate.FunctionInfoResult
 import com.mktiti.fsearch.parser.intermediate.TypeInfoResult
 
 interface TypeInfoConnector {
@@ -18,6 +18,6 @@ interface TypeInfoConnector {
 
 interface FunctionConnector {
 
-    fun connect(funInfo: FunctionInfoCollector.FunctionInfoCollection): FunctionCollection
+    fun connect(funInfo: FunctionInfoResult): FunctionCollection
 
 }

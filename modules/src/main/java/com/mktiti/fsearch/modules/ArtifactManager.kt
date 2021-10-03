@@ -16,3 +16,4 @@ interface ArtifactManager {
     fun getWithDependencies(artifacts: Collection<ArtifactId>): DomainRepo
 
 }
+

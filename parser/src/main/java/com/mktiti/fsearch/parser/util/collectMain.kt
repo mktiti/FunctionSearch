@@ -5,6 +5,7 @@ import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
+import com.mktiti.fsearch.core.util.flatAll
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.parser.connect.FunctionCollection
@@ -12,6 +13,7 @@ import com.mktiti.fsearch.parser.connect.function.JavaFunctionConnector
 import com.mktiti.fsearch.parser.connect.type.JavaTypeInfoConnector
 import com.mktiti.fsearch.parser.intermediate.TypeInfoTypeParamResolver
 import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionInfoCollector
+import com.mktiti.fsearch.parser.intermediate.parse.JarInfo
 import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryImports
@@ -26,7 +28,7 @@ internal fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollection)
     println("==== Loading Done ====")
     println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
     println("\tLoaded ${functions.staticFunctions.size} static functions")
-    println("\tLoaded ${functions.instanceMethods.flatMap { it.value }.count()} instance functions")
+    println("\tLoaded ${functions.instanceMethods.flatAll().count()} instance functions")
 }
 
 internal fun printLog(log: InMemTypeParseLog) {
@@ -91,16 +93,16 @@ fun main(args: Array<String>) {
     println("==== Loading JCL ====")
 
     val jarTypeLoader = JarFileInfoCollector(MapJavaInfoRepo)
-    val jarFunLoader = JarFileFunctionInfoCollector
+    val jarFunLoader = JarFileFunctionInfoCollector(MapJavaInfoRepo)
 
     val typeConnector = JavaTypeInfoConnector(MapJavaInfoRepo, log)
     val funConnector = JavaFunctionConnector
 
-    val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
+    val jclJarInfo = JarInfo("JCL", jarPaths)
     val rawTypeInfo = jarTypeLoader.collectTypeInfo(jclJarInfo)
     val typeParamResolver = TypeInfoTypeParamResolver(rawTypeInfo.templateInfos)
 
-    val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, MapJavaInfoRepo, typeParamResolver)
+    val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, typeParamResolver)
 
     val (javaRepo, jclRepo) = typeConnector.connectJcl(rawTypeInfo)
     val funs = funConnector.connect(rawFunInfo)
@@ -116,7 +118,7 @@ fun main(args: Array<String>) {
             infoRepo = MapJavaInfoRepo,
             javaRepo = javaRepo,
             resolver = jclResolver,
-            allFunctions = funs.staticFunctions + funs.instanceMethods.flatMap { it.value }
+            allFunctions = funs.staticFunctions + funs.instanceMethods.flatAll().toList()
     )
 
     while (true) {

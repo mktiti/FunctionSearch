@@ -8,19 +8,24 @@ import com.mktiti.fsearch.backend.SimpleMapContextManager
 import com.mktiti.fsearch.backend.grpc.GrpcArtifactService
 import com.mktiti.fsearch.backend.grpc.GrpcInfoService
 import com.mktiti.fsearch.backend.grpc.GrpcSearchService
-import com.mktiti.fsearch.core.javadoc.DocStore
+import com.mktiti.fsearch.core.javadoc.FunDocResolver
+import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
+import com.mktiti.fsearch.core.repo.TypeRepo
+import com.mktiti.fsearch.core.util.flatAll
+import com.mktiti.fsearch.maven.repo.ExternalMavenDependencyFetcher
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
-import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
-import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
-import com.mktiti.fsearch.maven.util.printLoadResults
-import com.mktiti.fsearch.maven.util.printLog
-import com.mktiti.fsearch.modules.ArtifactManager
-import com.mktiti.fsearch.modules.SimpleDomainRepo
-import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionCollector
-import com.mktiti.fsearch.parser.intermediate.type.IndirectJarTypeCollector
+import com.mktiti.fsearch.modules.*
+import com.mktiti.fsearch.modules.fileystem.FilesystemArtifactDocStore
+import com.mktiti.fsearch.modules.fileystem.FilesystemArtifactInfoStore
+import com.mktiti.fsearch.parser.connect.FunctionCollection
+import com.mktiti.fsearch.parser.connect.function.JavaFunctionConnector
+import com.mktiti.fsearch.parser.connect.type.JavaTypeInfoConnector
+import com.mktiti.fsearch.parser.intermediate.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionInfoCollector
+import com.mktiti.fsearch.parser.intermediate.parse.JarInfo
 import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.util.InMemTypeParseLog
 import io.swagger.v3.oas.models.Components
@@ -45,6 +50,28 @@ class SpringMain {
         version = ProjectInfo.version.removeSuffix("-SNAPSHOT")
     })
 
+}
+
+internal fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollection) {
+    println("==== Loading Done ====")
+    println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
+    println("\tLoaded ${functions.staticFunctions.size} static functions")
+    println("\tLoaded ${functions.instanceMethods.flatAll().count()} instance functions")
+}
+
+internal fun printLog(log: InMemTypeParseLog) {
+    println("\t${log.allCount} warnings")
+
+    println("\t== Type not found errors (${log.typeNotFounds.size}):")
+    log.typeNotFounds.groupBy { it.used }.forEach { (used, users) ->
+        println("\t\t$used used by $users")
+    }
+
+    println("\t== Raw type usages (${log.rawUsages.size})")
+    println("\t== Application errors (${log.applicableErrors.size})")
+    log.applicableErrors.forEach { (user, used) ->
+        println("\t\t$used used by $user")
+    }
 }
 
 object ContextManagerStore {
@@ -82,44 +109,58 @@ object ContextManagerStore {
         val log = InMemTypeParseLog()
 
         println("==== Loading JCL ====")
-        val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
-        val jclCollector = IndirectJarTypeCollector(MapJavaInfoRepo)
-        val (javaRepo, jclRepo) = jclCollector.collectJcl(jclJarInfo, "JCL")
+
+        val jarTypeLoader = JarFileInfoCollector(MapJavaInfoRepo)
+        val jarFunLoader = JarFileFunctionInfoCollector(MapJavaInfoRepo)
+
+        val typeConnector = JavaTypeInfoConnector(MapJavaInfoRepo, log)
+        val funConnector = JavaFunctionConnector
+
+        val jclJarInfo = JarInfo("JCL", jarPaths)
+        val rawTypeInfo = jarTypeLoader.collectTypeInfo(jclJarInfo)
+        val typeParamResolver = TypeInfoTypeParamResolver(rawTypeInfo.templateInfos)
+
+        val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, typeParamResolver)
+
+        val (javaRepo, jclRepo) = typeConnector.connectJcl(rawTypeInfo)
+        val funs = funConnector.connect(rawFunInfo)
+
         val jclResolver = SingleRepoTypeResolver(jclRepo)
-        val jclFunctions = JarFileFunctionCollector.collectFunctions(jclJarInfo, javaRepo, MapJavaInfoRepo, jclResolver)
 
         val jclDocs = jclDocLocation?.let {
-            JarHtmlJavadocParser(MapJavaInfoRepo).parseJar(it.toFile())
-        }
+            val docMap = JarHtmlJavadocParser(MapJavaInfoRepo).parseJar(it.toFile()) ?: return@let null
+            SingleDocMapStore(docMap.map)
+        } ?: FunDocResolver.nop()
 
-        printLoadResults(jclRepo, jclFunctions)
+        printLoadResults(jclRepo, funs)
 
         printLog(log)
 
-        val jclArtifactRepo = SimpleDomainRepo(jclResolver, jclFunctions)
+        val jclArtifactRepo = SimpleDomainRepo(jclResolver, funs)
 
-        val mavenManager = MavenMapArtifactManager(
-                typeCollector = JarFileInfoCollector(MapJavaInfoRepo),
-                funCollector = JarFileFunctionCollector,
-                infoRepo = MapJavaInfoRepo,
-                javaRepo = javaRepo,
-                baseResolver = jclResolver,
-                mavenFetcher = ExternalMavenFetcher()
+        val artifactFetcher: ArtifactInfoFetcher = ExternalMavenFetcher(infoRepo = MapJavaInfoRepo)
+
+        val artifactManager: ArtifactManager = SecondaryArtifactManager(
+                typeInfoConnector = typeConnector,
+                functionConnector = funConnector,
+                infoCache = FilesystemArtifactInfoStore(Files.createTempDirectory("fsearch-info-cache-")),
+                depInfoFetcher = ExternalMavenDependencyFetcher(),
+                artifactInfoFetcher = artifactFetcher
         )
-        artifactManager = mavenManager
+        this.artifactManager = artifactManager
 
-        val mavenJavadocManager = MavenMapJavadocManager(
-                infoRepo = MapJavaInfoRepo,
-                mavenFetcher = ExternalMavenFetcher(),
-                jclDocs = jclDocs ?: DocStore.nop()
+        val javadocManager: DocManager = DefaultDocManager(
+                jclDocs = jclDocs,
+                cache = FilesystemArtifactDocStore(Files.createTempDirectory("fsearch-doc-cache-")),
+                artifactInfoFetcher = artifactFetcher
         )
 
         contextManager = SimpleMapContextManager(
                 infoRepo = MapJavaInfoRepo,
                 javaRepo = javaRepo,
                 jclDomain = jclArtifactRepo,
-                artifactManager = mavenManager,
-                docManager = mavenJavadocManager
+                artifactManager = artifactManager,
+                docManager = javadocManager
         )
 
         // Force load apache commons and guava

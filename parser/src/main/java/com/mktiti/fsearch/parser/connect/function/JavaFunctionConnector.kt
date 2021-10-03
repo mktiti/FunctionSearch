@@ -9,6 +9,7 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.Dynamic
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.SelfSubstitution
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.TypeSubstitution
+import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.parser.connect.FunctionCollection
 import com.mktiti.fsearch.parser.connect.FunctionConnector
@@ -92,7 +93,7 @@ object JavaFunctionConnector : FunctionConnector {
         is FunSignatureInfo.Generic -> signature.connectGeneric()
     }
 
-    private fun connectFunction(info: RawFunInfo<*>): FunctionObj? {
+    private fun connectFunction(info: RawFunInfo): FunctionObj? {
         val converterSignature = connectSignature(info.signature) ?: return null
         return FunctionObj(info.info, converterSignature)
     }
@@ -102,8 +103,8 @@ object JavaFunctionConnector : FunctionConnector {
         data class Fail(val info: FunctionInfo) : MapResult()
     }
 
-    override fun connect(funInfo: FunctionInfoCollector.FunctionInfoCollection): FunctionCollection {
-        fun Collection<RawFunInfo<*>>.convertAll(): Pair<List<FunctionObj>, List<FunctionInfo>> {
+    override fun connect(funInfo: FunctionInfoResult): FunctionCollection {
+        fun Collection<RawFunInfo>.convertAll(): Pair<List<FunctionObj>, List<FunctionInfo>> {
             val (oks, fails) = map {
                 when (val result = connectFunction(it)) {
                     null -> MapResult.Fail(it.info)
@@ -128,7 +129,7 @@ object JavaFunctionConnector : FunctionConnector {
             converted
         }
 
-        return FunctionCollection(convertedStatics, convertedInstances)
+        return FunctionCollection(convertedStatics, InfoMap.fromMap(convertedInstances))
     }
 
 }

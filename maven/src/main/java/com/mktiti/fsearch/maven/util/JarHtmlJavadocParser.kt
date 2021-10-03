@@ -3,9 +3,8 @@ package com.mktiti.fsearch.maven.util
 import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunInstanceRelation
 import com.mktiti.fsearch.core.fit.FunctionInfo
-import com.mktiti.fsearch.core.javadoc.DocStore
+import com.mktiti.fsearch.core.javadoc.FunDocMap
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
-import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.zipIfSameLength
@@ -291,7 +290,7 @@ class JarHtmlJavadocParser(
         }
     }
 
-    fun parseJar(jarFile: File): DocStore {
+    fun parseJar(jarFile: File): FunDocMap? {
         return ZipFile(jarFile).use { jar ->
             (jar.getEntry("package-list") ?: jar.getEntry("element-list"))?.let { lister ->
                 jar.getInputStream(lister).bufferedReader().useLines { lines ->
@@ -322,9 +321,9 @@ class JarHtmlJavadocParser(
                         }
                     }.flatten().toMap()
 
-                    SingleDocMapStore(storeMap)
+                    FunDocMap(storeMap)
                 }
-            } ?: DocStore.nop()
+            }
         }
     }
 

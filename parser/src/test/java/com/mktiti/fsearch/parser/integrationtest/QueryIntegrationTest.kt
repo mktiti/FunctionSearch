@@ -6,7 +6,6 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
-import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.parser.connect.TypeInfoConnector
 import com.mktiti.fsearch.parser.connect.function.JavaFunctionConnector
 import com.mktiti.fsearch.parser.connect.type.JavaTypeInfoConnector
@@ -98,7 +97,7 @@ class QueryIntegrationTest {
 
                 val typeResolver = FallbackResolver(loadedTypeResolver, baseResolver)
                 val typeParamResolver: TypeParamResolver = TypeInfoTypeParamResolver(typeInfoRes.templateInfos)
-                val funInfos = DirectoryFunctionInfoCollector.collectFunctions(path, infoRepo, typeParamResolver)
+                val funInfos = DirectoryFunctionInfoCollector(infoRepo).collectFunctions(path, typeParamResolver)
                 val functions = JavaFunctionConnector.connect(funInfos)
 
                 Triple(javaRepo, typeResolver, functions)
@@ -113,7 +112,7 @@ class QueryIntegrationTest {
                 val queryResolver = FallbackResolver.withVirtuals(virtuals, typeResolver)
                 val fitter: QueryFitter = JavaQueryFitter(infoRepo, queryResolver)
 
-                val fitting = fitter.findFittings(query, functions.staticFunctions.stream(), InfoMap.fromMap(functions.instanceMethods)).map {
+                val fitting = fitter.findFittings(query, functions.staticFunctions.stream(), functions.instanceMethods).map {
                     it.first.info
                 }.collect(Collectors.toSet())
 

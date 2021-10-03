@@ -1,21 +1,24 @@
 package com.mktiti.fsearch.maven.util
-
+/*
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
-import com.mktiti.fsearch.core.javadoc.DocStore
+import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.Type.NonGenericType.DirectType
 import com.mktiti.fsearch.core.util.show.JavaTypePrinter
 import com.mktiti.fsearch.core.util.show.TypePrint
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
-import com.mktiti.fsearch.maven.repo.MavenMapArtifactManager
-import com.mktiti.fsearch.maven.repo.MavenMapJavadocManager
 import com.mktiti.fsearch.modules.*
 import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionCollector
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
 import com.mktiti.fsearch.parser.query.QueryImports
 import com.mktiti.fsearch.parser.query.QueryParser
 import com.mktiti.fsearch.parser.intermediate.FunctionCollector
+import com.mktiti.fsearch.parser.intermediate.FunctionInfoResult
+import com.mktiti.fsearch.parser.intermediate.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.parser.intermediate.TypeParamResolver
+import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionInfoCollector
+import com.mktiti.fsearch.parser.intermediate.parse.JarInfo
 import com.mktiti.fsearch.parser.intermediate.type.IndirectJarTypeCollector
 import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
 import com.mktiti.fsearch.parser.util.InMemTypeParseLog
@@ -26,11 +29,11 @@ import java.nio.file.Paths
 import java.util.stream.Collectors
 import kotlin.streams.toList
 
-fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollector.FunctionCollection) {
+fun printLoadResults(typeRepo: TypeRepo, functions: FunctionInfoResult) {
     println("==== Loading Done ====")
     println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
     println("\tLoaded ${functions.staticFunctions.size} static functions")
-    println("\tLoaded ${functions.instanceMethods.flatAll().count()} instance functions")
+    println("\tLoaded ${functions.instanceMethods.flatMap { it.value }.count()} instance functions")
 }
 
 fun printLog(log: InMemTypeParseLog) {
@@ -53,12 +56,12 @@ private data class QueryContext(
         val javaRepo: JavaRepo,
         val artifacts: Set<ArtifactId>,
         val domain: DomainRepo,
-        val docStore: DocStore
+        val docResolver: FunDocResolver
 ) {
 
     val queryParser: QueryParser = AntlrQueryParser(javaRepo, infoRepo, domain.typeResolver)
     val fitter: QueryFitter = JavaQueryFitter(infoRepo, domain.typeResolver)
-    val typePrint: TypePrint = JavaTypePrinter(infoRepo, domain.typeResolver, docStore)
+    val typePrint: TypePrint = JavaTypePrinter(infoRepo, domain.typeResolver, docResolver)
 
     fun withVirtuals(virtuals: Collection<DirectType>) = copy(
             domain = FunFallbackDomainRepo(FallbackResolver.withVirtuals(virtuals, domain.typeResolver), domain)
@@ -94,11 +97,11 @@ fun main(args: Array<String>) {
     val log = InMemTypeParseLog()
 
     println("==== Loading JCL ====")
-    val jclJarInfo = JarFileInfoCollector.JarInfo("JCL", jarPaths)
-    val jclCollector = IndirectJarTypeCollector(MapJavaInfoRepo)
-    val (javaRepo, jclRepo) = jclCollector.collectJcl(jclJarInfo, "JCL")
+    val jclJarInfo = JarInfo("JCL", jarPaths)
+    val jclCollector = JarFileInfoCollector(MapJavaInfoRepo)
+    val typeInfoResult = jclCollector.collectTypeInfo(jclJarInfo)
     val jclResolver = SingleRepoTypeResolver(jclRepo)
-    val jclFunctions = JarFileFunctionCollector.collectFunctions(jclJarInfo, javaRepo, MapJavaInfoRepo, jclResolver)
+    val jclFunctions = JarFileFunctionInfoCollector(MapJavaInfoRepo).collectFunctions(jclJarInfo, TypeInfoTypeParamResolver(typeInfoResult.templateInfos))
 
     printLoadResults(jclRepo, jclFunctions)
 
@@ -125,7 +128,7 @@ fun main(args: Array<String>) {
             javaRepo = javaRepo,
             artifacts = emptySet(),
             domain = jclArtifactRepo,
-            docStore = DocStore.nop()
+            docResolver = FunDocResolver.nop()
     )
 
     while (true) {
@@ -163,7 +166,7 @@ fun main(args: Array<String>) {
                                     domain = FallbackDomainRepo(
                                             repo = context.domain,
                                             fallbackRepo = loaded
-                                    ), docStore = docStore
+                                    ), docResolver = docStore
                             )
                         } else {
                             println("Artifact $artifact already loaded")
@@ -189,7 +192,7 @@ fun main(args: Array<String>) {
                     print("Fits function ")
                     extraContext.typePrint.printFun(function)
                     extraContext.typePrint.printFittingMap(result)
-                    context.docStore[function.info]?.let {
+                    context.docResolver[function.info]?.let {
                         println()
                         println("===> Doc:")
                         println(it.longInfo)
@@ -271,3 +274,4 @@ private fun printInfo(command: List<String>, context: QueryContext) {
         }
     }
 }
+*/

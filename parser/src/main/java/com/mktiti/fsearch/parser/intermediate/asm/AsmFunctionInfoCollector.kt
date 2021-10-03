@@ -18,10 +18,10 @@ import kotlin.collections.HashMap
 
 object AsmFunctionInfoCollector {
 
-    fun collect(infoRepo: JavaInfoRepo, typeParamResolver: TypeParamResolver, load: AsmCollectorView.() -> Unit): FunctionInfoCollector.FunctionInfoCollection {
+    fun collect(infoRepo: JavaInfoRepo, typeParamResolver: TypeParamResolver, load: AsmCollectorView.() -> Unit): FunctionInfoResult {
         val visitor = AsmFunctionInfoCollectorVisitor(infoRepo, typeParamResolver)
         DefaultAsmCollectorView(visitor).load()
-        return FunctionInfoCollector.FunctionInfoCollection(
+        return FunctionInfoResult(
                 staticFunctions = visitor.staticFuns,
                 instanceMethods = visitor.instanceFuns
         )
@@ -83,12 +83,12 @@ private class AsmFunctionInfoCollectorVisitor(
 
     private lateinit var context: ContextInfo
 
-    private val collectedStaticFuns: MutableList<RawFunInfo<*>> = ArrayList()
-    val staticFuns: List<RawFunInfo<*>>
+    private val collectedStaticFuns: MutableList<RawFunInfo> = ArrayList()
+    val staticFuns: List<RawFunInfo>
         get() = collectedStaticFuns
 
-    private val collectedInstanceFuns: MutableMap<MinimalInfo, MutableCollection<RawFunInfo<*>>> = HashMap()
-    val instanceFuns: Map<MinimalInfo, Collection<RawFunInfo<*>>>
+    private val collectedInstanceFuns: MutableMap<MinimalInfo, MutableCollection<RawFunInfo>> = HashMap()
+    val instanceFuns: Map<MinimalInfo, Collection<RawFunInfo>>
         get() = collectedInstanceFuns
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
@@ -134,9 +134,9 @@ private class AsmFunctionInfoCollectorVisitor(
                         ) ?: error("Cannot create function info! ($thisInfo::$name)")
 
                         if (instanceRel != INSTANCE) {
-                            collectedStaticFuns += RawFunInfo(funInfo, parsedSignature)
+                            collectedStaticFuns += RawFunInfo.of(funInfo, parsedSignature)
                         } else {
-                            collectedInstanceFuns.getOrPut(thisInfo) { LinkedList() } += RawFunInfo(funInfo, parsedSignature)
+                            collectedInstanceFuns.getOrPut(thisInfo) { LinkedList() } += RawFunInfo.of(funInfo, parsedSignature)
                         }
                     } catch (e: NotImplementedError) {
                         System.err.println("Failed to parse $thisInfo $name :: ${signature ?: descriptor}")

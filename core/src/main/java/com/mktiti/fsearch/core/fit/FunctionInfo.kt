@@ -8,7 +8,9 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution.*
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.TypeHolder
 import com.mktiti.fsearch.core.util.liftNull
+import kotlinx.serialization.Serializable
 
+@Serializable
 sealed class FunIdParam {
 
     companion object {
@@ -19,6 +21,7 @@ sealed class FunIdParam {
         }
     }
 
+    @Serializable
     data class Type(
             val info: MinimalInfo
     ) : FunIdParam() {
@@ -29,6 +32,7 @@ sealed class FunIdParam {
 
     }
 
+    @Serializable
     data class Array(
             val arg: FunIdParam
     ) : FunIdParam() {
@@ -38,6 +42,7 @@ sealed class FunIdParam {
 
     }
 
+    @Serializable
     data class TypeParam(
             val sign: String
     ) : FunIdParam() {
@@ -55,6 +60,7 @@ enum class FunInstanceRelation {
     INSTANCE, STATIC, CONSTRUCTOR
 }
 
+@Serializable
 data class FunctionInfo(
         val file: MinimalInfo,
         val relation: FunInstanceRelation,

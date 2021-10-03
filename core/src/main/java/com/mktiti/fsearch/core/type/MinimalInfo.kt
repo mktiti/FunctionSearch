@@ -6,8 +6,10 @@ import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.PrefixTree
+import kotlinx.serialization.Serializable
 import java.util.*
 
+@Serializable
 data class MinimalInfo(
         val packageName: PackageName,
         val simpleName: String,
@@ -64,15 +66,17 @@ data class MinimalInfo(
 
 }
 
-sealed class CompleteMinInfo<out P : Any>(
-        val base: MinimalInfo,
-        val args: List<P>
-) : StaticApplicable {
+@Serializable
+sealed class CompleteMinInfo<out P : Any> : StaticApplicable {
 
+    abstract val base: MinimalInfo
+    abstract val args: List<P>
+
+    @Serializable
     class Static(
-            base : MinimalInfo,
-            args: List<Static>
-    ) : CompleteMinInfo<Static>(base, args) {
+            override val base : MinimalInfo,
+            override val args: List<Static>
+    ) : CompleteMinInfo<Static>() {
 
         companion object {
             fun List<Static>.holders() = map { it.holder() }
@@ -93,9 +97,9 @@ sealed class CompleteMinInfo<out P : Any>(
     }
 
     class Dynamic(
-            base : MinimalInfo,
-            args: List<ApplicationParameter>
-    ) : CompleteMinInfo<ApplicationParameter>(base, args) {
+            override val base : MinimalInfo,
+            override val args: List<ApplicationParameter>
+    ) : CompleteMinInfo<ApplicationParameter>() {
 
         override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static? {
             val applied = args.map { arg ->

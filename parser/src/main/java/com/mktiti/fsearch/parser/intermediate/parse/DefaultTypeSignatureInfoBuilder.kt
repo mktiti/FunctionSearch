@@ -84,7 +84,7 @@ class DefaultTypeSignatureInfoBuilder(
                 directSupers = supers.superKind<MinimalInfo, SuperKindHelper.Direct>(),
                 satSupers = supers.superKind<CompleteMinInfo.Static, SuperKindHelper.Sat>(),
                 datSupers = supers.superKind<DatInfo, SuperKindHelper.Dat>(),
-                samInfo = samTypeCreator(typeParams)
+                samType = samTypeCreator(typeParams)
         )
     }
 
@@ -105,7 +105,7 @@ class DefaultTypeSignatureInfoBuilder(
                 info = info,
                 directSupers = directSupers.map { it.base },
                 satSupers = satSupers,
-                samInfo = samInfo
+                samType = samInfo
         )
     }
 

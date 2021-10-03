@@ -13,10 +13,20 @@
     <artifactId>core</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 
+    <properties>
+        <serialization.version>1.2.2</serialization.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
             <artifactId>util</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-serialization-json</artifactId>
+            <version>${serialization.version}</version>
         </dependency>
 
         <dependency>
@@ -54,7 +64,17 @@
                 </executions>
                 <configuration>
                     <jvmTarget>1.8</jvmTarget>
+                    <compilerPlugins>
+                        <plugin>kotlinx-serialization</plugin>
+                    </compilerPlugins>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-serialization</artifactId>
+                        <version>${kotlin.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
 
             <plugin>

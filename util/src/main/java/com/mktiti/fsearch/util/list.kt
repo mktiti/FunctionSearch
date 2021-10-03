@@ -2,6 +2,8 @@
 
 package com.mktiti.fsearch.util
 
+import arrow.core.Either
+
 fun <T> List<T>.indexOfOrNull(element: T): Int? = when (val index = indexOf(element)) {
     -1 -> null
     else -> index
@@ -25,16 +27,70 @@ fun <T> List<T>.safeCutLast(): Pair<List<T>, T>? = if (isEmpty()) {
 
 fun <T> List<T>.cutLast(): Pair<List<T>, T> = safeCutLast()!!
 
+fun <T, A, B> Collection<T>.splitMap(mapper: (T) -> Either<A, B>): Pair<List<A>, List<B>> {
+    val (lefts, rights) = map(mapper).partition {
+        it is Either.Left
+    }
+
+    return lefts.filterIsInstance<Either.Left<A>>().map { it.value } to
+            rights.filterIsInstance<Either.Right<B>>().map { it.value }
+}
+
+fun <T, R : Any> Collection<T>.splitMapKeep(mapper: (T) -> R?): Pair<List<R>, List<T>> {
+    return splitMap {
+        when (val mapped = mapper(it)) {
+            null -> Either.Right(it)
+            else -> Either.Left(mapped)
+        }
+    }
+}
+
+fun <T> List<T>.split(predicate: (T) -> Boolean): Pair<List<T>, List<T>> {
+    val firsts = takeWhile { !predicate(it) }
+    return if (firsts.size == size) {
+        firsts to emptyList()
+    } else {
+        firsts to drop(firsts.size + 1)
+    }
+}
+
+fun <T> List<T>.allPermutations2(): Sequence<List<T>> {
+    val (head, tail) = safeCutHead() ?: return sequenceOf(emptyList())
+
+    return tail.allPermutations2().flatMap {
+        (0 .. it.size).map { i ->
+            tail.drop(i) + head + tail.drop(i)
+        }
+    }
+}
+
+fun <T> Collection<T>.allPermutationsSeq(): Sequence<List<T>> {
+    // TODO - quick and dirty
+    fun List<T>.allPermutationsInner(): Sequence<List<T>> {
+        return if (isEmpty()) {
+            sequenceOf(emptyList())
+        } else {
+            asSequence().flatMapIndexed { i, elem ->
+                val rest = take(i) + drop(i + 1)
+                rest.allPermutationsInner().map { tail ->
+                    listOf(elem) + tail
+                }
+            }
+        }
+    }
+
+    return toList().allPermutationsInner()
+}
+
 fun <T> Collection<T>.allPermutations(): List<List<T>> {
     // TODO - quick and dirty
     fun List<T>.allPermutationsInner(): List<List<T>> {
         return if (isEmpty()) {
             listOf(emptyList())
         } else {
-            (0 until size).flatMap { i ->
-                val elem = get(i)
+            flatMapIndexed { i, elem ->
                 val rest = take(i) + drop(i + 1)
-                rest.allPermutations().map { tail ->
+                rest.allPermutationsInner().map { tail ->
                     listOf(elem) + tail
                 }
             }

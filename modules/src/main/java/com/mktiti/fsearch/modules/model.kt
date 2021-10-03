@@ -5,7 +5,7 @@ import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.InfoMap
-import com.mktiti.fsearch.parser.intermediate.FunctionCollector
+import com.mktiti.fsearch.parser.connect.FunctionCollection
 import java.util.stream.Stream
 
 data class ArtifactId(
@@ -53,7 +53,7 @@ data class SimpleDomainRepo(
         override val instanceFunctions: InfoMap<Collection<FunctionObj>>
 ) : DomainRepo {
 
-    constructor(typeResolver: TypeResolver, functions: FunctionCollector.FunctionCollection)
+    constructor(typeResolver: TypeResolver, functions: FunctionCollection)
             : this(typeResolver, functions.staticFunctions, functions.instanceMethods)
 
     override val staticFunctions: Stream<FunctionObj>

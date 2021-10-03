@@ -41,7 +41,7 @@ class SimpleMapContextManager(
                 infoRepo = infoRepo,
                 javaRepo = javaRepo,
                 domain = extendedDomain,
-                docStore = docStore
+                docResolver = docStore
         )
     }
 

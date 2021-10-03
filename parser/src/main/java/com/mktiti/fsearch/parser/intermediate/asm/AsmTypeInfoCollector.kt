@@ -85,7 +85,7 @@ private class AsmTypeInfoCollectorVisitor(
                     info = info,
                     directSupers = directSupers,
                     satSupers = emptyList(),
-                    samInfo = samType
+                    samType = samType
             )
         )
     }
@@ -109,7 +109,7 @@ private class AsmTypeInfoCollectorVisitor(
                     directSupers = directSupers,
                     satSupers = satSupers,
                     datSupers = datSupers,
-                    samInfo = samType
+                    samType = samType
             )
         )
     }

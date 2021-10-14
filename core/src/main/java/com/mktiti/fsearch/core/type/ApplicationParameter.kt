@@ -74,7 +74,7 @@ sealed class ApplicationParameter {
             override fun staticApply(typeArgs: List<TypeHolder.Static>) = typeArgs.getOrNull(param)
 
             override fun dynamicApply(typeParams: List<ApplicationParameter>): ApplicationParameter? {
-                return typeParams.getOrNull(param) ?: return null
+                return typeParams.getOrNull(param)
             }
 
             override fun applySelf(self: TypeHolder.Static) = this

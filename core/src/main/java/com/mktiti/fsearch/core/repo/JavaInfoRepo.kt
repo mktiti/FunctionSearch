@@ -4,6 +4,7 @@ import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PackageName
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.util.EnumMap
+import com.mktiti.fsearch.util.capitalize
 
 interface JavaInfoRepo {
 

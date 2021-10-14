@@ -40,7 +40,7 @@ private class CombinedInfoMap<V>(
 
 }
 
-fun <T> InfoMap<Collection<T>>.flatAll() = all().flatMap { it.stream() }
+fun <T> InfoMap<Collection<T>>.flatAll(): Stream<T> = all().flatMap { it.stream() }
 
 private class MapInfoMap<V>(
         private val store: Map<MinimalInfo, V>

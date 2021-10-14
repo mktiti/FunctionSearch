@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.util
 
 import arrow.core.Either
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 internal class ListSplitMapTest {

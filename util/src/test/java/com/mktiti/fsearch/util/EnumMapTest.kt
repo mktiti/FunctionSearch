@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.util
 
 import com.mktiti.fsearch.util.EnumMapTest.Person.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 

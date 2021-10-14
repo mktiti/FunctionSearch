@@ -1,3 +1,4 @@
+.store-cache
 .plan
 .env
 *.old

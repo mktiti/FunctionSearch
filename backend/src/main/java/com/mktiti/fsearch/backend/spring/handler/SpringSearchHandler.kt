@@ -1,9 +1,7 @@
 package com.mktiti.fsearch.backend.spring.handler
 
-import com.mktiti.fsearch.backend.api.*
+import com.mktiti.fsearch.backend.api.SearchHandler
 import com.mktiti.fsearch.dto.*
-import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.info.Info
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*

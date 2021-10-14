@@ -1,6 +1,6 @@
 package com.mktiti.fsearch.modules
 
-import com.mktiti.fsearch.parser.intermediate.ArtifactInfoResult
+import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 
 interface ArtifactInfoResolver {
 

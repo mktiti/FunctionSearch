@@ -6,10 +6,8 @@ import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.util.PrefixTree
-import kotlinx.serialization.Serializable
 import java.util.*
 
-@Serializable
 data class MinimalInfo(
         val packageName: PackageName,
         val simpleName: String,
@@ -50,13 +48,16 @@ data class MinimalInfo(
             simpleName == other.simpleName &&
             virtual == other.virtual
 
+    private fun dataEq(info: MinimalInfo) = info.simpleName == simpleName && info.packageName == packageName
+
     override fun equals(other: Any?): Boolean = when {
         other !is MinimalInfo -> false
-        this === anyWildcard -> true
-        other === anyWildcard -> true
-        virtual -> this === other && this !== uniqueVirtual
-        else -> {
-            other.simpleName == simpleName && other.packageName == packageName
+        dataEq(anyWildcard) -> true
+        other.dataEq(anyWildcard) -> true
+        else -> if (virtual && this === uniqueVirtual) {
+            false
+        } else {
+            dataEq(other)
         }
     }
 
@@ -66,13 +67,11 @@ data class MinimalInfo(
 
 }
 
-@Serializable
 sealed class CompleteMinInfo<out P : Any> : StaticApplicable {
 
     abstract val base: MinimalInfo
     abstract val args: List<P>
 
-    @Serializable
     class Static(
             override val base : MinimalInfo,
             override val args: List<Static>

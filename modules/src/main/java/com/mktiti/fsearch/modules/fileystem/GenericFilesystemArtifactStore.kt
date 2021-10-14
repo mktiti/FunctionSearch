@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.modules.fileystem
 
+import com.mktiti.fsearch.model.build.service.ArtifactSerializerService
 import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.modules.fileystem.serialize.ArtifactSerializerService
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path

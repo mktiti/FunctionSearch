@@ -1,9 +1,9 @@
 package com.mktiti.fsearch.modules
 
-import com.mktiti.fsearch.core.javadoc.FunDocMap
 import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
 import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
+import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 
 interface ArtifactDocResolver {
 
@@ -52,7 +52,7 @@ interface ArtifactDocStore : ArtifactDocResolver {
         return if (docMap == null) {
             FunDocResolver.nop()
         } else {
-            SingleDocMapStore(docMap.map)
+            SingleDocMapStore(docMap.convertMap())
         }
     }
 

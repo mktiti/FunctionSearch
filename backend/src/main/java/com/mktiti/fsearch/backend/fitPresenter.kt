@@ -1,8 +1,11 @@
 package com.mktiti.fsearch.backend
 
 import com.mktiti.fsearch.backend.api.relationDtoFromModel
-import com.mktiti.fsearch.core.fit.*
+import com.mktiti.fsearch.core.fit.FittingMap
 import com.mktiti.fsearch.core.fit.FunInstanceRelation.*
+import com.mktiti.fsearch.core.fit.FunctionInfo
+import com.mktiti.fsearch.core.fit.FunctionObj
+import com.mktiti.fsearch.core.fit.TypeSignature
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
@@ -10,7 +13,6 @@ import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
 import com.mktiti.fsearch.core.type.ApplicationParameter.Substitution
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.dto.FunDocDto
-import com.mktiti.fsearch.dto.FunRelationDto
 import com.mktiti.fsearch.dto.QueryFitResult
 import com.mktiti.fsearch.util.PrefixTree
 import com.mktiti.fsearch.util.mapMutablePrefixTree

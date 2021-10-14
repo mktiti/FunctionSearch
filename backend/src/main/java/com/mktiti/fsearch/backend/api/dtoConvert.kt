@@ -6,9 +6,9 @@ import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.SemiType
 import com.mktiti.fsearch.dto.*
+import com.mktiti.fsearch.model.build.intermediate.QueryImport
+import com.mktiti.fsearch.model.build.intermediate.QueryImports
 import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.parser.query.QueryImport
-import com.mktiti.fsearch.parser.query.QueryImports
 
 fun ArtifactIdDto.toId() = ArtifactId(group.split('.'), name, version)
 

@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.maven.util
 
 import com.mktiti.fsearch.modules.ArtifactId
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 internal class DependencyUtilTest {

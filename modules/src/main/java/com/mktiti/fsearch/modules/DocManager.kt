@@ -30,7 +30,7 @@ class DefaultDocManager(
                 }
             } ?: error("Failed to fetch dependencies")
 
-            funDocMaps.map { SingleDocMapStore(it.map) }
+            funDocMaps.map { SingleDocMapStore(it.convertMap()) }
         } else {
             emptyList()
         }

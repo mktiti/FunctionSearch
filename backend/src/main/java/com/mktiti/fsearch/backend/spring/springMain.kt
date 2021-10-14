@@ -17,26 +17,31 @@ import com.mktiti.fsearch.core.util.flatAll
 import com.mktiti.fsearch.maven.repo.ExternalMavenDependencyFetcher
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
 import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
+import com.mktiti.fsearch.model.build.service.FunctionCollection
+import com.mktiti.fsearch.model.build.service.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.model.build.util.InMemTypeParseLog
+import com.mktiti.fsearch.model.connect.function.JavaFunctionConnector
+import com.mktiti.fsearch.model.connect.type.JavaTypeInfoConnector
 import com.mktiti.fsearch.modules.*
 import com.mktiti.fsearch.modules.fileystem.FilesystemArtifactDocStore
 import com.mktiti.fsearch.modules.fileystem.FilesystemArtifactInfoStore
-import com.mktiti.fsearch.parser.connect.FunctionCollection
-import com.mktiti.fsearch.parser.connect.function.JavaFunctionConnector
-import com.mktiti.fsearch.parser.connect.type.JavaTypeInfoConnector
-import com.mktiti.fsearch.parser.intermediate.TypeInfoTypeParamResolver
-import com.mktiti.fsearch.parser.intermediate.function.JarFileFunctionInfoCollector
-import com.mktiti.fsearch.parser.intermediate.parse.JarInfo
-import com.mktiti.fsearch.parser.intermediate.type.JarFileInfoCollector
-import com.mktiti.fsearch.parser.util.InMemTypeParseLog
+import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
+import com.mktiti.fsearch.parser.parse.JarInfo
+import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.context.event.EventListener
+import org.springframework.web.context.annotation.ApplicationScope
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.streams.toList
 
@@ -79,7 +84,10 @@ object ContextManagerStore {
     lateinit var artifactManager: ArtifactManager
     lateinit var contextManager: ContextManager
 
-    fun init(args: List<String>) {
+    fun init(
+            storeRoot: Path,
+            jclDocLocation: Path?
+    ) {
         val libPath = when (val home = System.getProperty("java.home")) {
             null -> {
                 System.err.println("Java home not set!")
@@ -96,7 +104,6 @@ object ContextManagerStore {
             }
         }.let(Paths::get)
 
-        val jclDocLocation = args.getOrNull(0)?.let(Paths::get)
         if (jclDocLocation == null) {
             println("JRE doc location not set")
         }
@@ -129,7 +136,7 @@ object ContextManagerStore {
 
         val jclDocs = jclDocLocation?.let {
             val docMap = JarHtmlJavadocParser(MapJavaInfoRepo).parseJar(it.toFile()) ?: return@let null
-            SingleDocMapStore(docMap.map)
+            SingleDocMapStore(docMap.convertMap())
         } ?: FunDocResolver.nop()
 
         printLoadResults(jclRepo, funs)
@@ -140,10 +147,17 @@ object ContextManagerStore {
 
         val artifactFetcher: ArtifactInfoFetcher = ExternalMavenFetcher(infoRepo = MapJavaInfoRepo)
 
+        val infoStorePath = storeRoot.resolve("info-store").also {
+            Files.createDirectories(it)
+        }
+        val docsStorePath = storeRoot.resolve("doc-store").also {
+            Files.createDirectories(it)
+        }
+
         val artifactManager: ArtifactManager = SecondaryArtifactManager(
                 typeInfoConnector = typeConnector,
                 functionConnector = funConnector,
-                infoCache = FilesystemArtifactInfoStore(Files.createTempDirectory("fsearch-info-cache-")),
+                infoCache = FilesystemArtifactInfoStore(infoStorePath),
                 depInfoFetcher = ExternalMavenDependencyFetcher(),
                 artifactInfoFetcher = artifactFetcher
         )
@@ -151,7 +165,7 @@ object ContextManagerStore {
 
         val javadocManager: DocManager = DefaultDocManager(
                 jclDocs = jclDocs,
-                cache = FilesystemArtifactDocStore(Files.createTempDirectory("fsearch-doc-cache-")),
+                cache = FilesystemArtifactDocStore(docsStorePath),
                 artifactInfoFetcher = artifactFetcher
         )
 
@@ -173,7 +187,20 @@ object ContextManagerStore {
 
 }
 
+@ApplicationScope
+class InitializerBean(
+        @Value("data-store.path") private val storeBasePath: String,
+        @Value("data-store.path") private val javadocPath: String?
+) {
+    @EventListener(ApplicationEnvironmentPreparedEvent::class)
+    fun onStartup() {
+        ContextManagerStore.init(
+                storeRoot = Paths.get(storeBasePath),
+                jclDocLocation = javadocPath?.let(Paths::get)
+        )
+    }
+}
+
 fun main(args: Array<String>) {
-    ContextManagerStore.init(args.toList())
     SpringApplication.run(SpringMain::class.java, *args)
 }

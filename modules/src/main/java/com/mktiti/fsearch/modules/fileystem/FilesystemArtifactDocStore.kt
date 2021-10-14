@@ -1,11 +1,9 @@
 package com.mktiti.fsearch.modules.fileystem
 
-import com.mktiti.fsearch.core.javadoc.FunDocMap
+import com.mktiti.fsearch.model.build.intermediate.FunDocMap
+import com.mktiti.fsearch.model.build.serialize.ArtifactDocSerializer
 import com.mktiti.fsearch.modules.ArtifactDocStore
 import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.modules.fileystem.serialize.ArtifactDocSerializer
-import java.io.IOException
-import java.nio.file.Files
 import java.nio.file.Path
 
 class FilesystemArtifactDocStore(

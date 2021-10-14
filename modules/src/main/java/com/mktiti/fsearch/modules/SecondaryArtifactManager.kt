@@ -4,9 +4,9 @@ import arrow.core.flatten
 import com.mktiti.fsearch.core.repo.SimpleCombiningTypeResolver
 import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.zipIfSameLength
-import com.mktiti.fsearch.parser.connect.FunctionConnector
-import com.mktiti.fsearch.parser.connect.TypeInfoConnector
-import com.mktiti.fsearch.parser.intermediate.ArtifactInfoResult
+import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
+import com.mktiti.fsearch.model.build.service.FunctionConnector
+import com.mktiti.fsearch.model.build.service.TypeInfoConnector
 import com.mktiti.fsearch.util.orElse
 import com.mktiti.fsearch.util.splitMapKeep
 

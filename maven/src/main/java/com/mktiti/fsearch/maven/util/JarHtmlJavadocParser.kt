@@ -3,11 +3,11 @@ package com.mktiti.fsearch.maven.util
 import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunInstanceRelation
 import com.mktiti.fsearch.core.fit.FunctionInfo
-import com.mktiti.fsearch.core.javadoc.FunDocMap
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.zipIfSameLength
+import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.map
 import org.jsoup.Jsoup

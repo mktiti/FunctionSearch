@@ -1,9 +1,9 @@
 package com.mktiti.fsearch.model.build.intermediate
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.mktiti.fsearch.core.fit.FunIdParam
-import kotlinx.serialization.Serializable
 
-@Serializable
+@JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS)
 sealed class IntFunIdParam {
 
     companion object {
@@ -20,8 +20,7 @@ sealed class IntFunIdParam {
         }
     }
 
-    @Serializable
-    data class Type(
+        data class Type(
             val info: IntMinInfo
     ) : IntFunIdParam() {
 
@@ -33,8 +32,7 @@ sealed class IntFunIdParam {
 
     }
 
-    @Serializable
-    data class Array(
+        data class Array(
             val arg: IntFunIdParam
     ) : IntFunIdParam() {
 
@@ -45,8 +43,7 @@ sealed class IntFunIdParam {
 
     }
 
-    @Serializable
-    data class TypeParam(
+        data class TypeParam(
             val sign: String
     ) : IntFunIdParam() {
 

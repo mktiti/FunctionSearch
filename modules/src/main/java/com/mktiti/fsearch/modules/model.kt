@@ -15,6 +15,8 @@ data class ArtifactId(
 ) {
 
     companion object {
+        fun jcl(version: String) = ArtifactId(listOf("\$internal"), "\$jcl", version)
+
         fun parse(simple: String): ArtifactId? {
             val parts = simple.split(':')
             if (parts.size != 3) {

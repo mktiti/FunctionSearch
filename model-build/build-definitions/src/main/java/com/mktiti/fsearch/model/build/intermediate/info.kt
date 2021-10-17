@@ -6,11 +6,9 @@ import com.mktiti.fsearch.core.type.CompleteMinInfo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.model.build.intermediate.IntFunIdParam.Companion.toInt
 import com.mktiti.fsearch.model.build.intermediate.IntFunInstanceRelation.Companion.toInt
-import kotlinx.serialization.Serializable
 
 fun MinimalInfo.toIntMinInfo() = IntMinInfo(packageName, simpleName, virtual)
 
-@Serializable
 data class IntMinInfo(
         val packageName: List<String>,
         val simpleName: String,
@@ -25,7 +23,6 @@ data class IntMinInfo(
 
 }
 
-@Serializable
 data class IntStaticCmi(
         val base : IntMinInfo,
         val args: List<IntStaticCmi>
@@ -63,7 +60,6 @@ internal fun FunctionInfo.toInt() = IntFunInfo(
         paramTypes.map { it.toInt() }
 )
 
-@Serializable
 data class IntFunInfo(
         val file: IntMinInfo,
         val relation: IntFunInstanceRelation,

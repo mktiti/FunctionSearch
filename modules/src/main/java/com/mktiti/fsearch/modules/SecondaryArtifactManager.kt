@@ -1,14 +1,22 @@
 package com.mktiti.fsearch.modules
 
 import arrow.core.flatten
+import com.mktiti.fsearch.core.repo.JavaRepo
+import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.SimpleCombiningTypeResolver
+import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 import com.mktiti.fsearch.model.build.service.FunctionConnector
 import com.mktiti.fsearch.model.build.service.TypeInfoConnector
+import com.mktiti.fsearch.model.build.service.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
+import com.mktiti.fsearch.parser.parse.JarInfo
+import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.util.orElse
 import com.mktiti.fsearch.util.splitMapKeep
+import java.nio.file.Path
 
 class SecondaryArtifactManager(
         private val typeInfoConnector: TypeInfoConnector,
@@ -18,9 +26,37 @@ class SecondaryArtifactManager(
         private val artifactInfoFetcher: ArtifactInfoFetcher
 ) : ArtifactManager {
 
+    private val jclMap = mutableMapOf<String, Pair<DomainRepo, JavaRepo>>()
+
     override fun allStored(): Set<ArtifactId> = emptySet()
 
     override fun effective(artifacts: Collection<ArtifactId>): Set<ArtifactId> = emptySet()
+
+    override fun getOrLoadJcl(version: String, paths: Collection<Path>): Pair<DomainRepo, JavaRepo> {
+        return jclMap.getOrPut(version) {
+            val (typeInfo, funInfo) = infoCache.getOrStore(ArtifactId.jcl(version)) {
+                val jclJarInfo = JarInfo("JCL", paths)
+
+                val jarTypeLoader = JarFileInfoCollector(MapJavaInfoRepo)
+                val jarFunLoader = JarFileFunctionInfoCollector(MapJavaInfoRepo)
+
+
+                val rawTypeInfo = jarTypeLoader.collectTypeInfo(jclJarInfo)
+                val typeParamResolver = TypeInfoTypeParamResolver(rawTypeInfo.templateInfos)
+
+                val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, typeParamResolver)
+
+                ArtifactInfoResult(rawTypeInfo, rawFunInfo)
+            }
+
+            val (javaRepo, jclRepo) = typeInfoConnector.connectJcl(typeInfo)
+            val funs = functionConnector.connect(funInfo)
+
+            val jclResolver = SingleRepoTypeResolver(jclRepo)
+
+            SimpleDomainRepo(jclResolver, funs) to javaRepo
+        }
+    }
 
     override fun getSingle(artifact: ArtifactId): DomainRepo {
         val (typeInfo, funInfo) = infoCache[artifact].orElse {

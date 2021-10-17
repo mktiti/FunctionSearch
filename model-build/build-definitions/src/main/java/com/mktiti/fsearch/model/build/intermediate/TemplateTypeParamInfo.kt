@@ -1,8 +1,5 @@
 package com.mktiti.fsearch.model.build.intermediate
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class TemplateTypeParamInfo(
         val sign: String,
         val bounds: List<TypeParamInfo>

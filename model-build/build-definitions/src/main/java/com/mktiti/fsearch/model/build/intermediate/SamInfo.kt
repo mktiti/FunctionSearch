@@ -1,21 +1,19 @@
 package com.mktiti.fsearch.model.build.intermediate
 
-import kotlinx.serialization.Serializable
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 
-@Serializable
+@JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS)
 sealed class SamInfo<S : FunSignatureInfo<*>> {
 
     abstract val explicit: Boolean
     abstract val signature: S
 
-    @Serializable
-    data class Direct(
+        data class Direct(
             override val explicit: Boolean,
             override val signature: FunSignatureInfo.Direct
     ) : SamInfo<FunSignatureInfo.Direct>()
 
-    @Serializable
-    data class Generic(
+        data class Generic(
             override val explicit: Boolean,
             override val signature: FunSignatureInfo.Generic
     ) : SamInfo<FunSignatureInfo.Generic>()

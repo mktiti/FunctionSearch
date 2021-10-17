@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.maven.util
+package com.mktiti.fsearch.parser.docs
 
 import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.repo.JavaInfoRepo

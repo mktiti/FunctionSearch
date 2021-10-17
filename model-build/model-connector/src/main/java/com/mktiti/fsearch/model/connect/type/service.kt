@@ -54,7 +54,7 @@ private class OneshotConnector(
 
     companion object {
         fun SemiInfo.DirectInfo.initCreator(): DirectCreator {
-            val supers: MutableList<TypeHolder.Static> = ArrayList(nonGenericSuperCount)
+            val supers: MutableList<TypeHolder.Static> = ArrayList(nonGenericSuperCount())
             val sam = samType?.let { samInfo ->
                 SamType.DirectSam(
                         explicit = samInfo.explicit,
@@ -78,7 +78,7 @@ private class OneshotConnector(
         }
 
         fun SemiInfo.TemplateInfo.initCreator(): TemplateCreator {
-            val supers: MutableList<TypeHolder<*, *>> = ArrayList(nonGenericSuperCount + datSupers.size)
+            val supers: MutableList<TypeHolder<*, *>> = ArrayList(nonGenericSuperCount() + datSupers.size)
 
             fun TypeParamInfo.toAp(): ApplicationParameter? {
                 return when (this) {
@@ -273,8 +273,8 @@ private class OneshotConnector(
 
     private fun TypeParamInfo.convertAllowIndirect(): ApplicationParameter {
         return when (this) {
-            TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
-            TypeParamInfo.SelfRef -> SelfSubstitution
+            is TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
+            is TypeParamInfo.SelfRef -> SelfSubstitution
             is TypeParamInfo.BoundedWildcard -> {
                 val convertedBound = bound.convertAllowIndirect() as? Substitution ?: return TypeSubstitution.unboundedWildcard
                 BoundedWildcard.Dynamic(

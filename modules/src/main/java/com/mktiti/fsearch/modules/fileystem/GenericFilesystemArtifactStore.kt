@@ -5,6 +5,7 @@ import com.mktiti.fsearch.modules.ArtifactId
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.createDirectories
 
 class GenericFilesystemArtifactStore<T>(
         private val repoRoot: Path,
@@ -17,7 +18,10 @@ class GenericFilesystemArtifactStore<T>(
 
     fun store(artifact: ArtifactId, data: T) {
         try {
-            serializationService.writeToFile(data, filePath(artifact))
+            val path = filePath(artifact).apply {
+                parent.createDirectories()
+            }
+            serializationService.writeToFile(data, path)
         } catch (ioe: IOException) {
             ioe.printStackTrace()
         }
@@ -27,7 +31,7 @@ class GenericFilesystemArtifactStore<T>(
         val path = filePath(artifact)
         return try {
             if (Files.exists(path)) {
-                serializationService.readFromFile(filePath(artifact))
+                serializationService.readFromFile(path)
             } else {
                 null
             }

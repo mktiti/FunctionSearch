@@ -1,16 +1,15 @@
 package com.mktiti.fsearch.model.build.intermediate
 
-import kotlinx.serialization.Serializable
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 
-@Serializable
+@JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS)
 sealed class FunSignatureInfo<P> {
 
     abstract val inputs: List<Pair<String, P>>
     abstract val output: P
     abstract val typeParams: List<TemplateTypeParamInfo>
 
-    @Serializable
-    data class Direct(
+        data class Direct(
             override val inputs: List<Pair<String, IntStaticCmi>>,
             override val output: IntStaticCmi
     ) : FunSignatureInfo<IntStaticCmi>() {
@@ -20,8 +19,7 @@ sealed class FunSignatureInfo<P> {
 
     }
 
-    @Serializable
-    data class Generic(
+        data class Generic(
             override val typeParams: List<TemplateTypeParamInfo>,
             override val inputs: List<Pair<String, TypeParamInfo>>,
             override val output: TypeParamInfo

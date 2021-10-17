@@ -3,7 +3,6 @@ package com.mktiti.fsearch.maven.repo
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.maven.util.DependencyUtil
 import com.mktiti.fsearch.maven.util.IoUtil
-import com.mktiti.fsearch.maven.util.JarHtmlJavadocParser
 import com.mktiti.fsearch.maven.util.MockPomHandler
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
@@ -12,6 +11,7 @@ import com.mktiti.fsearch.model.build.service.FunctionInfoCollector
 import com.mktiti.fsearch.model.build.service.TypeInfoTypeParamResolver
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.ArtifactInfoFetcher
+import com.mktiti.fsearch.parser.docs.JarHtmlJavadocParser
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector

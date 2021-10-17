@@ -1,8 +1,8 @@
 package com.mktiti.fsearch.model.build.intermediate
 
-import kotlinx.serialization.Serializable
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 
-@Serializable
+@JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS)
 sealed class RawFunInfo {
 
     abstract val info: IntFunInfo
@@ -15,14 +15,12 @@ sealed class RawFunInfo {
         }
     }
 
-    @Serializable
-    data class Direct(
+        data class Direct(
             override val info: IntFunInfo,
             override val signature: FunSignatureInfo.Direct
     ) : RawFunInfo()
 
-    @Serializable
-    data class Generic(
+        data class Generic(
             override val info: IntFunInfo,
             override val signature: FunSignatureInfo.Generic
     ) : RawFunInfo()

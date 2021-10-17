@@ -15,7 +15,11 @@
     {
       "name": "data-store.path",
       "type": "java.lang.String",
-      "description": "Description for data-store.path.",
-      "defaultValue": "store"
+      "description": "Directory to store info and doc cache data in."
+    },
+    {
+      "name": "jcl.javadoc.path",
+      "type": "java.lang.String",
+      "description": "Path of the JCL documentation to use."
     }
   ] }

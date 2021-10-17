@@ -3,6 +3,7 @@ package com.mktiti.fsearch.modules
 import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
 import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
+import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 
 interface ArtifactDocResolver {
@@ -43,25 +44,25 @@ interface ArtifactDocStore : ArtifactDocResolver {
         val data = getData(id) ?: supplier().also {
             store(id, it)
         }
-        return wrapData(data)
+        return wrapDataSafe(data)
     }
 
     fun getData(artifact: ArtifactId): FunDocMap?
 
-    private fun wrapData(docMap: FunDocMap?): FunDocResolver {
-        return if (docMap == null) {
-            FunDocResolver.nop()
-        } else {
-            SingleDocMapStore(docMap.convertMap())
-        }
+    private fun wrapDataSafe(docMap: FunDocMap): FunDocResolver {
+        return SingleDocMapStore(docMap.convertMap())
     }
 
-    override fun forArtifact(artifact: ArtifactId): FunDocResolver {
+    private fun wrapData(docMap: FunDocMap?): FunDocResolver? {
+        return docMap?.let(this::wrapDataSafe)
+    }
+
+    override fun forArtifact(artifact: ArtifactId): FunDocResolver? {
         return wrapData(getData(artifact))
     }
 
-    override fun forArtifacts(artifacts: Set<ArtifactId>): FunDocResolver {
-        val resolvers = artifacts.map { wrapData(getData(it)) }
+    override fun forArtifacts(artifacts: Set<ArtifactId>): FunDocResolver? {
+        val resolvers = artifacts.map { wrapData(getData(it)) }.liftNull() ?: return null
         return SimpleMultiDocStore(resolvers)
     }
 

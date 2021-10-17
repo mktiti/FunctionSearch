@@ -7,7 +7,8 @@ server:
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
     min-response-size: 1024
 
-api.base.path: ${apiBasePath:/}
-cross.origin: ${crossOrigin:*}
+api.base.path: "/"
+cross.origin: "*"
+jcl.javadoc.path: null
 
 springdoc.api-docs.path: /${api.base.path}api-docs

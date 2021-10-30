@@ -1,5 +1,6 @@
 .plan
 .env
+.docker-out
 *.old
 
 # Created by https://www.gitignore.io/api/maven,kotlin,intellij+all

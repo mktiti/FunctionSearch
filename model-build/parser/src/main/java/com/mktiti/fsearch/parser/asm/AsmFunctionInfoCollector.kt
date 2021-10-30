@@ -5,6 +5,7 @@ import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.model.build.intermediate.*
 import com.mktiti.fsearch.model.build.intermediate.IntFunInstanceRelation.*
 import com.mktiti.fsearch.model.build.service.TypeParamResolver
+import com.mktiti.fsearch.parser.asm.AsmUtil.isFlagged
 import com.mktiti.fsearch.parser.function.FunctionInfoUtil
 import com.mktiti.fsearch.parser.parse.DefaultFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaFunctionSignatureInfoBuilder
@@ -73,7 +74,7 @@ private class AsmFunctionInfoCollectorVisitor(
 
         private fun functionRelation(name: String, access: Int): IntFunInstanceRelation = when {
             name == "<init>" -> CONSTRUCTOR
-            ((access and Opcodes.ACC_STATIC) > 0) -> STATIC
+            access.isFlagged(Opcodes.ACC_STATIC) -> STATIC
             else -> INSTANCE
         }
     }
@@ -93,6 +94,12 @@ private class AsmFunctionInfoCollectorVisitor(
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         val info = AsmUtil.parseName(name)
 
+
+        if (AsmUtil.wrapContainsAnonymousOrInner(info)) {
+            // Skip anonymous nested and local class
+            return
+        }
+
         context = when (val typeParams = typeParamResolver[info]) {
             null -> ContextInfo.Direct(info)
             else -> ContextInfo.Template(info, typeParams)
@@ -100,7 +107,7 @@ private class AsmFunctionInfoCollectorVisitor(
     }
 
     override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
-        return if (checkFlag and access == checkFlag) {
+        return if (access.isFlagged(checkFlag)) {
             val instanceRel = functionRelation(name, access)
 
             with(context) {

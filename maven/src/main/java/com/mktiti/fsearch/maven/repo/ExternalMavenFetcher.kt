@@ -6,9 +6,7 @@ import com.mktiti.fsearch.maven.util.IoUtil
 import com.mktiti.fsearch.maven.util.MockPomHandler
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
-import com.mktiti.fsearch.model.build.service.ArtifactTypeInfoCollector
-import com.mktiti.fsearch.model.build.service.FunctionInfoCollector
-import com.mktiti.fsearch.model.build.service.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.model.build.service.*
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.ArtifactInfoFetcher
 import com.mktiti.fsearch.parser.docs.JarHtmlJavadocParser
@@ -90,13 +88,21 @@ class ExternalMavenFetcher(
         }
     }
 
-    override fun fetchArtifacts(artifactIds: List<ArtifactId>): List<ArtifactInfoResult>? {
-        return onFetchedArtifacts(artifactIds, classifier = null) {
-            it.map { (_, path) ->
+    override fun fetchArtifacts(artifactIds: List<ArtifactId>, depTpResolver: TypeParamResolver): List<ArtifactInfoResult>? {
+        return onFetchedArtifacts(artifactIds, classifier = null) { artMap ->
+            val infos = artMap.map { (_, path) ->
                 val jarIn = JarInfo.single(path)
                 val typeInfo = jarFileInfoCollector.collectTypeInfo(jarIn)
-                val typeParamResolver = TypeInfoTypeParamResolver(typeInfo.templateInfos)
-                val funInfo = jarFunctionInfoCollector.collectFunctions(jarIn, typeParamResolver)
+
+                jarIn to typeInfo
+            }
+
+            val fullTpResolver = CombinedTypeParamResolver(
+                    infos.map { (_, ti) -> TypeInfoTypeParamResolver(ti.templateInfos) } + depTpResolver
+            )
+
+            infos.map { (jarIn, typeInfo) ->
+                val funInfo = jarFunctionInfoCollector.collectFunctions(jarIn, fullTpResolver)
 
                 ArtifactInfoResult(typeInfo, funInfo)
             }

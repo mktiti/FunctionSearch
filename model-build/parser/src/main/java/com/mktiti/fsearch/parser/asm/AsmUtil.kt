@@ -7,6 +7,8 @@ import com.mktiti.fsearch.util.cutLast
 
 object AsmUtil {
 
+    fun Int.isFlagged(flag: Int) = this and flag == flag
+
     fun annotationDescriptor(info: MinimalInfo) = (info.packageName + info.fullName)
             .joinToString(prefix = "L", separator = "/", postfix = ";")
 
@@ -17,5 +19,8 @@ object AsmUtil {
     }
 
     fun parseCompleteStaticName(type: String): IntStaticCmi = parseName(type).complete()
+
+    fun wrapContainsAnonymousOrInner(info: IntMinInfo)
+        = info.simpleName.split('.').any { it.first().isDigit() }
 
 }

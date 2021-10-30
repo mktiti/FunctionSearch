@@ -13,6 +13,10 @@ interface ArtifactTypeInfoCollector<in I> {
 
 interface TypeParamResolver {
 
+    object Nop : TypeParamResolver {
+        override fun typeParams(info: IntMinInfo): Nothing? = null
+    }
+
     fun typeParams(info: MinimalInfo): List<TemplateTypeParamInfo>? = typeParams(info.toIntMinInfo())
 
     fun typeParams(info: IntMinInfo): List<TemplateTypeParamInfo>?
@@ -21,12 +25,6 @@ interface TypeParamResolver {
 
     operator fun get(info: IntMinInfo) = typeParams(info)
 
-}
-
-class TypeInfoTypeParamResolver(private val templateInfos: Collection<SemiInfo.TemplateInfo>) : TypeParamResolver {
-    override fun typeParams(info: IntMinInfo): List<TemplateTypeParamInfo>? {
-        return templateInfos.find { it.info == info }?.typeParams
-    }
 }
 
 interface FunctionInfoCollector<in I> {

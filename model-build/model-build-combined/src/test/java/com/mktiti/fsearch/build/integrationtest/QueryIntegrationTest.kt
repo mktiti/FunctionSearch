@@ -20,7 +20,8 @@ import com.mktiti.fsearch.parser.type.DirectoryInfoCollector
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.orElse
 import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import java.nio.file.Paths
 import java.util.stream.Collectors
 import kotlin.test.assertEquals
@@ -29,6 +30,18 @@ import kotlin.test.assertEquals
 class QueryIntegrationTest {
 
     companion object {
+        data class TestCase(
+                val expectedPath: String,
+                val codeBasePath: String
+        )
+
+        @JvmStatic
+        @Suppress("unused")
+        fun tests(): List<TestCase> = listOf(
+                TestCase("/test/verification/java-simple.txt", "/test/codebase/java/"),
+                TestCase("/test/verification/generic-nested.txt", "/test/codebase/nested-generic/"),
+        )
+
         data class VerificationEntry(
                 val query: String,
                 val results: Set<FunctionInfo>
@@ -42,7 +55,10 @@ class QueryIntegrationTest {
                         trimmedRes.split(';').map { result ->
                             val (fileAndName, sig) = result.split('(')
                             val (file, name) = fileAndName.split(regex = "\\.|(::)".toRegex()).cutLast()
-                            val (filePackage, fileName) = file.cutLast()
+                            val (filePackage, fileNameList) = file.partition {
+                                it.first().isLowerCase()
+                            }
+                            val fileName = fileNameList.joinToString(separator = ".")
 
                             val relation = when {
                                 fileAndName.contains("::") -> FunInstanceRelation.STATIC
@@ -50,12 +66,16 @@ class QueryIntegrationTest {
                                 else -> FunInstanceRelation.INSTANCE
                             }
 
-                            val params = sig.dropLast(1).split(',').map { param ->
-                                PrimitiveType.fromNameSafe(param)?.let {
-                                    FunIdParam.Type(MapJavaInfoRepo.primitive(it))
-                                }.orElse {
-                                    val (pack, type) = param.split('.').cutLast()
-                                    FunIdParam.Type(MinimalInfo(pack, type))
+                            val params = if (sig == ")") {
+                                emptyList()
+                            } else {
+                                sig.dropLast(1).split(',').map { param ->
+                                    PrimitiveType.fromNameSafe(param)?.let {
+                                        FunIdParam.Type(MapJavaInfoRepo.primitive(it))
+                                    }.orElse {
+                                        val (pack, type) = param.split('.').cutLast()
+                                        FunIdParam.Type(MinimalInfo(pack, type))
+                                    }
                                 }
                             }
 
@@ -70,14 +90,14 @@ class QueryIntegrationTest {
                 }
         )
 
-        private fun testResource(resource: String): List<VerificationEntry> {
+        private fun testResource(resource: String): Set<VerificationEntry> {
             return QueryIntegrationTest::class.java.getResource(resource).readText().lines().map {
                 it.trimStart()
             }.filter {
                 !it.startsWith("#") && it.isNotEmpty()
             }.chunked(2).map { (q, r) ->
                 parseEntry(q, r)
-            }
+            }.toSet()
         }
 
         fun verify(dataRes: String, codeBase: String) {
@@ -116,17 +136,18 @@ class QueryIntegrationTest {
                     it.first.info
                 }.collect(Collectors.toSet())
 
-                assertEquals(results, fitting)
+                assertEquals(results, fitting.toSet())
             }
         }
 
     }
 
-    @Test
-    fun `java simple tests`() {
+    @ParameterizedTest
+    @MethodSource("tests")
+    fun `integration tests`(testCase: TestCase) {
         verify(
-                dataRes = "/test/verification/java-simple.txt",
-                codeBase = "/test/codebase/java/"
+                dataRes = testCase.expectedPath,
+                codeBase = testCase.codeBasePath
         )
     }
 

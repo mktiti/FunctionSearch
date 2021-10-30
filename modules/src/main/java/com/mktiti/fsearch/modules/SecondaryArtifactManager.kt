@@ -8,9 +8,7 @@ import com.mktiti.fsearch.core.repo.SingleRepoTypeResolver
 import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
-import com.mktiti.fsearch.model.build.service.FunctionConnector
-import com.mktiti.fsearch.model.build.service.TypeInfoConnector
-import com.mktiti.fsearch.model.build.service.TypeInfoTypeParamResolver
+import com.mktiti.fsearch.model.build.service.*
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
@@ -60,7 +58,7 @@ class SecondaryArtifactManager(
 
     override fun getSingle(artifact: ArtifactId): DomainRepo {
         val (typeInfo, funInfo) = infoCache[artifact].orElse {
-            artifactInfoFetcher.fetchArtifact(artifact)?.also {
+            artifactInfoFetcher.fetchArtifact(artifact, TypeParamResolver.Nop)?.also {
                 infoCache.store(artifact, it)
             } ?: error("Failed to fetch dependencies")
         }
@@ -80,8 +78,12 @@ class SecondaryArtifactManager(
             infoCache[it]
         }
 
+        val storedTpResolver = artifactInfos.map {
+            TypeInfoTypeParamResolver(it.typeInfo.templateInfos)
+        }.let(::CombinedTypeParamResolver)
+
         val allArtifacts: List<ArtifactInfoResult> = artifactInfos + if (missingArtifacts.isNotEmpty()) {
-            artifactInfoFetcher.fetchArtifacts(missingArtifacts)?.also {
+            artifactInfoFetcher.fetchArtifacts(missingArtifacts, storedTpResolver)?.also {
                 missingArtifacts.zipIfSameLength(it)?.forEach { (id, artifact) ->
                     infoCache.store(id, artifact)
                 }

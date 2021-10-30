@@ -1,0 +1,9 @@
+# Syntax: Query '\n' ("-" | (result (, result)*))
+# where result is java string escaped in the format of package.class::function
+# Empty lines and lines staring with '#' are ignored
+
+Cache.EntryIterator<a, b> -> Entry<a, b>
+com.mktiti.fsearchtest.Cache.EntryIterator.next();com.mktiti.fsearchtest.Iterator.next()
+
+ComplexCache.EntryIterator<a, b> -> Entry<a, b>
+com.mktiti.fsearchtest.ComplexCache.HashIterator.next();com.mktiti.fsearchtest.ComplexCache.EntryIterator.next();com.mktiti.fsearchtest.Iterator.next()

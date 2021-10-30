@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     environment:
       - BACKEND_MIN_HEAP
+    volumes:
+      - "${STORE_CACHE_PATH}:/usr/share/fsearch/store-cache/"
     ports:
       - "8081:8080"
   frontend:

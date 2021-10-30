@@ -43,7 +43,7 @@ private class MapPrefixNode<N, L>(
 ) : MutablePrefixTree<N, L> {
 
     override val size: Int
-        get() = (if (value == null) 0 else 1) + subNodes.values.sumBy { it.size }
+        get() = (if (value == null) 0 else 1) + subNodes.values.sumOf { it.size }
 
     override val empty: Boolean
         get() = value == null && subNodes.all { it.value.empty }

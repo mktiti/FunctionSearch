@@ -1,14 +1,14 @@
 package com.mktiti.fsearch.backend
 
-import com.mktiti.fsearch.core.javadoc.DocStore
+import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
 import com.mktiti.fsearch.core.util.show.JavaTypeStringResolver
 import com.mktiti.fsearch.core.util.show.TypeStringResolver
+import com.mktiti.fsearch.model.build.service.QueryParser
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.DomainRepo
 import com.mktiti.fsearch.parser.query.AntlrQueryParser
-import com.mktiti.fsearch.parser.query.QueryParser
 
 class ContextId(
         val artifacts: Set<ArtifactId>
@@ -33,7 +33,7 @@ interface QueryContext {
     val infoRepo: JavaInfoRepo
     val javaRepo: JavaRepo
     val domain: DomainRepo
-    val docStore: DocStore
+    val docResolver: FunDocResolver
     val queryParser: QueryParser
     val stringResolver: TypeStringResolver
 
@@ -44,7 +44,7 @@ class SimpleQueryContext(
         override val infoRepo: JavaInfoRepo,
         override val javaRepo: JavaRepo,
         override val domain: DomainRepo,
-        override val docStore: DocStore,
+        override val docResolver: FunDocResolver,
         override val queryParser: QueryParser = AntlrQueryParser(javaRepo, infoRepo, domain.typeResolver),
-        override val stringResolver: TypeStringResolver = JavaTypeStringResolver(infoRepo, docStore)
+        override val stringResolver: TypeStringResolver = JavaTypeStringResolver(infoRepo, docResolver)
 ) : QueryContext

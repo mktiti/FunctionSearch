@@ -4,6 +4,7 @@ import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PackageName
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.util.EnumMap
+import com.mktiti.fsearch.util.capitalize
 
 interface JavaInfoRepo {
 
@@ -12,6 +13,8 @@ interface JavaInfoRepo {
     val voidType: MinimalInfo
 
     val arrayType: MinimalInfo
+
+    val explicitSamAnnotations: List<MinimalInfo>
 
     fun isInternal(info: MinimalInfo): Boolean
 
@@ -75,6 +78,10 @@ object MapJavaInfoRepo : JavaInfoRepo {
     override val objectType = inLang("Object")
     override val voidType = internal("void")
     override val arrayType = internal("Array")
+
+    override val explicitSamAnnotations = listOf(
+            MinimalInfo(listOf("java", "lang"), "FunctionalInterface")
+    )
 
     private val primitiveMap = EnumMap.eager(this::primitiveType)
     private val boxMap = EnumMap.eager(this::boxInfo)

@@ -61,7 +61,7 @@ class BasicSearchHandler(
             val results = fitter.findFittings(parsedQuery, domain.staticFunctions, domain.instanceFunctions)
                     .asSequence()
                     .map{ (function, fit) ->
-                        fitPresenter.present(function, fit, docStore.getOrEmpty(function.info))
+                        fitPresenter.present(function, fit, docResolver.getOrEmpty(function.info))
                     }.limitedResult(resultLimit)
 
             QueryResult.Success(query, results)

@@ -7,8 +7,8 @@ import com.mktiti.fsearch.core.type.SamType.DirectSam
 import com.mktiti.fsearch.core.type.Type.DynamicAppliedType
 import com.mktiti.fsearch.core.type.Type.NonGenericType.StaticAppliedType
 import com.mktiti.fsearch.core.util.forceDynamicApply
-import com.mktiti.fsearch.util.castIfAllInstance
 import com.mktiti.fsearch.core.util.genericString
+import com.mktiti.fsearch.util.castIfAllInstance
 import java.util.*
 
 interface SemiType {
@@ -167,7 +167,7 @@ class TypeTemplate(
         get() = typeParams.size
 
     fun asDynamicApplied(): DynamicAppliedType = forceDynamicApply(
-            (0 until typeParams.size).map { ParamSubstitution(it) }
+            typeParams.indices.map { ParamSubstitution(it) }
     )
 
     override fun staticApply(typeArgs: List<TypeHolder.Static>): StaticAppliedType? {

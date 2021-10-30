@@ -1,0 +1,25 @@
+{
+  "properties": [
+    {
+      "name": "api.base.path",
+      "type": "java.lang.String",
+      "defaultValue": "/",
+      "description": "Rest API base path (/)."
+    },
+    {
+      "name": "cross.origin",
+      "type": "java.lang.String",
+      "defaultValue": "*",
+      "description": "Cross-origin header value."
+    },
+    {
+      "name": "data-store.path",
+      "type": "java.lang.String",
+      "description": "Directory to store info and doc cache data in."
+    },
+    {
+      "name": "jcl.javadoc.path",
+      "type": "java.lang.String",
+      "description": "Path of the JCL documentation to use."
+    }
+  ] }

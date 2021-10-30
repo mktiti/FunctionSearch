@@ -13,10 +13,15 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
-        <kotlin.version>1.4.0</kotlin.version>
+        <jvm.options>-XX:-TieredCompilation -XX:TieredStopAtLevel=1</jvm.options>
+
+        <kotlin.version>1.5.0</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
-        <serialization.version>1.0.1</serialization.version>
+
+        <jackson.version>2.13.0</jackson.version>
+
+        <arrow.version>0.13.2</arrow.version>
 
         <antlr.version>4.8-1</antlr.version>
 
@@ -28,7 +33,7 @@
     <modules>
         <module>util</module>
         <module>core</module>
-        <module>parser</module>
+        <module>model-build</module>
         <module>modules</module>
         <module>maven</module>
         <module>dto</module>
@@ -73,7 +78,31 @@
 
             <dependency>
                 <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>model-build</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>build-definitions</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
                 <artifactId>parser</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>model-connector</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mktiti.signature-search</groupId>
+                <artifactId>model-build-combined</artifactId>
                 <version>0.1.0-SNAPSHOT</version>
             </dependency>
 
@@ -144,6 +173,36 @@
             </dependency>
 
             <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.module</groupId>
+                <artifactId>jackson-module-kotlin</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.arrow-kt</groupId>
+                <artifactId>arrow-core</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-stdlib</artifactId>
                 <version>${kotlin.version}</version>
@@ -171,6 +230,13 @@
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-api</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-params</artifactId>
                 <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -206,6 +272,8 @@
                         <includes>
                             <include>**/*Test.*</include>
                         </includes>
+                        <parallel>all</parallel>
+                        <perCoreThreadCount>true</perCoreThreadCount>
                     </configuration>
                 </plugin>
 

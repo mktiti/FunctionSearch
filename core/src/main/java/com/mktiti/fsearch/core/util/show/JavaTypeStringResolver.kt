@@ -5,7 +5,7 @@ import com.mktiti.fsearch.core.fit.FunInstanceRelation.CONSTRUCTOR
 import com.mktiti.fsearch.core.fit.FunInstanceRelation.STATIC
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.QueryType
-import com.mktiti.fsearch.core.javadoc.DocStore
+import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard.BoundDirection
@@ -14,7 +14,7 @@ import com.mktiti.fsearch.core.util.genericString
 
 class JavaTypeStringResolver(
         private val infoRepo: JavaInfoRepo,
-        private val docStore: DocStore
+        private val docResolver: FunDocResolver
 ) : TypeStringResolver {
 
     private fun resolveName(info: MinimalInfo, typeArgs: String?): String {
@@ -103,7 +103,7 @@ class JavaTypeStringResolver(
     }
 
     override fun resolveFun(function: FunctionObj): String = buildString {
-        val doc = docStore.getOrEmpty(function.info)
+        val doc = docResolver.getOrEmpty(function.info)
 
         append("fun ")
         function.signature.apply {

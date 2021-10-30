@@ -5,7 +5,7 @@ import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.TypeResolver
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.InfoMap
-import com.mktiti.fsearch.parser.service.FunctionCollector
+import com.mktiti.fsearch.model.build.service.FunctionCollection
 import java.util.stream.Stream
 
 data class ArtifactId(
@@ -15,6 +15,8 @@ data class ArtifactId(
 ) {
 
     companion object {
+        fun jcl(version: String) = ArtifactId(listOf("\$internal"), "\$jcl", version)
+
         fun parse(simple: String): ArtifactId? {
             val parts = simple.split(':')
             if (parts.size != 3) {
@@ -53,7 +55,7 @@ data class SimpleDomainRepo(
         override val instanceFunctions: InfoMap<Collection<FunctionObj>>
 ) : DomainRepo {
 
-    constructor(typeResolver: TypeResolver, functions: FunctionCollector.FunctionCollection)
+    constructor(typeResolver: TypeResolver, functions: FunctionCollection)
             : this(typeResolver, functions.staticFunctions, functions.instanceMethods)
 
     override val staticFunctions: Stream<FunctionObj>

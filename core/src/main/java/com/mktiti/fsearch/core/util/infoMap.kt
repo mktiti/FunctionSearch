@@ -2,11 +2,10 @@ package com.mktiti.fsearch.core.util
 
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.util.PrefixTree
-import com.mktiti.fsearch.util.safeCutHead
 import java.util.stream.Stream
 import java.util.stream.StreamSupport
 
-interface InfoMap<V> {
+interface InfoMap<out V> {
 
     companion object {
         fun <V> fromPrefix(tree: PrefixTree<String, V>): InfoMap<V> = PrefixTreeInfoMap(tree)
@@ -20,7 +19,7 @@ interface InfoMap<V> {
 
     operator fun get(info: MinimalInfo): V?
 
-    fun all(): Stream<V>
+    fun all(): Stream<out V>
 
 }
 
@@ -41,7 +40,7 @@ private class CombinedInfoMap<V>(
 
 }
 
-fun <T> InfoMap<Collection<T>>.flatAll() = all().flatMap { it.stream() }
+fun <T> InfoMap<Collection<T>>.flatAll(): Stream<T> = all().flatMap { it.stream() }
 
 private class MapInfoMap<V>(
         private val store: Map<MinimalInfo, V>

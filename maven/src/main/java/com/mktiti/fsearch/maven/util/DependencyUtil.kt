@@ -6,6 +6,8 @@ import com.mktiti.fsearch.util.safeCutLast
 
 object DependencyUtil {
 
+    fun parseTreeRootArtifact(line: String): ArtifactId? = parseListedArtifact("$line:scope")
+
     fun parseListedArtifact(line: String): ArtifactId? {
         val parts = line.split(':')
         val (group, artifact) = parts.safeCutHead() ?: return null

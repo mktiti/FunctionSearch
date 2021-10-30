@@ -1,7 +1,10 @@
 package com.mktiti.fsearch.backend.spring.handler
 
 import com.mktiti.fsearch.backend.api.InfoHandler
-import com.mktiti.fsearch.dto.*
+import com.mktiti.fsearch.dto.ContextInfoQueryParam
+import com.mktiti.fsearch.dto.FunId
+import com.mktiti.fsearch.dto.ResultList
+import com.mktiti.fsearch.dto.TypeInfoDto
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*

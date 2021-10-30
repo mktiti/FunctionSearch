@@ -21,9 +21,18 @@ internal object MockPomHandler {
 
     private const val pomTemplateLoc = "/test-pom.xml"
 
+    val mockArtifactId = ArtifactId(
+            listOf("fsearch-dependency-fetch-mock"),
+            "fsearch-dependency-fetch-mock",
+            "1.0-SNAPSHOT"
+    )
+
     private val builder: DocumentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-    private val template: Document
     private val dependenciesXpath: XPathExpression = XPathFactory.newInstance().newXPath().compile("/project/dependencies")
+
+    private val template: Document = MockPomHandler::class.java.getResourceAsStream(pomTemplateLoc).use { templateStream ->
+        builder.parse(templateStream) ?: error("Failed to parse mock pom.xml template!")
+    }
 
     private val transformer: Transformer = TransformerFactory.newInstance().newTransformer().apply {
         setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no")
@@ -31,12 +40,6 @@ internal object MockPomHandler {
         setOutputProperty(OutputKeys.INDENT, "yes")
         setOutputProperty(OutputKeys.ENCODING, "UTF-8")
         setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4")
-    }
-
-    init {
-        template = MockPomHandler::class.java.getResourceAsStream(pomTemplateLoc).use { templateStream ->
-            builder.parse(templateStream) ?: error("Failed to parse mock pom.xml template!")
-        }
     }
 
     fun createMockPom(dependencies: Collection<ArtifactId>, output: OutputStream) {

@@ -48,13 +48,16 @@ data class MinimalInfo(
             simpleName == other.simpleName &&
             virtual == other.virtual
 
+    private fun dataEq(info: MinimalInfo) = info.simpleName == simpleName && info.packageName == packageName
+
     override fun equals(other: Any?): Boolean = when {
         other !is MinimalInfo -> false
-        this === anyWildcard -> true
-        other === anyWildcard -> true
-        virtual -> this === other && this !== uniqueVirtual
-        else -> {
-            other.simpleName == simpleName && other.packageName == packageName
+        dataEq(anyWildcard) -> true
+        other.dataEq(anyWildcard) -> true
+        else -> if (virtual && this === uniqueVirtual) {
+            false
+        } else {
+            dataEq(other)
         }
     }
 
@@ -64,15 +67,15 @@ data class MinimalInfo(
 
 }
 
-sealed class CompleteMinInfo<out P : Any>(
-        val base: MinimalInfo,
-        val args: List<P>
-) : StaticApplicable {
+sealed class CompleteMinInfo<out P : Any> : StaticApplicable {
+
+    abstract val base: MinimalInfo
+    abstract val args: List<P>
 
     class Static(
-            base : MinimalInfo,
-            args: List<Static>
-    ) : CompleteMinInfo<Static>(base, args) {
+            override val base : MinimalInfo,
+            override val args: List<Static>
+    ) : CompleteMinInfo<Static>() {
 
         companion object {
             fun List<Static>.holders() = map { it.holder() }
@@ -93,9 +96,9 @@ sealed class CompleteMinInfo<out P : Any>(
     }
 
     class Dynamic(
-            base : MinimalInfo,
-            args: List<ApplicationParameter>
-    ) : CompleteMinInfo<ApplicationParameter>(base, args) {
+            override val base : MinimalInfo,
+            override val args: List<ApplicationParameter>
+    ) : CompleteMinInfo<ApplicationParameter>() {
 
         override fun staticApply(typeArgs: List<TypeHolder.Static>): TypeHolder.Static? {
             val applied = args.map { arg ->

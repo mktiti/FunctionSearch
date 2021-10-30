@@ -13,6 +13,7 @@ interface KotlinCompleter : Completer {
         }
     }
 
+    @Suppress("unused")
     class StringCompleter(private val values: List<String>) : KotlinCompleter {
         override fun complete(parts: List<String>, current: String): List<String> = values
     }

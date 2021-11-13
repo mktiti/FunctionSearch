@@ -6,6 +6,8 @@ import com.mktiti.fsearch.backend.ProjectInfo
 import com.mktiti.fsearch.backend.grpc.GrpcArtifactService
 import com.mktiti.fsearch.backend.grpc.GrpcInfoService
 import com.mktiti.fsearch.backend.grpc.GrpcSearchService
+import com.mktiti.fsearch.core.cache.CentralInfoCache
+import com.mktiti.fsearch.core.cache.CleaningInternCache
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
@@ -27,5 +29,6 @@ class SpringMain {
 }
 
 fun main(args: Array<String>) {
+    CentralInfoCache.setCleanableCache(CleaningInternCache())
     SpringApplication.run(SpringMain::class.java, *args)
 }

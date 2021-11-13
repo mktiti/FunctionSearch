@@ -1,4 +1,4 @@
-version: "3.3"
+version: "2.4"
 services:
   backend:
     build: backend
@@ -10,6 +10,7 @@ services:
       - "${STORE_CACHE_PATH}:/usr/share/fsearch/store-cache/"
     ports:
       - "8081:8080"
+    mem_limit: 750m
   frontend:
     build: frontend-vue
     container_name: fsearch-frontend

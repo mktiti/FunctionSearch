@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.build.integrationtest
 
+import com.mktiti.fsearch.core.cache.NopInfoCache
 import com.mktiti.fsearch.core.fit.*
 import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
@@ -105,7 +106,8 @@ class QueryIntegrationTest {
             val infoRepo: JavaInfoRepo = MapJavaInfoRepo
 
             val typeInfoCollector = DirectoryInfoCollector(infoRepo)
-            val typeInfoConnector: TypeInfoConnector = JavaTypeInfoConnector(infoRepo, InMemTypeParseLog())
+            val typeInfoConnector: TypeInfoConnector = JavaTypeInfoConnector(infoRepo, NopInfoCache, InMemTypeParseLog())
+            val funConnector = JavaFunctionConnector(NopInfoCache)
 
             val (javaRepo, typeResolver, functions) = CompilerUtil.withCompiled(codebasePath) { path ->
                 val (javaRepo, baseResolver) = RepoTestUtil.minimalRepos(infoRepo)
@@ -118,7 +120,7 @@ class QueryIntegrationTest {
                 val typeResolver = FallbackResolver(loadedTypeResolver, baseResolver)
                 val typeParamResolver: TypeParamResolver = TypeInfoTypeParamResolver(typeInfoRes.templateInfos)
                 val funInfos = DirectoryFunctionInfoCollector(infoRepo).collectFunctions(path, typeParamResolver)
-                val functions = JavaFunctionConnector.connect(funInfos)
+                val functions = funConnector.connect(funInfos)
 
                 Triple(javaRepo, typeResolver, functions)
             }

@@ -15,14 +15,17 @@ data class MinimalInfo(
 ) {
 
     companion object {
-        fun fromFull(info: TypeInfo) = MinimalInfo(
-                packageName = info.packageName,
-                simpleName = info.name
-        )
+        fun of(packageName: PackageName, simpleName: String): MinimalInfo {
+            return MinimalInfo(packageName, simpleName)
+        }
 
-        val uniqueVirtual = MinimalInfo(simpleName = "_", packageName = emptyList(), virtual = true)
+        fun virtual(packageName: PackageName, simpleName: String): MinimalInfo {
+            return MinimalInfo(packageName, simpleName, virtual = true)
+        }
 
-        val anyWildcard = MinimalInfo(simpleName = "?", packageName = emptyList(), virtual = true)
+        val uniqueVirtual = virtual(simpleName = "_", packageName = emptyList())
+
+        val anyWildcard = virtual(simpleName = "?", packageName = emptyList())
     }
 
     val nameParts: List<String>
@@ -32,8 +35,7 @@ data class MinimalInfo(
         get() = (packageName + simpleName).joinToString(separator = ".")
 
     fun full(artifact: String) = TypeInfo(
-            packageName = packageName,
-            name = simpleName,
+            minimal = this,
             artifact = artifact
     )
 

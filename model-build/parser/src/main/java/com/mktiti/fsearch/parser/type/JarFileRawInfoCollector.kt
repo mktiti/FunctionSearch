@@ -28,7 +28,9 @@ object JarInfoCollectorUtil {
 
                 ordered.forEach { entry ->
                     try {
-                        asmCollectorView.loadEntry(jar.getInputStream(entry))
+                        jar.getInputStream(entry).use {
+                            asmCollectorView.loadEntry(it)
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }

@@ -17,7 +17,7 @@ object InfoHelper {
         }
 
         val simpleName = simpleNameParts.joinToString(separator = ".")
-        return MinimalInfo(packageParts, simpleName)
+        return MinimalInfo.of(packageParts, simpleName)
     }
 
 }

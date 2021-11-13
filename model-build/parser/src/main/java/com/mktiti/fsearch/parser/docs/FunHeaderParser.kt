@@ -1,14 +1,17 @@
 package com.mktiti.fsearch.parser.docs
 
+import com.mktiti.fsearch.core.cache.InfoCache
 import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
-import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.type.PrimitiveType
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.orElse
 
-object FunHeaderParser {
+internal class FunHeaderParser(
+        val infoRepo: JavaInfoRepo,
+        val internCache: InfoCache
+) {
 
     data class HeaderData(
             val name: String,
@@ -16,17 +19,17 @@ object FunHeaderParser {
             val paramTypes: List<FunIdParam>
     )
 
-    fun parseParam(infoRepo: JavaInfoRepo, param: String): FunIdParam {
+    fun parseParam(param: String): FunIdParam {
         fun String.parseSig(): FunIdParam = when {
             endsWith("...") -> FunIdParam.Array(removeSuffix("...").parseSig())
             endsWith("[]") -> FunIdParam.Array(removeSuffix("[]").parseSig())
-            else -> parseTrimmedParam(infoRepo, this)
+            else -> parseTrimmedParam(this)
         }
 
         return param.trim().parseSig()
     }
 
-    fun parseTrimmedParam(infoRepo: JavaInfoRepo, param: String): FunIdParam {
+    private fun parseTrimmedParam(param: String): FunIdParam {
         return PrimitiveType.fromNameSafe(param)?.let {
             FunIdParam.Type(infoRepo.primitive(it))
         }.orElse {
@@ -34,14 +37,14 @@ object FunHeaderParser {
                 FunIdParam.TypeParam(param)
             } else {
                 val (pack, type) = param.split('.').cutLast()
-                FunIdParam.Type(MinimalInfo(pack, type))
+                FunIdParam.Type(internCache.minimalInfo(pack, type))
             }
 
             parsed
         }
     }
 
-    fun parseFunHeader(infoRepo: JavaInfoRepo, value: String): HeaderData? {
+    fun parseFunHeader(value: String): HeaderData? {
         val parts = value.split('(')
         val name = parts.getOrNull(0) ?: return null
         val inParen = parts.getOrNull(1)?.dropLast(1) ?: return null
@@ -77,7 +80,7 @@ object FunHeaderParser {
             val paramParts = it.trim().split("\\W+".toRegex(), limit = 2)
 
             val paramName = paramParts.getOrNull(1) ?: return null
-            val type = parseParam(infoRepo, paramParts.first())
+            val type = parseParam(paramParts.first())
             paramName to type
         }.unzip()
 

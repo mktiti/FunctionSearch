@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.model.build.combined
 
+import com.mktiti.fsearch.core.cache.NopInfoCache
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.JavaQueryFitter
 import com.mktiti.fsearch.core.fit.QueryFitter
@@ -96,8 +97,8 @@ fun main(args: Array<String>) {
     val jarTypeLoader = JarFileInfoCollector(MapJavaInfoRepo)
     val jarFunLoader = JarFileFunctionInfoCollector(MapJavaInfoRepo)
 
-    val typeConnector = JavaTypeInfoConnector(MapJavaInfoRepo, log)
-    val funConnector = JavaFunctionConnector
+    val typeConnector = JavaTypeInfoConnector(MapJavaInfoRepo, NopInfoCache, log)
+    val funConnector = JavaFunctionConnector(NopInfoCache)
 
     val jclJarInfo = JarInfo("JCL", jarPaths)
     val rawTypeInfo = jarTypeLoader.collectTypeInfo(jclJarInfo)

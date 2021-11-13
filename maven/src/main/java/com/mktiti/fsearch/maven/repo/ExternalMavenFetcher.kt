@@ -9,7 +9,6 @@ import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.service.*
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.ArtifactInfoFetcher
-import com.mktiti.fsearch.parser.docs.JarHtmlJavadocParser
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
@@ -22,6 +21,7 @@ class ExternalMavenFetcher(
         private val infoRepo: JavaInfoRepo,
         private val jarFileInfoCollector: ArtifactTypeInfoCollector<JarInfo> = JarFileInfoCollector(infoRepo),
         private val jarFunctionInfoCollector: FunctionInfoCollector<JarInfo> = JarFileFunctionInfoCollector(infoRepo),
+        private val javadocParser: JarHtmlJavadocParser
 ) : ArtifactInfoFetcher {
 
     companion object {
@@ -42,8 +42,6 @@ class ExternalMavenFetcher(
         }
 
     }
-
-    private val docParser = JarHtmlJavadocParser(infoRepo)
 
     private fun <R> onFetchedArtifacts(
             artifacts: Collection<ArtifactId>,
@@ -112,7 +110,7 @@ class ExternalMavenFetcher(
     override fun fetchDocs(artifactIds: List<ArtifactId>): List<FunDocMap>? {
         return onFetchedArtifacts(artifactIds, classifier = "javadoc") {
             it.map { (_, path) ->
-                docParser.parseJar(path.toFile()) ?: FunDocMap.empty()
+                javadocParser.parseInput(path) ?: FunDocMap.empty()
             }
         }
     }

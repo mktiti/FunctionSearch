@@ -1,5 +1,7 @@
 package com.mktiti.fsearch.model.connect.function
 
+import arrow.core.Either
+import com.mktiti.fsearch.core.cache.InfoCache
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.fit.FunctionObj
 import com.mktiti.fsearch.core.fit.TypeSignature
@@ -14,8 +16,11 @@ import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.model.build.intermediate.*
 import com.mktiti.fsearch.model.build.service.FunctionCollection
 import com.mktiti.fsearch.model.build.service.FunctionConnector
+import com.mktiti.fsearch.util.splitMap
 
-object JavaFunctionConnector : FunctionConnector {
+class JavaFunctionConnector(
+        private val internCache: InfoCache
+) : FunctionConnector {
 
     private fun <P, O> List<Pair<String, P>>.convertIns(converter: (P) -> O): List<Pair<String, O>> = map { (name, param) ->
         name to converter(param)
@@ -95,25 +100,17 @@ object JavaFunctionConnector : FunctionConnector {
 
     private fun connectFunction(info: RawFunInfo): FunctionObj? {
         val converterSignature = connectSignature(info.signature) ?: return null
-        return FunctionObj(info.info.convert(), converterSignature)
-    }
-
-    private sealed class MapResult {
-        data class Success(val funObj: FunctionObj) : MapResult()
-        data class Fail(val info: FunctionInfo) : MapResult()
+        return FunctionObj(internCache.funInfo(info.info.convert(internCache)), converterSignature)
     }
 
     override fun connect(funInfo: FunctionInfoResult): FunctionCollection {
         fun Collection<RawFunInfo>.convertAll(): Pair<List<FunctionObj>, List<FunctionInfo>> {
-            val (oks, fails) = map {
+            return splitMap {
                 when (val result = connectFunction(it)) {
-                    null -> MapResult.Fail(it.info.convert())
-                    else -> MapResult.Success(result)
+                    null -> Either.Right(it.info.convert(internCache))
+                    else -> Either.Left(result)
                 }
-            }.partition { it is MapResult.Success }
-
-            return (oks.filterIsInstance<MapResult.Success>().map { it.funObj }) to
-                    (fails.filterIsInstance<MapResult.Fail>().map { it.info })
+            }
         }
 
         val (convertedStatics, staticFails) = funInfo.staticFunctions.convertAll()
@@ -126,7 +123,7 @@ object JavaFunctionConnector : FunctionConnector {
             failed.forEach {
                 println("Failed to convert instance fun $it")
             }
-            key.toMinimalInfo() to converted
+            key.toMinimalInfo(internCache) to converted
         }.toMap()
 
         return FunctionCollection(convertedStatics, InfoMap.fromMap(convertedInstances))

@@ -1,5 +1,7 @@
 package com.mktiti.fsearch.parser.docs
 
+import com.mktiti.fsearch.core.cache.InfoCache
+import com.mktiti.fsearch.core.cache.NopInfoCache
 import com.mktiti.fsearch.core.fit.FunIdParam
 import com.mktiti.fsearch.core.fit.FunInstanceRelation
 import com.mktiti.fsearch.core.fit.FunctionInfo
@@ -8,20 +10,22 @@ import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
+import com.mktiti.fsearch.model.build.service.JarHtmlJavadocParser
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.map
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import java.io.File
 import java.io.InputStream
+import java.nio.file.Path
 import java.util.*
 import java.util.zip.ZipFile
 
 // TODO - very much experimental
-class JarHtmlJavadocParser(
-        private val infoRepo: JavaInfoRepo
-) {
+class JsoupJarHtmlJavadocParser(
+        infoRepo: JavaInfoRepo,
+        private val internCache: InfoCache = NopInfoCache
+) : JarHtmlJavadocParser {
 
     companion object {
         private val nameBlacklist = listOf(
@@ -47,9 +51,11 @@ class JarHtmlJavadocParser(
 
     }
 
+    private val headerParser = FunHeaderParser(infoRepo, internCache)
+
     private fun parseParenFunSignature(signature: String): Pair<String, List<FunIdParam>> {
         val (name, ins) = signature.split('(')
-        val params = ins.dropLast(1).split(',').map { FunHeaderParser.parseParam(infoRepo, it) }
+        val params = ins.dropLast(1).split(',').map { headerParser.parseParam(it) }
 
         return name to params
     }
@@ -59,7 +65,7 @@ class JarHtmlJavadocParser(
         val params: List<FunIdParam> = if (ins == "-") {
             emptyList()
         } else {
-            ins.split('-').filter { it.isNotEmpty() }.map { FunHeaderParser.parseParam(infoRepo, it) }
+            ins.split('-').filter { it.isNotEmpty() }.map { headerParser.parseParam(it) }
         }
 
         return name to params
@@ -119,7 +125,7 @@ class JarHtmlJavadocParser(
                 else -> return@mapNotNull null
             }
 
-            val (_, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
+            val (_, paramNames, signature) = headerParser.parseFunHeader(sigElem.wholeText()) ?: return@mapNotNull null
             val shortInfo = descElem?.wholeText()?.cleanText()
 
             IncompleteFunId(
@@ -155,7 +161,7 @@ class JarHtmlJavadocParser(
                 else -> return@mapNotNull null
             }
 
-            val (name, paramNames, signature) = FunHeaderParser.parseFunHeader(infoRepo, sigElem.wholeText()) ?: return@mapNotNull null
+            val (name, paramNames, signature) = headerParser.parseFunHeader(sigElem.wholeText()) ?: return@mapNotNull null
             val cleanName = name.cleanText()
             val isStatic = it.child(0).wholeText().cleanText().contains("static")
 
@@ -277,12 +283,12 @@ class JarHtmlJavadocParser(
         return methodInfos.mapNotNull { (id, doc) ->
             val data = details[id] ?: return@mapNotNull null
 
-            val info = FunctionInfo(
+            val info = internCache.funInfo(FunctionInfo(
                     file = file,
                     relation = id.relation,
                     name = id.name,
                     paramTypes = data.signature
-            )
+            ))
 
             val longInfo = doc.shortInfo?.let { data.detail.removePrefix(it).trimStart() } ?: data.detail
 
@@ -290,38 +296,42 @@ class JarHtmlJavadocParser(
         }
     }
 
-    fun parseJar(jarFile: File): FunDocMap? {
-        return ZipFile(jarFile).use { jar ->
+    override fun parseJar(jarPath: Path): FunDocMap? {
+        return ZipFile(jarPath.toFile()).use { jar ->
             (jar.getEntry("package-list") ?: jar.getEntry("element-list"))?.let { lister ->
-                jar.getInputStream(lister).bufferedReader().useLines { lines ->
-                    val packages = lines.filterNot {
-                        it.isEmpty()
-                    }.toList()
+                jar.getInputStream(lister).use { inStream ->
+                    inStream.bufferedReader().useLines { lines ->
+                        val packages = lines.filterNot {
+                            it.isEmpty()
+                        }.toList()
 
-                    val storeMap = jar.entries().toList().map {
-                        val (packageName, name) = it.name.split('/').cutLast()
-                        Triple(packageName, name, it)
-                    }.filter { (packageName, name, _) ->
-                        val packageTest = packageName.joinToString(".").replace("/", ".")
+                        val storeMap = jar.entries().toList().map {
+                            val (packageName, name) = it.name.split('/').cutLast()
+                            Triple(packageName, name, it)
+                        }.filter { (packageName, name, _) ->
+                            val packageTest = packageName.joinToString(".").replace("/", ".")
 
-                        (packageTest in packages) &&
-                                name.endsWith(".html") &&
-                                name.removeSuffix(".html") !in nameBlacklist
-                    }.map { (packageName, name, entry) ->
-                        try {
-                            val info = MinimalInfo(
-                                    packageName = packageName,
-                                    simpleName = name.removeSuffix(".html")
-                            )
+                            (packageTest in packages) &&
+                                    name.endsWith(".html") &&
+                                    name.removeSuffix(".html") !in nameBlacklist
+                        }.map { (packageName, name, entry) ->
+                            try {
+                                val info = internCache.minimalInfo(
+                                        packageName = packageName,
+                                        simpleName = name.removeSuffix(".html")
+                                )
 
-                            parseFile(info, jar.getInputStream(entry))
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            emptyList()
-                        }
-                    }.flatten().toMap()
+                                jar.getInputStream(entry).use { entryIn ->
+                                    parseFile(info, entryIn)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                emptyList()
+                            }
+                        }.flatten().toMap()
 
-                    FunDocMap(storeMap)
+                        FunDocMap(storeMap)
+                    }
                 }
             }
         }

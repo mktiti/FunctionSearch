@@ -1,5 +1,8 @@
 package com.mktiti.fsearch.model.build.intermediate
 
+import com.mktiti.fsearch.core.cache.CentralInfoCache
+import com.mktiti.fsearch.core.cache.InfoCache
+import com.mktiti.fsearch.core.cache.NopInfoCache
 import com.mktiti.fsearch.core.fit.FunInstanceRelation
 import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.type.CompleteMinInfo
@@ -15,7 +18,7 @@ data class IntMinInfo(
         val virtual: Boolean = false
 ) {
 
-    fun toMinimalInfo() = MinimalInfo(packageName, simpleName, virtual)
+    fun toMinimalInfo(cache: InfoCache = NopInfoCache) = cache.minimalInfo(packageName, simpleName, virtual)
 
     fun nameParts(): List<String> = simpleName.split('.')
 
@@ -28,8 +31,8 @@ data class IntStaticCmi(
         val args: List<IntStaticCmi>
 ) {
 
-    fun convert(): CompleteMinInfo.Static = CompleteMinInfo.Static(
-            base.toMinimalInfo(), args.map { it.convert() }
+    fun convert(cache: InfoCache = NopInfoCache): CompleteMinInfo.Static = CompleteMinInfo.Static(
+            base.toMinimalInfo(cache), args.map { it.convert(cache) }
     )
 
 }
@@ -67,7 +70,8 @@ data class IntFunInfo(
         val paramTypes: List<IntFunIdParam>
 ) {
 
-    fun convert() = FunctionInfo(file.toMinimalInfo(), relation.convert(), name, paramTypes.map { it.convert() })
+    fun convert(cache: InfoCache = CentralInfoCache)
+        = FunctionInfo(file.toMinimalInfo(cache), relation.convert(), name, paramTypes.map { it.convert() })
 
 }
 

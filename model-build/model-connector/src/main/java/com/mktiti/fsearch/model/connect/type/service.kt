@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.model.connect.type
 
+import com.mktiti.fsearch.core.cache.InfoCache
 import com.mktiti.fsearch.core.repo.*
 import com.mktiti.fsearch.core.type.*
 import com.mktiti.fsearch.core.type.ApplicationParameter.BoundedWildcard
@@ -16,13 +17,14 @@ import com.mktiti.fsearch.util.orElse
 
 class JavaTypeInfoConnector(
         private val infoRepo: JavaInfoRepo,
+        private val internCache: InfoCache,
         private val log: JavaTypeParseLog
 ) : TypeInfoConnector {
 
     private fun <T> useOneshot(
             rawInfoResults: TypeInfoResult,
             code: OneshotConnector.() -> T
-    ) = OneshotConnector(infoRepo, rawInfoResults).code()
+    ) = OneshotConnector(infoRepo, internCache, rawInfoResults).code()
 
     override fun connectJcl(infoResults: TypeInfoResult) = useOneshot(infoResults) {
         connectJcl()
@@ -44,115 +46,14 @@ private sealed class SemiResult<out S : SemiType> {
 
 }
 
-private fun List<IntMinInfo>.infoMutableConverted() = map { it.toMinimalInfo() }.toMutableList()
-private fun List<IntStaticCmi>.cmiMutableConverted() = map { it.convert() }.toMutableList()
-
 private class OneshotConnector(
         private val infoRepo: JavaInfoRepo,
+        private val internCache: InfoCache,
         rawInfoResults: TypeInfoResult
 ) {
 
-    companion object {
-        fun SemiInfo.DirectInfo.initCreator(): DirectCreator {
-            val supers: MutableList<TypeHolder.Static> = ArrayList(nonGenericSuperCount())
-            val sam = samType?.let { samInfo ->
-                SamType.DirectSam(
-                        explicit = samInfo.explicit,
-                        inputs = samInfo.signature.inputs.map { it.second.convert().holder() },
-                        output = samInfo.signature.output.convert().holder()
-                )
-            }
-            val unreadyType = DirectType(
-                    minInfo = info.toMinimalInfo(),
-                    virtual = false,
-                    superTypes = supers,
-                    samType = sam
-            )
-
-            return DirectCreator(
-                    unfinishedType = unreadyType,
-                    directSupers = directSupers.infoMutableConverted(),
-                    satSupers = satSupers.cmiMutableConverted(),
-                    nonGenericAppend = supers::add
-            )
-        }
-
-        fun SemiInfo.TemplateInfo.initCreator(): TemplateCreator {
-            val supers: MutableList<TypeHolder<*, *>> = ArrayList(nonGenericSuperCount() + datSupers.size)
-
-            fun TypeParamInfo.toAp(): ApplicationParameter? {
-                return when (this) {
-                    TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
-                    TypeParamInfo.SelfRef -> SelfSubstitution
-                    is TypeParamInfo.BoundedWildcard -> {
-                        val bound = bound.toAp() as? Substitution ?: return null
-                        val dir = if (this is TypeParamInfo.BoundedWildcard.UpperWildcard) UPPER else LOWER
-                        BoundedWildcard.Dynamic(param = bound, direction = dir)
-                    }
-                    is TypeParamInfo.Direct -> StaticTypeSubstitution(arg.toMinimalInfo().complete().holder())
-                    is TypeParamInfo.Sat -> StaticTypeSubstitution(sat.convert().holder())
-                    is TypeParamInfo.Dat -> {
-                        val convertedArgs = dat.args.map { it.toAp() }.liftNull() ?: return null
-                        val convertedDat = TypeHolder.Dynamic.Indirect(
-                                CompleteMinInfo.Dynamic(dat.template.toMinimalInfo(), convertedArgs)
-                        )
-                        TypeSubstitution(convertedDat)
-                    }
-                    is TypeParamInfo.Param -> ParamSubstitution(param)
-                }
-            }
-
-            val sam = samType?.let { samInfo ->
-                SamType.GenericSam(
-                        explicit = samInfo.explicit,
-                        inputs = samInfo.signature.inputs.map { it.second.toAp() }.liftNull() ?: return@let null,
-                        output = samInfo.signature.output.toAp() ?: return@let null
-                )
-            }
-
-            val convertedTps = typeParams.map { tp ->
-                val bounds: List<Substitution> = tp.bounds.map { it.toAp() as? Substitution }.liftNull() ?: emptyList()
-                TypeParameter(
-                        sign = tp.sign,
-                        bounds = TypeBounds(bounds.toSet())
-                )
-            }
-
-            val unreadyType = TypeTemplate(
-                    info = info.toMinimalInfo(),
-                    typeParams = convertedTps,
-                    superTypes = supers,
-                    samType = sam,
-                    virtual = false
-            )
-
-            return TemplateCreator(
-                    unfinishedType = unreadyType,
-                    mutableSupers = supers,
-                    directSupers = directSupers.infoMutableConverted(),
-                    satSupers = satSupers.cmiMutableConverted(),
-                    datSupers = datSupers.toMutableList()
-            )
-        }
-
-        fun <I : SemiInfo<*>, C : SemiCreator<*>> creators(
-                infos: Collection<I>,
-                creatorInit: (I) -> C
-        ): MutableMap<MinimalInfo, C> {
-            return infos.groupBy(
-                    keySelector = { it.info.toMinimalInfo() },
-                    valueTransform = creatorInit
-            ).mapValues { (_, v) -> v.first() }.toMutableMap()
-        }
-
-        fun directCreators(infos: TypeInfoResult): MutableMap<MinimalInfo, DirectCreator> {
-            return creators(infos.directInfos) { it.initCreator() }
-        }
-
-        fun templateCreators(infos: TypeInfoResult): MutableMap<MinimalInfo, TemplateCreator> {
-            return creators(infos.templateInfos) { it.initCreator() }
-        }
-    }
+    private fun List<IntMinInfo>.infoMutableConverted() = map { it.toMinimalInfo(internCache) }.toMutableList()
+    private fun List<IntStaticCmi>.cmiMutableConverted() = map { it.convert(internCache) }.toMutableList()
 
     private val directCreators: MutableMap<MinimalInfo, DirectCreator> = directCreators(rawInfoResults)
     private val templateCreators: MutableMap<MinimalInfo, TemplateCreator> = templateCreators(rawInfoResults)
@@ -161,6 +62,106 @@ private class OneshotConnector(
 
     private val readyDirects: MutableMap<MinimalInfo, DirectType> = HashMap()
     private val readyTemplates: MutableMap<MinimalInfo, TypeTemplate> = HashMap()
+
+    fun SemiInfo.DirectInfo.initCreator(): DirectCreator {
+        val supers: MutableList<TypeHolder.Static> = ArrayList(nonGenericSuperCount())
+        val sam = samType?.let { samInfo ->
+            SamType.DirectSam(
+                    explicit = samInfo.explicit,
+                    inputs = samInfo.signature.inputs.map { it.second.convert().holder() },
+                    output = samInfo.signature.output.convert().holder()
+            )
+        }
+        val unreadyType = DirectType(
+                minInfo = info.toMinimalInfo(internCache),
+                virtual = false,
+                superTypes = supers,
+                samType = sam
+        )
+
+        return DirectCreator(
+                unfinishedType = unreadyType,
+                directSupers = directSupers.infoMutableConverted(),
+                satSupers = satSupers.cmiMutableConverted(),
+                nonGenericAppend = supers::add
+        )
+    }
+
+    fun SemiInfo.TemplateInfo.initCreator(): TemplateCreator {
+        val supers: MutableList<TypeHolder<*, *>> = ArrayList(nonGenericSuperCount() + datSupers.size)
+
+        fun TypeParamInfo.toAp(): ApplicationParameter? {
+            return when (this) {
+                TypeParamInfo.Wildcard -> TypeSubstitution.unboundedWildcard
+                TypeParamInfo.SelfRef -> SelfSubstitution
+                is TypeParamInfo.BoundedWildcard -> {
+                    val bound = bound.toAp() as? Substitution ?: return null
+                    val dir = if (this is TypeParamInfo.BoundedWildcard.UpperWildcard) UPPER else LOWER
+                    BoundedWildcard.Dynamic(param = bound, direction = dir)
+                }
+                is TypeParamInfo.Direct -> StaticTypeSubstitution(arg.toMinimalInfo(internCache).complete().holder())
+                is TypeParamInfo.Sat -> StaticTypeSubstitution(sat.convert().holder())
+                is TypeParamInfo.Dat -> {
+                    val convertedArgs = dat.args.map { it.toAp() }.liftNull() ?: return null
+                    val convertedDat = TypeHolder.Dynamic.Indirect(
+                            CompleteMinInfo.Dynamic(dat.template.toMinimalInfo(internCache), convertedArgs)
+                    )
+                    TypeSubstitution(convertedDat)
+                }
+                is TypeParamInfo.Param -> ParamSubstitution(param)
+            }
+        }
+
+        val sam = samType?.let { samInfo ->
+            SamType.GenericSam(
+                    explicit = samInfo.explicit,
+                    inputs = samInfo.signature.inputs.map { it.second.toAp() }.liftNull() ?: return@let null,
+                    output = samInfo.signature.output.toAp() ?: return@let null
+            )
+        }
+
+        val convertedTps = typeParams.map { tp ->
+            val bounds: List<Substitution> = tp.bounds.map { it.toAp() as? Substitution }.liftNull() ?: emptyList()
+            TypeParameter(
+                    sign = tp.sign,
+                    bounds = TypeBounds(bounds.toSet())
+            )
+        }
+
+        val unreadyType = TypeTemplate(
+                info = info.toMinimalInfo(internCache),
+                typeParams = convertedTps,
+                superTypes = supers,
+                samType = sam,
+                virtual = false
+        )
+
+        return TemplateCreator(
+                unfinishedType = unreadyType,
+                mutableSupers = supers,
+                directSupers = directSupers.infoMutableConverted(),
+                satSupers = satSupers.cmiMutableConverted(),
+                datSupers = datSupers.toMutableList()
+        )
+    }
+
+    fun <I : SemiInfo<*>, C : SemiCreator<*>> creators(
+            infos: Collection<I>,
+            creatorInit: (I) -> C
+    ): MutableMap<MinimalInfo, C> {
+        return infos.groupBy(
+                keySelector = { it.info.toMinimalInfo(internCache) },
+                valueTransform = creatorInit
+        ).mapValues { (_, v) -> v.first() }.toMutableMap()
+    }
+
+    fun directCreators(infos: TypeInfoResult): MutableMap<MinimalInfo, DirectCreator> {
+        return creators(infos.directInfos) { it.initCreator() }
+    }
+
+    fun templateCreators(infos: TypeInfoResult): MutableMap<MinimalInfo, TemplateCreator> {
+        return creators(infos.templateInfos) { it.initCreator() }
+    }
 
     fun connectArtifact(): TypeResolver {
         connect()
@@ -200,11 +201,8 @@ private class OneshotConnector(
         allCreators.forEach { creator ->
             creator.directSupers.forEach { directSuper ->
                 val unfinishedSuper = directCreators[directSuper]?.unfinishedType
-                if (unfinishedSuper != null) {
-                    creator.nonGenericAppend(unfinishedSuper.holder())
-                } else {
-                    creator.nonGenericAppend(directSuper.complete().holder())
-                }
+                val superHolder = unfinishedSuper?.holder() ?: directSuper.complete().holder()
+                creator.nonGenericAppend(superHolder)
             }
             creator.directSupers.clear()
         }
@@ -283,9 +281,9 @@ private class OneshotConnector(
                 )
             }
             is TypeParamInfo.Direct -> {
-                when (val readyDirect = direct(arg.toMinimalInfo())) {
+                when (val readyDirect = direct(arg.toMinimalInfo(internCache))) {
                     is SemiResult.Ready -> StaticTypeSubstitution(readyDirect.readySemi.holder())
-                    else -> StaticTypeSubstitution(arg.toMinimalInfo().complete().holder())
+                    else -> StaticTypeSubstitution(arg.toMinimalInfo(internCache).complete().holder())
                 }
             }
             is TypeParamInfo.Sat -> StaticTypeSubstitution(sat.convert().convertAllowIndirect())
@@ -307,13 +305,13 @@ private class OneshotConnector(
                 )
             }
             is TypeParamInfo.Direct -> {
-                if (arg.toMinimalInfo() == rootInfo) {
-                    return StaticTypeSubstitution(arg.toMinimalInfo().complete().holder())
+                if (arg.toMinimalInfo(internCache) == rootInfo) {
+                    return StaticTypeSubstitution(arg.toMinimalInfo(internCache).complete().holder())
                 }
 
-                when (val readyDirect = direct(arg.toMinimalInfo())) {
+                when (val readyDirect = direct(arg.toMinimalInfo(internCache))) {
                     is SemiResult.Ready -> StaticTypeSubstitution(readyDirect.readySemi.holder())
-                    is SemiResult.NotFound -> StaticTypeSubstitution(arg.toMinimalInfo().complete().holder())
+                    is SemiResult.NotFound -> StaticTypeSubstitution(arg.toMinimalInfo(internCache).complete().holder())
                     is SemiResult.Unready -> null
                 }
             }
@@ -334,22 +332,22 @@ private class OneshotConnector(
             arg.convertAllowIndirect()
         }
 
-        return when (val baseTemplate = template(template.toMinimalInfo())) {
+        return when (val baseTemplate = template(template.toMinimalInfo(internCache))) {
             is SemiResult.Ready -> {
                 baseTemplate.readySemi.dynamicApply(convertedArgs)?.holder()
             }
             else -> null
         }.orElse {
-            CompleteMinInfo.Dynamic(template.toMinimalInfo(), convertedArgs).holder()
+            CompleteMinInfo.Dynamic(template.toMinimalInfo(internCache), convertedArgs).holder()
         }
     }
 
     private fun DatInfo.convert(rootInfo: MinimalInfo): TypeHolder.Dynamic? {
-        if (template.toMinimalInfo() == rootInfo) {
+        if (template.toMinimalInfo(internCache) == rootInfo) {
             return convertAllowIndirect()
         }
 
-        return when (val baseTemplate = template(template.toMinimalInfo())) {
+        return when (val baseTemplate = template(template.toMinimalInfo(internCache))) {
             is SemiResult.Ready -> {
                 val convertedArgs: List<ApplicationParameter> = args.map { arg ->
                     arg.convert(rootInfo)

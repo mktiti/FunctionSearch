@@ -2,6 +2,8 @@ package com.mktiti.fsearch.backend.spring
 
 import com.mktiti.fsearch.backend.ContextManager
 import com.mktiti.fsearch.backend.SimpleMapContextManager
+import com.mktiti.fsearch.core.cache.CentralInfoCache
+import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.repo.TypeRepo
 import com.mktiti.fsearch.core.util.flatAll
@@ -14,6 +16,7 @@ import com.mktiti.fsearch.model.connect.type.JavaTypeInfoConnector
 import com.mktiti.fsearch.modules.*
 import com.mktiti.fsearch.modules.fileystem.FilesystemArtifactDocStore
 import com.mktiti.fsearch.modules.fileystem.FilesystemArtifactInfoStore
+import com.mktiti.fsearch.parser.docs.JsoupJarHtmlJavadocParser
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -77,10 +80,16 @@ object ContextManagerStore {
 
         val log = InMemTypeParseLog()
 
-        val typeConnector = JavaTypeInfoConnector(MapJavaInfoRepo, log)
-        val funConnector = JavaFunctionConnector
+        val javaInfoRepo: JavaInfoRepo = MapJavaInfoRepo
 
-        val artifactFetcher: ArtifactInfoFetcher = ExternalMavenFetcher(infoRepo = MapJavaInfoRepo)
+        val typeConnector = JavaTypeInfoConnector(javaInfoRepo, CentralInfoCache, log)
+        val funConnector = JavaFunctionConnector(CentralInfoCache)
+        val jarHtmlJavadocParser = JsoupJarHtmlJavadocParser(javaInfoRepo, CentralInfoCache)
+
+        val artifactFetcher: ArtifactInfoFetcher = ExternalMavenFetcher(
+                infoRepo = javaInfoRepo,
+                javadocParser = jarHtmlJavadocParser
+        )
 
         fun storeSubDir(name: String) = storeRoot.resolve(name).also {
             Files.createDirectories(it)
@@ -108,7 +117,8 @@ object ContextManagerStore {
 
         val javadocManager: DocManager = DefaultDocManager(
                 cache = FilesystemArtifactDocStore(docsStorePath),
-                artifactInfoFetcher = artifactFetcher
+                artifactInfoFetcher = artifactFetcher,
+                javadocParser = jarHtmlJavadocParser
         )
 
         jclDocLocation?.let {
@@ -116,12 +126,14 @@ object ContextManagerStore {
         }
 
         contextManager = SimpleMapContextManager(
-                infoRepo = MapJavaInfoRepo,
+                infoRepo = javaInfoRepo,
                 javaRepo = javaRepo,
                 jclDomain = jclArtifactRepo,
                 artifactManager = artifactManager,
                 docManager = javadocManager
         )
+
+        CentralInfoCache.clean()
 
         // Force load apache commons and guava
         /*contextManager.context(setOf(

@@ -3,10 +3,9 @@ package com.mktiti.fsearch.modules
 import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
 import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
-import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
-import com.mktiti.fsearch.parser.docs.JarHtmlJavadocParser
+import com.mktiti.fsearch.model.build.service.JarHtmlJavadocParser
 import com.mktiti.fsearch.util.splitMapKeep
 import java.nio.file.Path
 
@@ -20,14 +19,15 @@ interface DocManager {
 
 class DefaultDocManager(
         private val cache: ArtifactDocStore,
-        private val artifactInfoFetcher: ArtifactInfoFetcher
+        private val artifactInfoFetcher: ArtifactInfoFetcher,
+        private val javadocParser: JarHtmlJavadocParser
 ) : DocManager {
 
     private var jclDocs = FunDocResolver.nop()
 
     override fun loadJclDocs(version: String, path: Path): FunDocResolver {
         return cache.getOrStore(ArtifactId.jcl(version)) {
-            JarHtmlJavadocParser(MapJavaInfoRepo).parseJar(path.toFile()) ?: FunDocMap.empty()
+            javadocParser.parseInput(path) ?: FunDocMap.empty()
         }.also {
             jclDocs = it
         }

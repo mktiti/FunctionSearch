@@ -1,0 +1,14 @@
+# Spring Config
+server:
+  port: 8090
+  http2.enabled: true
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+api.base.path: "/"
+cross.origin: "*"
+jcl.javadoc.path: null
+
+springdoc.api-docs.path: /api-docs

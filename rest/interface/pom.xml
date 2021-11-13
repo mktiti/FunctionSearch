@@ -6,63 +6,24 @@
 
     <parent>
         <groupId>com.mktiti.signature-search</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>rest</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>backend</artifactId>
+    <artifactId>rest-interface</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 
     <dependencies>
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>util</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>parser</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>modules</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>maven</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>com.mktiti.signature-search</groupId>
             <artifactId>rest-dto</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>rest-interface</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>grpc-definitions</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mktiti.signature-search</groupId>
-            <artifactId>grpc-converter</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>${spring.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -70,50 +31,28 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <version>${spring.version}</version>
             <optional>true</optional>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-ui</artifactId>
             <version>${spring.openapi.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-kotlin</artifactId>
             <version>${spring.openapi.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-data-rest</artifactId>
             <version>${spring.openapi.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-kotlin</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>net.devh</groupId>
-            <artifactId>grpc-spring-boot-starter</artifactId>
-            <version>2.12.0.RELEASE</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -147,6 +86,13 @@
                         <goals>
                             <goal>test-compile</goal>
                         </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                                <sourceDir>${project.build.directory}/src/main/kotlin/generated</sourceDir>
+                                <sourceDir>${project.basedir}/src/test/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
                     </execution>
                 </executions>
                 <configuration>
@@ -156,7 +102,7 @@
                     </compilerPlugins>
                     <sourceDirs>
                         <sourceDir>${project.basedir}/src/main/java</sourceDir>
-                        <sourceDir>${project.build.directory}/src/main/kotlin</sourceDir>
+                        <sourceDir>${project.build.directory}/src/main/kotlin/generated</sourceDir>
                     </sourceDirs>
                 </configuration>
                 <dependencies>
@@ -174,8 +120,9 @@
                 <version>1.1</version>
 
                 <configuration>
-                    <packageName>com.mktiti.fsearch.backend</packageName>
+                    <packageName>com.mktiti.fsearch.rest.api</packageName>
                     <type>kotlin</type>
+                    <className>InterfaceInfo</className>
                 </configuration>
 
                 <executions>
@@ -190,27 +137,6 @@
             </plugin>
 
             <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-
-                <configuration>
-                    <failIfNoTests>false</failIfNoTests>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <finalName>backend</finalName>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.mktiti.fsearch.backend.spring.SpringStart</mainClass>
-                        </manifest>
-                    </archive>
-                </configuration>
-            </plugin>
-
-            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
@@ -218,42 +144,45 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>repackage</id>
-                        <phase>package</phase>
+                        <id>openapi-gen-start</id>
+                        <phase>pre-integration-test</phase>
                         <goals>
-                            <goal>repackage</goal>
+                            <goal>start</goal>
                         </goals>
                         <configuration>
-                            <mainClass>com.mktiti.fsearch.backend.spring.SpringStart</mainClass>
-                            <finalName>backend-spring</finalName>
+                            <mainClass>com.mktiti.fsearch.rest.api.controller.SpringNopStart</mainClass>
+                            <useTestClasspath>true</useTestClasspath>
+                            <directories>
+                                <directory>${project.build.testOutputDirectory}</directory>
+                            </directories>
                         </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>openapi-gen-stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
 
             <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <version>0.37.0</version>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-maven-plugin</artifactId>
+                <version>1.1</version>
                 <executions>
                     <execution>
-                        <id>build</id>
-                        <phase>package</phase>
+                        <id>integration-test</id>
                         <goals>
-                            <goal>build</goal>
-                            <goal>save</goal>
+                            <goal>generate</goal>
                         </goals>
                     </execution>
                 </executions>
                 <configuration>
-                    <images>
-                        <image>
-                            <name>mktiti/fsearch-backend</name>
-                            <build>
-                                <contextDir>${project.basedir}</contextDir>
-                            </build>
-                        </image>
-                    </images>
+                    <apiDocsUrl>http://localhost:8090/api-docs</apiDocsUrl>
+                    <outputFileName>openapi-docs.json</outputFileName>
                 </configuration>
             </plugin>
         </plugins>

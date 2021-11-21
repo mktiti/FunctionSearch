@@ -1,13 +1,15 @@
-package com.mktiti.fsearch.modules
+package com.mktiti.fsearch.modules.docs
 
 import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
 import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
 import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
+import com.mktiti.fsearch.modules.ArtifactId
 
 interface ArtifactDocResolver {
 
+    @Suppress("unused")
     object Nop : ArtifactDocResolver {
         override fun forArtifacts(artifacts: Set<ArtifactId>) = FunDocResolver.nop()
     }
@@ -28,6 +30,7 @@ interface ArtifactDocResolver {
 
 interface ArtifactDocStore : ArtifactDocResolver {
 
+    @Suppress("unused")
     object Nop : ArtifactDocStore {
         override fun store(artifact: ArtifactId, docs: FunDocMap) {}
 

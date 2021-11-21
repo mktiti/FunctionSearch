@@ -1,16 +1,12 @@
-package com.mktiti.fsearch.modules.fileystem
+package com.mktiti.fsearch.modules.store
 
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
-import com.mktiti.fsearch.model.build.serialize.ArtifactDocSerializer
-import com.mktiti.fsearch.modules.ArtifactDocStore
 import com.mktiti.fsearch.modules.ArtifactId
-import java.nio.file.Path
+import com.mktiti.fsearch.modules.docs.ArtifactDocStore
 
-class FilesystemArtifactDocStore(
-        repoRoot: Path
+class ArtifactDocStoreWrapper(
+        private val backingStore: GenericArtifactStore<FunDocMap>
 ) : ArtifactDocStore {
-
-    private val backingStore = GenericFilesystemArtifactStore(repoRoot, "docs", "json", ArtifactDocSerializer)
 
     override fun store(artifact: ArtifactId, docs: FunDocMap) {
         backingStore.store(artifact, docs)

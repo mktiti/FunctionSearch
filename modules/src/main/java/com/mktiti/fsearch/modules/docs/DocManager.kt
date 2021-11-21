@@ -1,4 +1,4 @@
-package com.mktiti.fsearch.modules
+package com.mktiti.fsearch.modules.docs
 
 import com.mktiti.fsearch.core.javadoc.FunDocResolver
 import com.mktiti.fsearch.core.javadoc.SimpleMultiDocStore
@@ -6,6 +6,8 @@ import com.mktiti.fsearch.core.javadoc.SingleDocMapStore
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.service.JarHtmlJavadocParser
+import com.mktiti.fsearch.modules.ArtifactId
+import com.mktiti.fsearch.modules.ArtifactInfoFetcher
 import com.mktiti.fsearch.util.splitMapKeep
 import java.nio.file.Path
 

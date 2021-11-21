@@ -4,6 +4,7 @@ import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 
 interface ArtifactInfoResolver {
 
+    @Suppress("unused")
     object Nop : ArtifactInfoResolver {
         override fun get(id: ArtifactId): Nothing? = null
     }
@@ -14,6 +15,7 @@ interface ArtifactInfoResolver {
 
 interface ArtifactInfoStore : ArtifactInfoResolver {
 
+    @Suppress("unused")
     object Nop : ArtifactInfoStore {
         override fun get(id: ArtifactId): Nothing? = null
 

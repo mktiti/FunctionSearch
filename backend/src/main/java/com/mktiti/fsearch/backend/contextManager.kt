@@ -2,7 +2,11 @@ package com.mktiti.fsearch.backend
 
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.JavaRepo
-import com.mktiti.fsearch.modules.*
+import com.mktiti.fsearch.modules.ArtifactId
+import com.mktiti.fsearch.modules.ArtifactManager
+import com.mktiti.fsearch.modules.DomainRepo
+import com.mktiti.fsearch.modules.FallbackDomainRepo
+import com.mktiti.fsearch.modules.docs.DocManager
 
 interface ContextManager {
 

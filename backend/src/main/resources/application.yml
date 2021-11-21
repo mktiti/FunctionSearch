@@ -11,4 +11,9 @@ api.base.path: "/"
 cross.origin: "*"
 jcl.javadoc.path: null
 
+# Very rough limit for in-mem stored javadoc (MB)
+cache.docs.approxlimit: 100
+# Very rough limit for in-mem stored type info (MB)
+cache.info.approxlimit: 100
+
 springdoc.api-docs.path: /${api.base.path}api-docs

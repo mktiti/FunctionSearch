@@ -23,7 +23,9 @@ import javax.annotation.PostConstruct
 @Profile("default")
 class DefaultHandlerBean(
         @Value("\${data-store.path:#{null}}") private val storeBasePathConfig: String?,
-        @Value("\${jcl.javadoc.path:#{null}}") private val javadocPath: String?
+        @Value("\${jcl.javadoc.path:#{null}}") private val javadocPath: String?,
+        @Value("\${cache.docs.approxlimit}") private val docsCacheLimit: Int,
+        @Value("\${cache.info.approxlimit}") private val infoCacheLimit: Int,
 ) {
 
     @PostConstruct
@@ -37,7 +39,9 @@ class DefaultHandlerBean(
         println("Initializing (Data store: $storeBase, JCL docs: $javadocPath)")
         ContextManagerStore.init(
                 storeRoot = storeBase,
-                jclDocLocation = javadocPath?.let(Paths::get)
+                jclDocLocation = javadocPath?.let(Paths::get),
+                infoCacheLimit = infoCacheLimit,
+                docsCacheLimit = docsCacheLimit
         )
     }
 

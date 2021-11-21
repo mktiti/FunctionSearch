@@ -1,0 +1,27 @@
+{
+  "map": [
+    {
+      "first": {
+        "file": {
+          "packageName": [
+            "com",
+            "google",
+            "common",
+            "base"
+          ],
+          "simpleName": "Predicates",
+          "virtual": false
+        },
+        "relation": "STATIC",
+        "name": "and",
+        "paramTypes": [{"@c":".IntFunIdParam$Type","info":{"packageName":["java","lang"],"simpleName":"Iterable","virtual":false}}]
+      },
+      "second": {
+        "link": null,
+        "paramNames": ["components"],
+        "shortInfo": "Returns a predicate that evaluates to true if each of its components evaluates to true.",
+        "longInfo": "Returns a predicate that evaluates to true if each of its components evaluates to true. The components are evaluated in order, and evaluation will be \"short-circuited\" as soon as a false predicate is found. It defensively copies the iterable passed in, so future changes to it won't alter the behavior of this predicate. If components is empty, the returned predicate will always evaluate to true."
+      }
+    }
+  ]
+}

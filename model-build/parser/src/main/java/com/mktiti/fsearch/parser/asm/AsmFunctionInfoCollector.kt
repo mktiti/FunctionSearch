@@ -81,7 +81,7 @@ private class AsmFunctionInfoCollectorVisitor(
 
     private val funParser: JavaFunctionSignatureInfoBuilder = DefaultFunctionSignatureInfoBuilder(infoRepo)
 
-    private lateinit var context: ContextInfo
+    private var context: ContextInfo? = null
 
     private val collectedStaticFuns: MutableList<RawFunInfo> = ArrayList()
     val staticFuns: List<RawFunInfo>
@@ -94,40 +94,35 @@ private class AsmFunctionInfoCollectorVisitor(
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String?, interfaces: Array<out String>?) {
         val info = AsmUtil.parseName(name)
 
-
-        if (AsmUtil.wrapContainsAnonymousOrInner(info)) {
+        context = if (AsmUtil.wrapContainsAnonymousOrInner(info)) {
             // Skip anonymous nested and local class
-            return
-        }
-
-        context = when (val typeParams = typeParamResolver[info]) {
-            null -> ContextInfo.Direct(info)
-            else -> ContextInfo.Template(info, typeParams)
+            null
+        } else {
+            when (val typeParams = typeParamResolver[info]) {
+                null -> ContextInfo.Direct(info)
+                else -> ContextInfo.Template(info, typeParams)
+            }
         }
     }
 
     override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
-        return if (access.isFlagged(checkFlag)) {
-            val instanceRel = functionRelation(name, access)
-
-            with(context) {
-                if (thisInfo.nameParts().any { it.firstOrNull()?.isDigit() != false } && instanceRel != STATIC) {
-                    // Skip anonymous and local types
-                    return null
-                }
-
+        return context?.let { setContext ->
+            if (access.isFlagged(checkFlag)) {
+                val instanceRel = functionRelation(name, access)
+                val thisInfo = setContext.thisInfo
                 val toParse = signature ?: descriptor
+
                 AsmFunParamNamesVisitor { paramNames ->
                     try {
                         val parsedSignature: FunSignatureInfo<*> = when (instanceRel) {
                             STATIC -> funParser.parseStaticFunction(name, paramNames, toParse)
-                            CONSTRUCTOR -> when (this) {
+                            CONSTRUCTOR -> when (setContext) {
                                 is ContextInfo.Direct -> funParser.parseDirectConstructor(thisInfo, toParse, paramNames)
-                                is ContextInfo.Template -> funParser.parseTemplateConstructor(thisInfo, thisTypeParams, toParse, paramNames)
+                                is ContextInfo.Template -> funParser.parseTemplateConstructor(thisInfo, setContext.thisTypeParams, toParse, paramNames)
                             }
-                            INSTANCE -> when (this) {
+                            INSTANCE -> when (setContext) {
                                 is ContextInfo.Direct -> funParser.parseDirectFunction(name, paramNames, toParse, thisInfo)
-                                is ContextInfo.Template -> funParser.parseTemplateFunction(name, paramNames, toParse, thisInfo, thisTypeParams)
+                                is ContextInfo.Template -> funParser.parseTemplateFunction(name, paramNames, toParse, thisInfo, setContext.thisTypeParams)
                             }
                         }
 
@@ -149,9 +144,9 @@ private class AsmFunctionInfoCollectorVisitor(
                         e.printStackTrace()
                     }
                 }
+            } else {
+                null
             }
-        } else {
-            null
         }
     }
 

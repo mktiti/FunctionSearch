@@ -70,3 +70,12 @@ com.mktiti.fsearchtest.FtCollUtil::reverse(com.mktiti.fsearchtest.FtList)
 
 FtList<a> -> FtList<a>
 com.mktiti.fsearchtest.FtCollUtil::reversed(com.mktiti.fsearchtest.FtList)
+
+FtList<FtPredicate<a>> -> FtPredicate<a>
+com.mktiti.fsearchtest.FtPredicates::and(com.mktiti.fsearchtest.FtCollection);com.mktiti.fsearchtest.FtList.first();com.mktiti.fsearchtest.FtList.last()
+
+() -> FtPredicate<a>
+com.mktiti.fsearchtest.FtPredicates::alwaysTrue();com.mktiti.fsearchtest.FtPredicates::alwaysFalse()
+
+() -> (a -> boolean)
+com.mktiti.fsearchtest.FtPredicates::alwaysTrue();com.mktiti.fsearchtest.FtPredicates::alwaysFalse()

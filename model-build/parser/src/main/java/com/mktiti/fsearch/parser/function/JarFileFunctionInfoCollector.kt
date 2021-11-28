@@ -6,7 +6,7 @@ import com.mktiti.fsearch.model.build.service.FunctionInfoCollector
 import com.mktiti.fsearch.model.build.service.TypeParamResolver
 import com.mktiti.fsearch.parser.asm.AsmFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
-import com.mktiti.fsearch.parser.type.JarInfoCollectorUtil
+import com.mktiti.fsearch.parser.util.JarInfoCollectorUtil
 
 class JarFileFunctionInfoCollector(
         private val infoRepo: JavaInfoRepo

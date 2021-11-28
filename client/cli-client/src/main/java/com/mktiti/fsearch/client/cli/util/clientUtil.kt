@@ -8,8 +8,11 @@ fun runHealthCheck(service: Service, printer: JobPrinter): Boolean {
     printer.print("Running API health check... ")
     return when (val checkRes = service.searchApi.healthCheck()) {
         is ApiCallResult.Success -> {
-            printer.println(checkRes.result.message)
-            true
+            val info = checkRes.result
+            info.ok.apply {
+                printer.print(if (this) "OK" else "ERROR")
+                printer.println(" (version: ${info.version}, build: ${info.buildTimestamp})")
+            }
         }
         is ApiCallResult.Exception -> {
             printer.println("[${checkRes.code}] - ${checkRes.message}")

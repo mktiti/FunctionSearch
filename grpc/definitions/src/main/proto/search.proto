@@ -11,8 +11,14 @@ service SearchService {
 
   rpc Search (QueryRequest) returns (QueryResult) {}
 
-  rpc HealthCheck (google.protobuf.Empty) returns (StringMessage) {}
+  rpc HealthCheck (google.protobuf.Empty) returns (HealthInfo) {}
 
+}
+
+message HealthInfo {
+  required string version = 1;
+  required string buildTimestamp = 2;
+  required bool ok = 3;
 }
 
 message QueryRequest {

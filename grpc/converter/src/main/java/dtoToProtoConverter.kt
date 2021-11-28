@@ -111,6 +111,13 @@ fun ResultList<FunId>.toProto(): Info.FunInfoResult = Info.FunInfoResult.newBuil
         .addAllResults(results.map { it.toProto() })
         .build()
 
+
+private fun HealthInfo.toProto() = Search.HealthInfo.newBuilder()
+        .setVersion(version)
+        .setBuildTimestamp(buildTimestamp)
+        .setOk(ok)
+        .build()
+
 private fun artifactFilter(onBuilder: Artifact.ArtifactFilterMessage.Builder.() -> Unit): Artifact.ArtifactFilterMessage {
     return Artifact.ArtifactFilterMessage.newBuilder().apply(onBuilder).build()
 }

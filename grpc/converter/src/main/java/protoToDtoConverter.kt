@@ -103,3 +103,9 @@ fun Artifact.ArtifactSelectMessage.toDto() = ArtifactIdDto(
         name = name,
         version = version
 )
+
+fun Search.HealthInfo.toDto() = HealthInfo(
+        version = version,
+        buildTimestamp = buildTimestamp,
+        ok = ok
+)

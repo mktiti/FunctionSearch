@@ -176,6 +176,10 @@
                 <configuration>
                     <packageName>com.mktiti.fsearch.backend</packageName>
                     <type>kotlin</type>
+
+                    <values>
+                        <builtAt>${maven.build.timestamp}</builtAt>
+                    </values>
                 </configuration>
 
                 <executions>

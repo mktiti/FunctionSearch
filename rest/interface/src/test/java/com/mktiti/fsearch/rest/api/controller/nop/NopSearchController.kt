@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "search")
 class NopSearchController : SearchController {
 
-    override fun healthCheck(): MessageDto = nop()
+    override fun healthCheck(): HealthInfo = nop()
 
     override fun typeHint(req: HintRequestDto): ResultList<TypeHint> = nop()
 

@@ -60,4 +60,4 @@ copyFileToServer "$envVarFile" "$remoteConfigDir"
 copyFileToServer "$composeFile" "$remoteConfigDir"
 copyFileToServer "$scriptFile" "$remoteConfigDir"
 
-ssh "$serverUrl" "$remoteConfigDir/$scriptName" "$remoteDirBase"
+ssh "$serverUrl" "$remoteConfigDir/$scriptName" $remoteDirBase

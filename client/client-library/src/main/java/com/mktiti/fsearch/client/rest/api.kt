@@ -14,7 +14,7 @@ interface Service {
 
 interface SearchApi {
 
-    fun healthCheck(): ApiCallResult<MessageDto>
+    fun healthCheck(): ApiCallResult<HealthInfo>
 
     fun search(context: QueryRequestDto): ApiCallResult<QueryResult>
 

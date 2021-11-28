@@ -3,7 +3,7 @@ package com.mktiti.fsearch.client.rest.grpc
 import com.google.protobuf.Empty
 import com.mktiti.fsearch.client.rest.ApiCallResult
 import com.mktiti.fsearch.client.rest.SearchApi
-import com.mktiti.fsearch.dto.MessageDto
+import com.mktiti.fsearch.dto.HealthInfo
 import com.mktiti.fsearch.dto.QueryRequestDto
 import com.mktiti.fsearch.dto.QueryResult
 import com.mktiti.fsearch.grpc.SearchServiceGrpc
@@ -17,10 +17,9 @@ internal class GrpcSearchApi(
 
     private val stub = SearchServiceGrpc.newBlockingStub(channel)
 
-    override fun healthCheck(): ApiCallResult<MessageDto> {
+    override fun healthCheck(): ApiCallResult<HealthInfo> {
         return handleGrpc {
-            val message = stub.healthCheck(Empty.getDefaultInstance())
-            MessageDto(message.message)
+            stub.healthCheck(Empty.getDefaultInstance()).toDto()
         }
     }
 

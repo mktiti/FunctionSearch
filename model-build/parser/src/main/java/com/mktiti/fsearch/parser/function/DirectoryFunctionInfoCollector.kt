@@ -5,7 +5,7 @@ import com.mktiti.fsearch.model.build.intermediate.FunctionInfoResult
 import com.mktiti.fsearch.model.build.service.FunctionInfoCollector
 import com.mktiti.fsearch.model.build.service.TypeParamResolver
 import com.mktiti.fsearch.parser.asm.AsmFunctionInfoCollector
-import com.mktiti.fsearch.parser.type.DirectoryInfoCollectorUtil
+import com.mktiti.fsearch.parser.util.DirectoryInfoCollectorUtil
 import java.nio.file.Path
 
 class DirectoryFunctionInfoCollector(

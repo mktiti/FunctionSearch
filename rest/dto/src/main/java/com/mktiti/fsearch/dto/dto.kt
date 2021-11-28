@@ -9,6 +9,12 @@ enum class ContextLoadStatus {
     LOADING, LOADED, ERROR
 }
 
+data class HealthInfo(
+        val version: String,
+        val buildTimestamp: String,
+        val ok: Boolean
+)
+
 data class MessageDto(val message: String)
 
 data class ArtifactIdDto(

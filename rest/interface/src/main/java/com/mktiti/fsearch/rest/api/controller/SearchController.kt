@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ResponseBody
 interface SearchController  {
 
     @GetMapping("health_check")
-    fun healthCheck() : MessageDto
+    fun healthCheck() : HealthInfo
 
     @PostMapping("/hint")
     @ResponseBody

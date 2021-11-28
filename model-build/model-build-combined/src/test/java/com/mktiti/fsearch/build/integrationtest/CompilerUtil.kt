@@ -1,8 +1,10 @@
 package com.mktiti.fsearch.build.integrationtest
 
 import java.io.IOException
+import java.nio.file.Files
 import java.nio.file.Path
 import javax.tools.ToolProvider
+import kotlin.io.path.absolutePathString
 
 object CompilerUtil {
 
@@ -13,18 +15,18 @@ object CompilerUtil {
             it.extension == "java"
         }.toList()
 
-        val outDir = createTempDir("fsearch-test-compile-out").apply {
-            deleteOnExit()
+        val outDir = Files.createTempDirectory("fsearch-test-compile-out").apply {
+            toFile().deleteOnExit()
         }
 
         with(compiler.getStandardFileManager(null, null, null)) {
             val javaFileObjects = getJavaFileObjectsFromFiles(javaFiles)
-            compiler.getTask(null, this, null, listOf("-d", outDir.absolutePath), null, javaFileObjects).call()
+            compiler.getTask(null, this, null, listOf("-d", outDir.absolutePathString()), null, javaFileObjects).call()
         }
 
-        return onPackage(outDir.toPath()).also {
+        return onPackage(outDir).also {
             try {
-                outDir.deleteRecursively()
+                outDir.toFile().deleteRecursively()
             } catch (ioe: IOException) {
                 ioe.printStackTrace()
             }

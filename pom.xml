@@ -28,6 +28,11 @@
         <maven.libs.version>3.6.3</maven.libs.version>
 
         <junit.version>5.3.1</junit.version>
+
+        <tests.skip>false</tests.skip>
+        <container.skip>false</container.skip>
+        <container.image.env>local</container.image.env>
+        <frontend.skip>false</frontend.skip>
     </properties>
 
     <modules>
@@ -46,6 +51,39 @@
     <packaging>
         pom
     </packaging>
+
+    <profiles>
+        <profile>
+            <id>fast</id>
+            <properties>
+                <tests.skip>true</tests.skip>
+                <container.skip>true</container.skip>
+                <container.image.env>local</container.image.env>
+                <frontend.skip>true</frontend.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>local</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <tests.skip>false</tests.skip>
+                <container.skip>true</container.skip>
+                <container.image.env>local</container.image.env>
+                <frontend.skip>false</frontend.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <tests.skip>false</tests.skip>
+                <container.skip>false</container.skip>
+                <container.image.env>prod</container.image.env>
+                <frontend.skip>false</frontend.skip>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencies>
         <dependency>
@@ -279,6 +317,7 @@
                     </dependencies>
 
                     <configuration>
+                        <skip>${tests.skip}</skip>
                         <failIfNoTests>true</failIfNoTests>
                         <excludedGroups>integrationTest</excludedGroups>
                         <includes>
@@ -304,6 +343,7 @@
                     </executions>
 
                     <configuration>
+                        <skip>${tests.skip}</skip>
                         <failIfNoTests>true</failIfNoTests>
                         <groups>integrationTest</groups>
                         <includes>
@@ -344,6 +384,9 @@
                             </goals>
                         </execution>
                     </executions>
+                    <configuration>
+                        <skip>${container.skip}</skip>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -355,6 +398,33 @@
                 <version>2.4.1</version>
                 <configuration>
                     <skip>true</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>build</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>save</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <images>
+                        <image>
+                            <name>mktiti/fsearch-facade</name>
+                            <build>
+                                <contextDir>${project.basedir}/facade-docker</contextDir>
+                            </build>
+                        </image>
+                    </images>
+                    <saveFile>${project.build.directory}/docker-images/facade.tar.gz</saveFile>
                 </configuration>
             </plugin>
         </plugins>

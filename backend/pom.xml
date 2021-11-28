@@ -234,7 +234,6 @@
             <plugin>
                 <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
-                <version>0.37.0</version>
                 <executions>
                     <execution>
                         <id>build</id>
@@ -254,6 +253,7 @@
                             </build>
                         </image>
                     </images>
+                    <saveFile>${project.basedir}/../target/docker-images/backend.tar.gz</saveFile>
                 </configuration>
             </plugin>
         </plugins>

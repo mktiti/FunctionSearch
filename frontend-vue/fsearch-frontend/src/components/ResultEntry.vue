@@ -3,7 +3,9 @@
     <div class="file">{{entry.file}}</div>
     <div class="header">{{entry.header}}</div>
     <div class="short-info">{{entry.doc.shortInfo}}</div>
-    <div class="long-info" v-if="opened"><pre>{{entry.doc.details}}</pre></div>
+    <div class="long-info" v-bind:class="entry.doc.details ? '' : 'no-docs'" v-if="opened">
+      <pre>{{entry.doc.details || 'No additional documentation available.'}}</pre>
+    </div>
   </div>
 </template>
 
@@ -57,5 +59,9 @@ export default class ResultEntry extends ResultEntryBase {
 
 .entry:active, .entry:hover {
   border-color: #45a1ff;
+}
+
+.long-info.no-docs {
+  color: #abb7ff;
 }
 </style>

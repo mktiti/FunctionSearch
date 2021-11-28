@@ -55,7 +55,11 @@ class JsoupJarHtmlJavadocParser(
 
     private fun parseParenFunSignature(signature: String): Pair<String, List<FunIdParam>> {
         val (name, ins) = signature.split('(')
-        val params = ins.dropLast(1).split(',').map { headerParser.parseParam(it) }
+        val params = if (ins == ")") {
+            emptyList()
+        } else {
+            ins.dropLast(1).split(',').map { headerParser.parseParam(it) }
+        }
 
         return name to params
     }

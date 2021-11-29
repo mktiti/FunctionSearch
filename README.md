@@ -1,4 +1,4 @@
-# FunctionSearch
+# JvmSearch
 Experimental research project providing type-based function searching for the JVM.
 
 FunctionSearch (working title) is an attempt to bring [Hoogle](https://hoogle.haskell.org) inspired searching capabilities to JVM programming languages, starting with Java.

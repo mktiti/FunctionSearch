@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import VueRouter, { RouteConfig } from 'vue-router'
 import Search from '../views/Search.vue'
+import Login from '../views/Login.vue'
 import Todo from "@/views/Todo.vue";
 
 Vue.use(VueRouter)
@@ -14,7 +15,7 @@ const routes: Array<RouteConfig> = [
   {
     path: '/login',
     name: 'Login',
-    component: Todo
+    component: Login
   },
   {
     path: '/demos',

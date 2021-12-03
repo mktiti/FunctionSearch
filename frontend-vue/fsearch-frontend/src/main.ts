@@ -8,7 +8,7 @@ import {faGithub, faLinkedin} from '@fortawesome/free-brands-svg-icons';
 import {createConfiguration, ServerConfiguration} from "fsearch_client";
 import {AppInfo} from "@/util/AppInfo";
 
-export const appInfo = new AppInfo(process.env.APP_VERSION, process.env.BUILD_TIMESTAMP)
+export const appInfo = new AppInfo(process.env.VUE_APP_VERSION, process.env.VUE_APP_BUILD_TIMESTAMP)
 
 export const server = new ServerConfiguration<{  }>(process.env.VUE_APP_API_BASE, {  })
 export const clientConfig = createConfiguration({

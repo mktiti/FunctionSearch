@@ -23,7 +23,7 @@ object AsmFunctionInfoCollector {
         DefaultAsmCollectorView(visitor).load()
         return FunctionInfoResult(
                 staticFunctions = visitor.staticFuns,
-                instanceMethods = visitor.instanceFuns.map { (i, fs) -> i to fs }
+                instanceMethods = visitor.instanceFuns.map { (i, fs) -> IntInstanceFunEntry(i, fs) }
         )
     }
 

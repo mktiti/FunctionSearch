@@ -39,6 +39,13 @@ class CachingArtifactStore<T>(
             kbSum.toInt()
         }
 
+        fun cachedDepsStore(
+                backingStore: GenericArtifactStore<List<ArtifactId>>,
+                maxWeight: Long
+        ) = CachingArtifactStore(backingStore, maxWeight) { data ->
+            data.size / 10
+        }
+
         private fun <T> loader(backingStore: GenericArtifactStore<T>): CacheLoader<ArtifactId, T> = CacheLoader.from { input ->
             input?.let(backingStore::getData) ?: throw NotFoundException
         }

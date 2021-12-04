@@ -9,6 +9,9 @@ import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 import com.mktiti.fsearch.model.build.service.*
+import com.mktiti.fsearch.modules.ArtifactDepsResolver.DependencyResult.AllFound
+import com.mktiti.fsearch.modules.ArtifactDepsResolver.DependencyResult.InfoMissing
+import com.mktiti.fsearch.modules.util.DependencyUtil
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
@@ -20,8 +23,9 @@ class SecondaryArtifactManager(
         private val typeInfoConnector: TypeInfoConnector,
         private val functionConnector: FunctionConnector,
         private val infoCache: ArtifactInfoStore,
-        private val depInfoFetcher: DependencyInfoFetcher,
-        private val artifactInfoFetcher: ArtifactInfoFetcher
+        private val depInfoStore: ArtifactDepsStore,
+        private val artifactInfoFetcher: ArtifactInfoFetcher,
+        private val artifactDepsFetcher: ArtifactDependencyFetcher
 ) : ArtifactManager {
 
     private val jclMap = mutableMapOf<String, Pair<DomainRepo, JavaRepo>>()
@@ -72,9 +76,16 @@ class SecondaryArtifactManager(
     override fun remove(artifact: ArtifactId): Boolean = false
 
     override fun getWithDependencies(artifacts: Collection<ArtifactId>): DomainRepo {
-        val artifactDepGraph = depInfoFetcher.getDependencies(artifacts) ?: error("Failed to fetch dependencies")
+        val artifactDepGraph = when (val depResult = depInfoStore.dependencies(artifacts)) {
+            is AllFound -> depResult.dependencies
+            is InfoMissing -> {
+                val missingDeps = artifactDepsFetcher.dependencies(depResult.missingArtifacts) ?: error("Failed to fetch dependency info")
+                depInfoStore.store(missingDeps)
+                DependencyUtil.mergeDependencies(missingDeps.values + listOf(depResult.foundDependencies))
+            }
+        } + artifacts
 
-        val (artifactInfos, missingArtifacts) = artifactDepGraph.keys.splitMapKeep {
+        val (artifactInfos, missingArtifacts) = artifactDepGraph.splitMapKeep {
             infoCache[it]
         }
 

@@ -5,9 +5,14 @@ data class TypeInfoResult(
         val templateInfos: List<SemiInfo.TemplateInfo>
 )
 
+data class IntInstanceFunEntry(
+        val info: IntMinInfo,
+        val funInfos: List<RawFunInfo>
+)
+
 data class FunctionInfoResult(
         val staticFunctions: List<RawFunInfo>,
-        val instanceMethods: List<Pair<IntMinInfo, List<RawFunInfo>>>
+        val instanceMethods: List<IntInstanceFunEntry>
 )
 
 data class ArtifactInfoResult(

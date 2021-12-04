@@ -4,12 +4,17 @@ import com.mktiti.fsearch.core.fit.FunctionInfo
 import com.mktiti.fsearch.core.javadoc.FunctionDoc
 import com.mktiti.fsearch.model.build.intermediate.IntFunDoc.Companion.toInt
 
+data class IntFunDocEntry(
+        val info: IntFunInfo,
+        val doc: IntFunDoc
+)
+
 data class FunDocMap(
-        val map: List<Pair<IntFunInfo, IntFunDoc>>
+        val map: List<IntFunDocEntry>
 ) {
 
     constructor(map: Map<FunctionInfo, FunctionDoc>) : this(map.map { (i, d) ->
-        i.toInt() to d.toInt()
+        IntFunDocEntry(i.toInt(), d.toInt())
     })
 
     companion object {

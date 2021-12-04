@@ -6,12 +6,21 @@ import com.mktiti.fsearch.model.build.intermediate.IntFunIdParam.Array
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import java.nio.file.Files
 
 @Tag("integrationTest")
 internal class ArtifactInfoSerializerIntegrationTest {
 
+    companion object {
+        private infix fun IntMinInfo.funs(funs: List<RawFunInfo>) = IntInstanceFunEntry(this, funs)
+    }
+
     @Test
     fun `test info serialization-deserialization`() {
+        val outDir = Files.createTempDirectory("fsearch-test-info-serialize-out").apply {
+            toFile().deleteOnExit()
+        }
+
         val artifactInfo = ArtifactInfoResult(
                 typeInfo = TypeInfoResult(
                         directInfos = listOf(
@@ -153,7 +162,7 @@ internal class ArtifactInfoSerializerIntegrationTest {
                                 )
                         ),
                         instanceMethods = listOf(
-                                IntMinInfo(listOf("com", "mktiti", "test"), "TestTypeA") to listOf(
+                                IntMinInfo(listOf("com", "mktiti", "test"), "TestTypeA") funs listOf(
                                         RawFunInfo.Direct(
                                                 info = IntFunInfo(
                                                         file = IntMinInfo(listOf("com", "mktiti", "test"), "TestTypeA"),
@@ -207,7 +216,7 @@ internal class ArtifactInfoSerializerIntegrationTest {
                                                 )
                                         )
                                 ),
-                                IntMinInfo(listOf("com", "mktiti", "test"), "TestTypeB") to listOf(
+                                IntMinInfo(listOf("com", "mktiti", "test"), "TestTypeB") funs listOf(
                                         RawFunInfo.Direct(
                                                 info = IntFunInfo(
                                                         file = IntMinInfo(listOf("com", "mktiti", "test"), "TestTypeB"),
@@ -234,8 +243,8 @@ internal class ArtifactInfoSerializerIntegrationTest {
                 )
         )
 
-        val asJson = ArtifactInfoSerializer.serialize(artifactInfo)
-        val parsedResult = ArtifactInfoSerializer.deserialize(asJson)
+        ArtifactInfoSerializer.writeToDir(artifactInfo, "info-test", outDir)
+        val parsedResult = ArtifactInfoSerializer.readFromDir(outDir, "info-test")
 
         assertEquals(artifactInfo, parsedResult)
     }

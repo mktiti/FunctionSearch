@@ -15,5 +15,7 @@ jcl.javadoc.path: null
 cache.docs.approxlimit: 100
 # Very rough limit for in-mem stored type info (MB)
 cache.info.approxlimit: 100
+# Very rough limit for in-mem stored artifact dependencies (MB)
+cache.deps.approxlimit: 10
 
 springdoc.api-docs.path: /${api.base.path}api-docs

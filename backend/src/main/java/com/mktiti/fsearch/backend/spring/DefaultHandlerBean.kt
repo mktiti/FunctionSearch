@@ -26,6 +26,7 @@ class DefaultHandlerBean(
         @Value("\${jcl.javadoc.path:#{null}}") private val javadocPath: String?,
         @Value("\${cache.docs.approxlimit}") private val docsCacheLimit: Int,
         @Value("\${cache.info.approxlimit}") private val infoCacheLimit: Int,
+        @Value("\${cache.deps.approxlimit}") private val depsCacheLimit: Int,
 ) {
 
     @PostConstruct
@@ -41,7 +42,8 @@ class DefaultHandlerBean(
                 storeRoot = storeBase,
                 jclDocLocation = javadocPath?.let(Paths::get),
                 infoCacheLimit = infoCacheLimit,
-                docsCacheLimit = docsCacheLimit
+                docsCacheLimit = docsCacheLimit,
+                depsCacheLimit = depsCacheLimit
         )
     }
 

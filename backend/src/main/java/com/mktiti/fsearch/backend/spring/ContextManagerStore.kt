@@ -13,15 +13,19 @@ import com.mktiti.fsearch.model.build.service.FunctionCollection
 import com.mktiti.fsearch.model.build.util.InMemTypeParseLog
 import com.mktiti.fsearch.model.connect.function.JavaFunctionConnector
 import com.mktiti.fsearch.model.connect.type.JavaTypeInfoConnector
+import com.mktiti.fsearch.modules.ArtifactDependencyFetcher
 import com.mktiti.fsearch.modules.ArtifactInfoFetcher
 import com.mktiti.fsearch.modules.ArtifactManager
+import com.mktiti.fsearch.modules.CachingArtifactStore.Companion.cachedDepsStore
 import com.mktiti.fsearch.modules.CachingArtifactStore.Companion.cachedDocsStore
 import com.mktiti.fsearch.modules.CachingArtifactStore.Companion.cachedInfoStore
 import com.mktiti.fsearch.modules.SecondaryArtifactManager
 import com.mktiti.fsearch.modules.docs.DefaultDocManager
 import com.mktiti.fsearch.modules.docs.DocManager
+import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsDepsStore
 import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsDocsStore
 import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsInfoStore
+import com.mktiti.fsearch.modules.store.ArtifactDepsStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactDocStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactInfoStoreWrapper
 import com.mktiti.fsearch.parser.docs.JsoupJarHtmlJavadocParser
@@ -80,7 +84,8 @@ object ContextManagerStore {
             storeRoot: Path,
             jclDocLocation: Path?,
             infoCacheLimit: Int, // ~ MB
-            docsCacheLimit: Int  // ~ MB
+            docsCacheLimit: Int,  // ~ MB
+            depsCacheLimit: Int  // ~ MB
     ) {
         val (libPath, jclVersion) = getJclInfo() ?: return
 
@@ -96,6 +101,7 @@ object ContextManagerStore {
         val funConnector = JavaFunctionConnector(CentralInfoCache)
         val jarHtmlJavadocParser = JsoupJarHtmlJavadocParser(javaInfoRepo, CentralInfoCache)
 
+        val artifactDepsFetcher: ArtifactDependencyFetcher = ExternalMavenDependencyFetcher()
         val artifactFetcher: ArtifactInfoFetcher = ExternalMavenFetcher(
                 infoRepo = javaInfoRepo,
                 javadocParser = jarHtmlJavadocParser
@@ -107,13 +113,15 @@ object ContextManagerStore {
 
         val infoStorePath = storeSubDir("info-store")
         val docsStorePath = storeSubDir("doc-store")
+        val depsStorePath = storeSubDir("deps-store")
 
         val artifactManager: ArtifactManager = SecondaryArtifactManager(
                 typeInfoConnector = typeConnector,
                 functionConnector = funConnector,
                 infoCache = ArtifactInfoStoreWrapper(cachedInfoStore(fsInfoStore(infoStorePath), infoCacheLimit * 1024L)),
-                depInfoFetcher = ExternalMavenDependencyFetcher(),
-                artifactInfoFetcher = artifactFetcher
+                depInfoStore = ArtifactDepsStoreWrapper(cachedDepsStore(fsDepsStore(depsStorePath), depsCacheLimit * 1024L)),
+                artifactInfoFetcher = artifactFetcher,
+                artifactDepsFetcher = artifactDepsFetcher
         )
         this.artifactManager = artifactManager
 

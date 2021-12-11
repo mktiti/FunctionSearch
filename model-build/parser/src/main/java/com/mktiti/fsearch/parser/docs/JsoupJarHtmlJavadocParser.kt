@@ -13,6 +13,7 @@ import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.service.JarHtmlJavadocParser
 import com.mktiti.fsearch.util.cutLast
 import com.mktiti.fsearch.util.map
+import org.apache.logging.log4j.kotlin.logger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -52,6 +53,8 @@ class JsoupJarHtmlJavadocParser(
     }
 
     private val headerParser = FunHeaderParser(infoRepo, internCache)
+
+    private val log = logger()
 
     private fun parseParenFunSignature(signature: String): Pair<String, List<FunIdParam>> {
         val (name, ins) = signature.split('(')
@@ -115,7 +118,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()?.selectFirst("table>tbody")
 
         if (methodSummary == null) {
-            println("No constructor summary table found ($file)")
+            log.debug { "No constructor summary table found ($file)" }
             return emptyMap()
         }
 
@@ -151,7 +154,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()?.selectFirst("table>tbody")
 
         if (methodSummary == null) {
-            println("No method summary table found ($file)")
+            log.debug { "No method summary table found ($file)" }
             return emptyMap()
         }
 
@@ -195,7 +198,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()
 
         if (constructorDetails == null) {
-            println("No constructor detail elem found ($file)")
+            log.debug { "No constructor detail elem found ($file)" }
             return emptyMap()
         }
 
@@ -210,7 +213,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()
 
         if (methodDetails == null) {
-            println("No method detail elem found ($file)")
+            log.debug { "No method detail elem found ($file)" }
             return emptyMap()
         }
 
@@ -270,7 +273,7 @@ class JsoupJarHtmlJavadocParser(
 
                 info to DetailData(params, fullDetails)
             } catch (e: Exception) {
-                e.printStackTrace()
+                log.error("Failed to parse javadoc member details", e)
                 null
             }
         }.toMap()
@@ -329,7 +332,7 @@ class JsoupJarHtmlJavadocParser(
                                     parseFile(info, entryIn)
                                 }
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                log.error("Failed to parse javadoc JAR", e)
                                 emptyList()
                             }
                         }.flatten().toMap()

@@ -7,6 +7,7 @@ import com.mktiti.fsearch.parser.parse.DefaultFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.DefaultTypeSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaTypeSignatureInfoBuilder
+import org.apache.logging.log4j.kotlin.logger
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
@@ -27,6 +28,8 @@ object AsmTypeInfoCollector {
 private class AsmTypeInfoCollectorVisitor(
         infoRepo: JavaInfoRepo
 ) : ClassVisitor(Opcodes.ASM8) {
+
+    private val log = logger()
 
     private val samAnnotations = infoRepo.explicitSamAnnotations.map(AsmUtil::annotationDescriptor)
 
@@ -83,12 +86,12 @@ private class AsmTypeInfoCollectorVisitor(
             samType: SamInfo.Direct?
     ) {
         addDirect(
-            SemiInfo.DirectInfo(
-                    info = info,
-                    directSupers = directSupers,
-                    satSupers = emptyList(),
-                    samType = samType
-            )
+                SemiInfo.DirectInfo(
+                        info = info,
+                        directSupers = directSupers,
+                        satSupers = emptyList(),
+                        samType = samType
+                )
         )
     }
 
@@ -105,14 +108,14 @@ private class AsmTypeInfoCollectorVisitor(
             samType: SamInfo.Generic?
     ) {
         addTemplate(
-            SemiInfo.TemplateInfo(
-                    info = info,
-                    typeParams = typeParams,
-                    directSupers = directSupers.toList(),
-                    satSupers = satSupers.toList(),
-                    datSupers = datSupers,
-                    samType = samType
-            )
+                SemiInfo.TemplateInfo(
+                        info = info,
+                        typeParams = typeParams,
+                        directSupers = directSupers.toList(),
+                        satSupers = satSupers.toList(),
+                        datSupers = datSupers,
+                        samType = samType
+                )
         )
     }
 
@@ -223,7 +226,7 @@ private class AsmTypeInfoCollectorVisitor(
             else -> null
         }
 
-        fun genericSam(typeParams: List<TemplateTypeParamInfo>): SamInfo.Generic?  {
+        fun genericSam(typeParams: List<TemplateTypeParamInfo>): SamInfo.Generic? {
             return when (abstractCount) {
                 is AbstractCount.OneAbstract -> {
                     funParser.parseGenericSam(null, abstractCount.signature, info, typeParams)?.let { signature ->
@@ -266,6 +269,8 @@ private class AsmTypeInfoCollectorVisitor(
                 }
             }
         }
+
+        log.trace { "Parsed info from type $info" }
     }
 
 }

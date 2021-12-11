@@ -17,10 +17,13 @@ import com.mktiti.fsearch.model.build.intermediate.*
 import com.mktiti.fsearch.model.build.service.FunctionCollection
 import com.mktiti.fsearch.model.build.service.FunctionConnector
 import com.mktiti.fsearch.util.splitMap
+import org.apache.logging.log4j.kotlin.logger
 
 class JavaFunctionConnector(
         private val internCache: InfoCache
 ) : FunctionConnector {
+
+    private val log = logger()
 
     private fun <P, O> List<Pair<String, P>>.convertIns(converter: (P) -> O): List<Pair<String, O>> = map { (name, param) ->
         name to converter(param)
@@ -113,15 +116,17 @@ class JavaFunctionConnector(
             }
         }
 
+        log.trace("Started connecting function info")
+
         val (convertedStatics, staticFails) = funInfo.staticFunctions.convertAll()
         staticFails.forEach {
-            println("Failed to convert static fun $it")
+            log.warn { "Failed to convert static fun $it" }
         }
 
         val convertedInstances = funInfo.instanceMethods.map { (key, values) ->
             val (converted, failed) = values.convertAll()
             failed.forEach {
-                println("Failed to convert instance fun $it")
+                log.warn { "Failed to convert instance fun $it" }
             }
             key.toMinimalInfo(internCache) to converted
         }.toMap()

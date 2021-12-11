@@ -1,0 +1,2 @@
+jcl.javadoc.path: "/usr/share/fsearch/docs/jdk-8-partial.zip"
+data-store.path: "/usr/share/fsearch/store-cache/"

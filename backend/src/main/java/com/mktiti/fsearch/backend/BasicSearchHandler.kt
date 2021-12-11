@@ -6,6 +6,7 @@ import com.mktiti.fsearch.core.repo.FallbackResolver
 import com.mktiti.fsearch.core.util.TypeException
 import com.mktiti.fsearch.dto.*
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.apache.logging.log4j.kotlin.logger
 import java.util.concurrent.Executors
 import kotlin.streams.asSequence
 
@@ -16,6 +17,8 @@ class BasicSearchHandler(
 ) : SearchHandler {
 
     private val service = Executors.newCachedThreadPool()
+
+    private val log = logger()
 
     override fun typeHint(contextId: QueryCtxDto, namePart: String): ResultList<TypeHint> {
         return with(contextManager[contextId.artifactsId()]) {
@@ -67,7 +70,7 @@ class BasicSearchHandler(
             QueryResult.Success(query, results)
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        log.error(e) { "Failed to execute (synchronous) query" }
         QueryResult.Error.InternalError(query, "Internal error, see logs for details")
     }
 

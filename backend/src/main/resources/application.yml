@@ -1,6 +1,8 @@
-# Spring Config
+# Common base of Spring configuration
+# Can and should be overwritten by environment specific configs (see environments/{env}/config/backend/application.yml)
+
 server:
-  port: ${port:8080}
+  port: 8080
   http2.enabled: true
   compression:
     enabled: true
@@ -11,11 +13,11 @@ api.base.path: "/"
 cross.origin: "*"
 jcl.javadoc.path: null
 
-# Very rough limit for in-mem stored javadoc (MB)
-cache.docs.approxlimit: 100
-# Very rough limit for in-mem stored type info (MB)
-cache.info.approxlimit: 100
-# Very rough limit for in-mem stored artifact dependencies (MB)
-cache.deps.approxlimit: 10
+cache:
+  # Very rough approximations for limits on in-mem caches (in MB)
+  approxlimit:
+    docs: 100
+    info: 100
+    deps: 10
 
 springdoc.api-docs.path: /${api.base.path}api-docs

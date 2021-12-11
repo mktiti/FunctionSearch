@@ -5,9 +5,11 @@ import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.serialize.ArtifactDocSerializer
 import com.mktiti.fsearch.model.build.serialize.ArtifactInfoSerializer
 import com.mktiti.fsearch.model.build.service.ArtifactSerializerService
+import com.mktiti.fsearch.model.build.service.SerializationException
 import com.mktiti.fsearch.modules.ArtifactId
 import com.mktiti.fsearch.modules.serialize.ArtifactDepsSerializer
 import com.mktiti.fsearch.modules.store.GenericArtifactStore
+import org.apache.logging.log4j.kotlin.logger
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -31,13 +33,15 @@ class GenericFilesystemArtifactStore<T>(
         }
     }
 
+    private val log = logger()
+
     private fun filePath(id: ArtifactId): Path = FilesystemStoreUtil.storedLocation(repoRoot, id)
 
     override fun store(artifact: ArtifactId, data: T) {
         try {
             serializationService.writeToDir(data, artifact.name, filePath(artifact))
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error(ioe) { "IOException while storing cache data for artifact $artifact" }
         }
     }
 
@@ -50,10 +54,10 @@ class GenericFilesystemArtifactStore<T>(
                 null
             }
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error(ioe) { "IOException while loading cache data for artifact $artifact" }
             null
-        } catch (se: IOException) {
-            se.printStackTrace()
+        } catch (se: SerializationException) {
+            log.error(se) { "Deserialization failed while loading cache data for artifact $artifact" }
             null
         }
     }
@@ -62,7 +66,7 @@ class GenericFilesystemArtifactStore<T>(
         try {
             Files.delete(filePath(artifact))
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error(ioe) { "IOException while removing cache data for artifact $artifact" }
         }
     }
 }

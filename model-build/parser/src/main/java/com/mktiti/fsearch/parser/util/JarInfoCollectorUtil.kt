@@ -2,9 +2,12 @@ package com.mktiti.fsearch.parser.util
 
 import com.mktiti.fsearch.parser.asm.AsmCollectorView
 import com.mktiti.fsearch.parser.parse.JarInfo
+import org.apache.logging.log4j.kotlin.logger
 import java.util.zip.ZipFile
 
 object JarInfoCollectorUtil {
+
+    private val log = logger()
 
     fun iterate(info: JarInfo, asmCollectorView: AsmCollectorView, sorted: Boolean) {
         info.paths.forEach { jarPath ->
@@ -28,7 +31,7 @@ object JarInfoCollectorUtil {
                             asmCollectorView.loadEntry(it)
                         }
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        log.error("Error wile iterating over info JAR", e)
                     }
                 }
             }

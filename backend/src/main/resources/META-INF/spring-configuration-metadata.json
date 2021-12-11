@@ -21,5 +21,21 @@
       "name": "jcl.javadoc.path",
       "type": "java.lang.String",
       "description": "Path of the JCL documentation to use."
+    },
+    {
+      "name": "cache.approxlimit.info",
+      "type": "int",
+      "description": "Rough limit (MB) of in-mem artifact info cache"
+    },
+    {
+      "name": "cache.approxlimit.docs",
+      "type": "int",
+      "description": "Rough limit (MB) of in-mem artifact documentation cache"
+    },
+    {
+      "name": "cache.approxlimit.deps",
+      "type": "int",
+      "description": "Rough limit (MB) of in-mem artifact dependency information cache"
     }
-  ] }
+  ]
+}

@@ -17,6 +17,7 @@ import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
 import com.mktiti.fsearch.util.orElse
 import com.mktiti.fsearch.util.splitMapKeep
+import org.apache.logging.log4j.kotlin.logger
 import java.nio.file.Path
 
 class SecondaryArtifactManager(
@@ -29,6 +30,8 @@ class SecondaryArtifactManager(
 ) : ArtifactManager {
 
     private val jclMap = mutableMapOf<String, Pair<DomainRepo, JavaRepo>>()
+
+    private val log = logger()
 
     override fun allStored(): Set<ArtifactId> = emptySet()
 
@@ -76,16 +79,24 @@ class SecondaryArtifactManager(
     override fun remove(artifact: ArtifactId): Boolean = false
 
     override fun getWithDependencies(artifacts: Collection<ArtifactId>): DomainRepo {
-        val artifactDepGraph = when (val depResult = depInfoStore.dependencies(artifacts)) {
-            is AllFound -> depResult.dependencies
+        log.trace { "Loading domain for artifacts - $artifacts" }
+
+        val artifactDeps = when (val depResult = depInfoStore.dependencies(artifacts)) {
+            is AllFound -> {
+                log.trace("Stored dependency info found for all artifacts")
+                depResult.dependencies
+            }
             is InfoMissing -> {
+                log.trace { "Fetching missing dependency info - ${depResult.missingArtifacts}" }
                 val missingDeps = artifactDepsFetcher.dependencies(depResult.missingArtifacts) ?: error("Failed to fetch dependency info")
                 depInfoStore.store(missingDeps)
                 DependencyUtil.mergeDependencies(missingDeps.values + listOf(depResult.foundDependencies))
             }
         } + artifacts
 
-        val (artifactInfos, missingArtifacts) = artifactDepGraph.splitMapKeep {
+        log.trace { "Loaded ${artifactDeps.size} dependencies for artifacts" }
+
+        val (artifactInfos, missingArtifacts) = artifactDeps.splitMapKeep {
             infoCache[it]
         }
 
@@ -94,12 +105,14 @@ class SecondaryArtifactManager(
         }.let(::CombinedTypeParamResolver)
 
         val allArtifacts: List<ArtifactInfoResult> = artifactInfos + if (missingArtifacts.isNotEmpty()) {
+            log.trace { "Fetching missing artifacts - $missingArtifacts" }
             artifactInfoFetcher.fetchArtifacts(missingArtifacts, storedTpResolver)?.also {
                 missingArtifacts.zipIfSameLength(it)?.forEach { (id, artifact) ->
                     infoCache.store(id, artifact)
                 }
             } ?: error("Failed to fetch dependencies")
         } else {
+            log.trace("Stored info found for all artifacts")
             emptyList()
         }
 

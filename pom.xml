@@ -29,6 +29,8 @@
 
         <junit.version>5.3.1</junit.version>
 
+        <log4j2.version>2.14.1</log4j2.version>
+
         <tests.skip>false</tests.skip>
         <container.skip>false</container.skip>
         <container.image.env>local</container.image.env>
@@ -87,9 +89,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.25</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api-kotlin</artifactId>
         </dependency>
 
         <dependency>
@@ -211,15 +212,21 @@
             </dependency>
 
             <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>1.7.25</version>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api-kotlin</artifactId>
+                <version>1.1.0</version>
             </dependency>
 
             <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>1.2.3</version>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>${log4j2.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-log4j2</artifactId>
+                <version>${spring.version}</version>
             </dependency>
 
             <dependency>

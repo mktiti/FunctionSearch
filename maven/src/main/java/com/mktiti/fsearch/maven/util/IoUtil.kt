@@ -1,11 +1,14 @@
 package com.mktiti.fsearch.maven.util
 
+import org.apache.logging.log4j.kotlin.logger
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 
 object IoUtil {
+
+    private val log = logger()
 
     private fun setupTempDir(creator: () -> Path) = creator().apply {
         toFile().deleteOnExit()
@@ -28,7 +31,7 @@ object IoUtil {
                         .redirectError(redirect)
                         .start()
             } catch (ioe: IOException) {
-                ioe.printStackTrace()
+                log.error("IOException while running external command", ioe)
                 return null
             }
 
@@ -42,7 +45,7 @@ object IoUtil {
                 process.destroyForcibly()
             }
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error("IOException while waiting for/stopping external command", ioe)
             null
         }
     }

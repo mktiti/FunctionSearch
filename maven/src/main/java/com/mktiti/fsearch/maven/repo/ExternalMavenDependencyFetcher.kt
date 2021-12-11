@@ -5,6 +5,7 @@ import com.mktiti.fsearch.maven.util.MockPomHandler
 import com.mktiti.fsearch.maven.util.parseDependencyTgfGraph
 import com.mktiti.fsearch.modules.ArtifactDependencyFetcher
 import com.mktiti.fsearch.modules.ArtifactId
+import org.apache.logging.log4j.kotlin.logger
 import java.io.File
 import java.io.IOException
 import java.nio.file.Path
@@ -20,6 +21,8 @@ class ExternalMavenDependencyFetcher(
         }
 
     }
+
+    private val log = logger()
 
     override fun dependencies(artifact: ArtifactId): Set<ArtifactId>? {
         return dependencies(listOf(artifact))?.get(artifact)
@@ -43,7 +46,7 @@ class ExternalMavenDependencyFetcher(
                 val treeCommand = depTreeCommand(treeOut)
 
                 IoUtil.runCommand(treeCommand, project, processOuts) {
-                    println(">>> External maven dependency tree process finished")
+                    log.debug("External maven dependency tree process finished")
                     parseDependencyTgfGraph(treeOut.toPath())
                 }?.filterKeys {
                     it != MockPomHandler.mockArtifactId
@@ -55,7 +58,7 @@ class ExternalMavenDependencyFetcher(
                 project.deleteRecursively()
             }
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error("IOException while fetching artifact dependency info", ioe)
             null
         }
     }

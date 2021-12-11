@@ -1,0 +1,3 @@
+api.base.path: "/api/v1/"
+jcl.javadoc.path: "${PROJECT_DIR}/environments/docs/jdk-8-partial.zip"
+data-store.path: "${PROJECT_DIR}/.store-cache/"

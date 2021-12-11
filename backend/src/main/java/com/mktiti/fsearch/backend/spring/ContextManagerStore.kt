@@ -5,11 +5,8 @@ import com.mktiti.fsearch.backend.SimpleMapContextManager
 import com.mktiti.fsearch.core.cache.CentralInfoCache
 import com.mktiti.fsearch.core.repo.JavaInfoRepo
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import com.mktiti.fsearch.core.repo.TypeRepo
-import com.mktiti.fsearch.core.util.flatAll
 import com.mktiti.fsearch.maven.repo.ExternalMavenDependencyFetcher
 import com.mktiti.fsearch.maven.repo.ExternalMavenFetcher
-import com.mktiti.fsearch.model.build.service.FunctionCollection
 import com.mktiti.fsearch.model.build.util.InMemTypeParseLog
 import com.mktiti.fsearch.model.connect.function.JavaFunctionConnector
 import com.mktiti.fsearch.model.connect.type.JavaTypeInfoConnector
@@ -29,42 +26,23 @@ import com.mktiti.fsearch.modules.store.ArtifactDepsStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactDocStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactInfoStoreWrapper
 import com.mktiti.fsearch.parser.docs.JsoupJarHtmlJavadocParser
+import org.apache.logging.log4j.kotlin.logger
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.streams.toList
 
-private fun printLoadResults(typeRepo: TypeRepo, functions: FunctionCollection) {
-    println("==== Loading Done ====")
-    println("\tLoaded ${typeRepo.allTypes.size} direct types and ${typeRepo.allTemplates.size} type templates")
-    println("\tLoaded ${functions.staticFunctions.size} static functions")
-    println("\tLoaded ${functions.instanceMethods.flatAll().count()} instance functions")
-}
-
-private fun printLog(log: InMemTypeParseLog) {
-    println("\t${log.allCount} warnings")
-
-    println("\t== Type not found errors (${log.typeNotFounds.size}):")
-    log.typeNotFounds.groupBy { it.used }.forEach { (used, users) ->
-        println("\t\t$used used by $users")
-    }
-
-    println("\t== Raw type usages (${log.rawUsages.size})")
-    println("\t== Application errors (${log.applicableErrors.size})")
-    log.applicableErrors.forEach { (user, used) ->
-        println("\t\t$used used by $user")
-    }
-}
-
 object ContextManagerStore {
 
     lateinit var artifactManager: ArtifactManager
     lateinit var contextManager: ContextManager
 
+    private val log = logger()
+
     private fun getJclInfo(): Pair<Path, String>? = when (val home = System.getProperty("java.home")) {
         null -> {
-            System.err.println("Java home not set!")
+            log.error("Java home not set!")
             null
         }
         else -> {
@@ -90,14 +68,14 @@ object ContextManagerStore {
         val (libPath, jclVersion) = getJclInfo() ?: return
 
         if (jclDocLocation == null) {
-            println("JRE doc location not set")
+            log.error("JRE doc location not set!")
         }
 
-        val log = InMemTypeParseLog()
+        val parseLog = InMemTypeParseLog()
 
         val javaInfoRepo: JavaInfoRepo = MapJavaInfoRepo
 
-        val typeConnector = JavaTypeInfoConnector(javaInfoRepo, CentralInfoCache, log)
+        val typeConnector = JavaTypeInfoConnector(javaInfoRepo, CentralInfoCache, parseLog)
         val funConnector = JavaFunctionConnector(CentralInfoCache)
         val jarHtmlJavadocParser = JsoupJarHtmlJavadocParser(javaInfoRepo, CentralInfoCache)
 
@@ -128,9 +106,11 @@ object ContextManagerStore {
         val jclJarPaths = Files.list(libPath).filter {
             it.toFile().extension in listOf("jar", "jmod")
         }.toList()
-        println("Loading JCL from ${jclJarPaths.joinToString(prefix = "[", postfix = "]") { it.fileName.toString() }}")
 
-        println("==== Loading JCL ====")
+        log.info {
+            "Loading JCL from ${jclJarPaths.joinToString(prefix = "[", postfix = "]") { it.fileName.toString() }}"
+        }
+
         val (jclArtifactRepo, javaRepo) = artifactManager.getOrLoadJcl(jclVersion, jclJarPaths)
 
         val javadocManager: DocManager = DefaultDocManager(
@@ -152,13 +132,6 @@ object ContextManagerStore {
         )
 
         CentralInfoCache.clean()
-
-        // Force load apache commons and guava
-        /*contextManager.context(setOf(
-                ArtifactId(listOf("org", "apache", "commons"), "commons-lang3", "3.11"),
-                ArtifactId(listOf("com", "google", "guava"), "guava", "30.0-jre")
-        ))
-         */
     }
 
 }

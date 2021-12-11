@@ -7,6 +7,7 @@ import com.mktiti.fsearch.core.type.PackageName
 import com.mktiti.fsearch.util.cache.InternCache
 import com.mktiti.fsearch.util.cache.MapInternTrie
 import com.mktiti.fsearch.util.cache.SelfMapIntern
+import org.apache.logging.log4j.kotlin.logger
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
@@ -97,8 +98,11 @@ object CentralInfoCache : CleanableInfoCache {
 
     private val cache: AtomicReference<CleanableInfoCache> = AtomicReference(CleanableInfoCache.nop)
 
+    private val log = logger()
+
     fun setCache(cache: InfoCache?) {
         setCleanableCache(CleanableInfoCache.wrap(cache ?: NopInfoCache))
+        log.debug { "Central cache updated to ${cache?.javaClass?.canonicalName}" }
     }
 
     fun setCleanableCache(cache: CleanableInfoCache?) {
@@ -119,6 +123,7 @@ object CentralInfoCache : CleanableInfoCache {
 
     override fun clean() {
         cache.get().clean()
+        log.info("CentralInfoCache cleaned")
     }
 
 }

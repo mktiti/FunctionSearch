@@ -49,13 +49,19 @@ class BasicSearchHandler(
     }
 
     override fun syncQuery(contextId: QueryCtxDto, query: String): QueryResult = try {
+        fun queryError(e: Exception): QueryResult.Error {
+            log.info(e) { "Failed to parse query '$query'" }
+            return QueryResult.Error.Query(query, "Failed to parse query - ${e.message}")
+        }
+
+        log.info { "Searching '$query' (context: $contextId)" }
         with(contextManager[contextId.artifactsId()]) {
             val (parsedQuery, virtuals) = try {
                 queryParser.parse(query, contextId.imports())
             } catch (te: TypeException) {
-                return@with QueryResult.Error.Query(query, "Failed to parse query - ${te.message}")
+                return@with queryError(te)
             } catch (pe: ParseCancellationException) {
-                return@with QueryResult.Error.Query(query, "Failed to parse query - ${pe.message}")
+                return@with queryError(pe)
             }
 
             val resolver = FallbackResolver.withVirtuals(virtuals, domain.typeResolver)
@@ -67,10 +73,11 @@ class BasicSearchHandler(
                         fitPresenter.present(function, fit, docResolver.getOrEmpty(function.info))
                     }.limitedResult(resultLimit)
 
+            log.debug { "Search success '$query' -> $results" }
             QueryResult.Success(query, results)
         }
     } catch (e: Exception) {
-        log.error(e) { "Failed to execute (synchronous) query" }
+        log.error(e) { "Failed to execute (synchronous) query '$query'" }
         QueryResult.Error.InternalError(query, "Internal error, see logs for details")
     }
 

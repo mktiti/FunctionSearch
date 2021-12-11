@@ -29,7 +29,7 @@
 
         <junit.version>5.3.1</junit.version>
 
-        <log4j2.version>2.14.1</log4j2.version>
+        <log4j2.version>2.15.0</log4j2.version>
 
         <tests.skip>false</tests.skip>
         <container.skip>false</container.skip>

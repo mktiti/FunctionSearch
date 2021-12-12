@@ -166,7 +166,7 @@
                     <environmentVariables>
                         <PATH>${project.basedir}/fsearch-frontend/node/:${env.PATH}</PATH>
                         <VUE_APP_API_BASE>${api.path.placeholder}</VUE_APP_API_BASE>
-                        <VUE_APP_INFO>${project.version}</VUE_APP_INFO>
+                        <VUE_APP_VERSION>${project.version}</VUE_APP_VERSION>
                         <VUE_APP_BUILD_TIMESTAMP>${maven.build.timestamp}</VUE_APP_BUILD_TIMESTAMP>
                     </environmentVariables>
                     <arguments>

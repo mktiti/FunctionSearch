@@ -22,25 +22,25 @@ internal class SingletonDeserializeTest {
 
     @Test
     fun `test simple singleton deserialization`() {
-        val serializer = JacksonSerializer.forClass<SimpleData>()
+        val serializer = JacksonLineSerializer.forClass<SimpleData>()
         val json = """
             {"member": {}}
         """.trimIndent()
 
-        val result = serializer.deserialize(json)
+        val result = serializer.deserializeLine(json)
         assert(result.member === SimpleSingleton)
     }
 
     @Test
     fun `test sealed singleton deserialization`() {
-        val serializer = JacksonSerializer.forClass<SealedData>()
+        val serializer = JacksonLineSerializer.forClass<SealedData>()
         val json = """
             {"sealedMember": 
                 {"@c":".SingletonDeserializeTest${'$'}SealedWrapper${'$'}NestedSingleton"}
             }
         """.trimIndent()
 
-        val result = serializer.deserialize(json)
+        val result = serializer.deserializeLine(json)
         assert(result.sealedMember === SealedWrapper.NestedSingleton)
     }
 

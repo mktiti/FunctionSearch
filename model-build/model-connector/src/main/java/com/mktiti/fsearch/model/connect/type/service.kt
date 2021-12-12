@@ -13,13 +13,17 @@ import com.mktiti.fsearch.model.build.intermediate.*
 import com.mktiti.fsearch.model.build.service.JclTypeResult
 import com.mktiti.fsearch.model.build.service.TypeInfoConnector
 import com.mktiti.fsearch.model.build.util.JavaTypeParseLog
+import com.mktiti.fsearch.util.logWarning
+import com.mktiti.fsearch.util.logger
 import com.mktiti.fsearch.util.orElse
 
 class JavaTypeInfoConnector(
         private val infoRepo: JavaInfoRepo,
         private val internCache: InfoCache,
-        private val log: JavaTypeParseLog
+        private val parseLog: JavaTypeParseLog
 ) : TypeInfoConnector {
+
+    private val log = logger()
 
     private fun <T> useOneshot(
             rawInfoResults: TypeInfoResult,
@@ -27,10 +31,12 @@ class JavaTypeInfoConnector(
     ) = OneshotConnector(infoRepo, internCache, rawInfoResults).code()
 
     override fun connectJcl(infoResults: TypeInfoResult) = useOneshot(infoResults) {
+        log.trace("Started connecting JCL type info")
         connectJcl()
     }
 
     override fun connectArtifact(infoResults: TypeInfoResult) = useOneshot(infoResults) {
+        log.trace("Started connecting artifact type info")
         connectArtifact()
     }
 
@@ -62,6 +68,8 @@ private class OneshotConnector(
 
     private val readyDirects: MutableMap<MinimalInfo, DirectType> = HashMap()
     private val readyTemplates: MutableMap<MinimalInfo, TypeTemplate> = HashMap()
+
+    private val log = logger()
 
     fun SemiInfo.DirectInfo.initCreator(): DirectCreator {
         val supers: MutableList<TypeHolder.Static> = ArrayList(nonGenericSuperCount())
@@ -404,8 +412,11 @@ private class OneshotConnector(
             iterationStat += moveDone(templateCreators, readyTemplates)
 
             if (!iterationStat.hadUpdate) {
-                println("Still present after direct connecting ==========>")
-                allCreators.forEach { println(it.unfinishedType.info) }
+                log.logWarning {
+                    allCreators.joinToString(
+                            prefix = "Still present after direct connecting: [", separator = ", ", postfix = "]"
+                    ) { it.unfinishedType.info.toString() }
+                }
                 break
             }
         }

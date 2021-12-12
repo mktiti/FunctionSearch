@@ -5,48 +5,44 @@ import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.serialize.ArtifactDocSerializer
 import com.mktiti.fsearch.model.build.serialize.ArtifactInfoSerializer
 import com.mktiti.fsearch.model.build.service.ArtifactSerializerService
+import com.mktiti.fsearch.model.build.service.SerializationException
 import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.modules.ArtifactInfoStore
-import com.mktiti.fsearch.modules.docs.ArtifactDocStore
-import com.mktiti.fsearch.modules.store.ArtifactDocStoreWrapper
-import com.mktiti.fsearch.modules.store.ArtifactInfoStoreWrapper
+import com.mktiti.fsearch.modules.serialize.ArtifactDepsSerializer
 import com.mktiti.fsearch.modules.store.GenericArtifactStore
+import com.mktiti.fsearch.util.logError
+import com.mktiti.fsearch.util.logger
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.createDirectories
 
 class GenericFilesystemArtifactStore<T>(
         private val repoRoot: Path,
-        private val qualifier: String,
-        private val format: String,
         private val serializationService: ArtifactSerializerService<T>
 ) : GenericArtifactStore<T> {
 
     companion object {
         fun fsDocsStore(repoRoot: Path): GenericArtifactStore<FunDocMap> {
-            return GenericFilesystemArtifactStore(repoRoot, "docs", "json", ArtifactDocSerializer)
+            return GenericFilesystemArtifactStore(repoRoot, ArtifactDocSerializer)
         }
-
-        fun forDocsWrapped(repoRoot: Path): ArtifactDocStore = ArtifactDocStoreWrapper(fsDocsStore(repoRoot))
 
         fun fsInfoStore(repoRoot: Path): GenericArtifactStore<ArtifactInfoResult> {
-            return GenericFilesystemArtifactStore(repoRoot, "info", "json", ArtifactInfoSerializer)
+            return GenericFilesystemArtifactStore(repoRoot, ArtifactInfoSerializer)
         }
 
-        fun forInfoWrapped(repoRoot: Path): ArtifactInfoStore = ArtifactInfoStoreWrapper(fsInfoStore(repoRoot))
+        fun fsDepsStore(repoRoot: Path): GenericArtifactStore<List<ArtifactId>> {
+            return GenericFilesystemArtifactStore(repoRoot, ArtifactDepsSerializer)
+        }
     }
 
-    private fun filePath(id: ArtifactId): Path = FilesystemStoreUtil.storedLocation(repoRoot, id, qualifier, format)
+    private val log = logger()
+
+    private fun filePath(id: ArtifactId): Path = FilesystemStoreUtil.storedLocation(repoRoot, id)
 
     override fun store(artifact: ArtifactId, data: T) {
         try {
-            val path = filePath(artifact).apply {
-                parent.createDirectories()
-            }
-            serializationService.writeToFile(data, path)
+            serializationService.writeToDir(data, artifact.name, filePath(artifact))
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.logError(ioe) { "IOException while storing cache data for artifact $artifact" }
         }
     }
 
@@ -54,15 +50,15 @@ class GenericFilesystemArtifactStore<T>(
         val path = filePath(artifact)
         return try {
             if (Files.exists(path)) {
-                serializationService.readFromFile(path)
+                serializationService.readFromDir(path, artifact.name)
             } else {
                 null
             }
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.logError(ioe) { "IOException while loading cache data for artifact $artifact" }
             null
-        } catch (se: IOException) {
-            se.printStackTrace()
+        } catch (se: SerializationException) {
+            log.logError(se) { "Deserialization failed while loading cache data for artifact $artifact" }
             null
         }
     }
@@ -71,7 +67,7 @@ class GenericFilesystemArtifactStore<T>(
         try {
             Files.delete(filePath(artifact))
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.logError(ioe) { "IOException while removing cache data for artifact $artifact" }
         }
     }
 }

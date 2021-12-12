@@ -11,8 +11,7 @@ import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.service.JarHtmlJavadocParser
-import com.mktiti.fsearch.util.cutLast
-import com.mktiti.fsearch.util.map
+import com.mktiti.fsearch.util.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -52,6 +51,8 @@ class JsoupJarHtmlJavadocParser(
     }
 
     private val headerParser = FunHeaderParser(infoRepo, internCache)
+
+    private val log = logger()
 
     private fun parseParenFunSignature(signature: String): Pair<String, List<FunIdParam>> {
         val (name, ins) = signature.split('(')
@@ -115,7 +116,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()?.selectFirst("table>tbody")
 
         if (methodSummary == null) {
-            println("No constructor summary table found ($file)")
+            log.logDebug { "No constructor summary table found ($file)" }
             return emptyMap()
         }
 
@@ -151,7 +152,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()?.selectFirst("table>tbody")
 
         if (methodSummary == null) {
-            println("No method summary table found ($file)")
+            log.logDebug { "No method summary table found ($file)" }
             return emptyMap()
         }
 
@@ -195,7 +196,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()
 
         if (constructorDetails == null) {
-            println("No constructor detail elem found ($file)")
+            log.logDebug { "No constructor detail elem found ($file)" }
             return emptyMap()
         }
 
@@ -210,7 +211,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()
 
         if (methodDetails == null) {
-            println("No method detail elem found ($file)")
+            log.logDebug { "No method detail elem found ($file)" }
             return emptyMap()
         }
 
@@ -270,7 +271,7 @@ class JsoupJarHtmlJavadocParser(
 
                 info to DetailData(params, fullDetails)
             } catch (e: Exception) {
-                e.printStackTrace()
+                log.error("Failed to parse javadoc member details", e)
                 null
             }
         }.toMap()
@@ -300,8 +301,8 @@ class JsoupJarHtmlJavadocParser(
         }
     }
 
-    override fun parseJar(jarPath: Path): FunDocMap? {
-        return ZipFile(jarPath.toFile()).use { jar ->
+    override fun parseJar(jarPath: Path): FunDocMap? = try {
+        ZipFile(jarPath.toFile()).use { jar ->
             (jar.getEntry("package-list") ?: jar.getEntry("element-list"))?.let { lister ->
                 jar.getInputStream(lister).use { inStream ->
                     inStream.bufferedReader().useLines { lines ->
@@ -329,7 +330,7 @@ class JsoupJarHtmlJavadocParser(
                                     parseFile(info, entryIn)
                                 }
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                log.error("Failed to parse javadoc of class", e)
                                 emptyList()
                             }
                         }.flatten().toMap()
@@ -339,6 +340,9 @@ class JsoupJarHtmlJavadocParser(
                 }
             }
         }
+    } catch (e: Exception) {
+        log.error("Failed to parse javadoc JAR", e)
+        FunDocMap.empty()
     }
 
 }

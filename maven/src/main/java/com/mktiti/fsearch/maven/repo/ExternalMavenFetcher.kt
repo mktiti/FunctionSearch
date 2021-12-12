@@ -12,6 +12,8 @@ import com.mktiti.fsearch.modules.ArtifactInfoFetcher
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -43,6 +45,8 @@ class ExternalMavenFetcher(
 
     }
 
+    private val log = logger()
+
     private fun <R> onFetchedArtifacts(
             artifacts: Collection<ArtifactId>,
             classifier: String?,
@@ -67,7 +71,7 @@ class ExternalMavenFetcher(
 
             val copy = fetchCommand(repo, markers, classifier)
             val fileMap = IoUtil.runCommand(copy, project, processOuts) {
-                println(">>> External maven dependency fetch process finished")
+                log.debug("External maven dependency fetch process finished")
 
                 artifacts.map {
                     it to repo.resolve(DependencyUtil.shortFilenameForArtifact(it, classifier) + ".jar")
@@ -79,7 +83,7 @@ class ExternalMavenFetcher(
             transform(fileMap)
 
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error("IOException while fetching artifacts", ioe)
             null
         } finally {
             combinedFile.deleteRecursively()
@@ -87,6 +91,8 @@ class ExternalMavenFetcher(
     }
 
     override fun fetchArtifacts(artifactIds: List<ArtifactId>, depTpResolver: TypeParamResolver): List<ArtifactInfoResult>? {
+        log.logTrace { "Fetching artifacts - $artifactIds" }
+
         return onFetchedArtifacts(artifactIds, classifier = null) { artMap ->
             val infos = artMap.map { (_, path) ->
                 val jarIn = JarInfo.single(path)
@@ -108,6 +114,8 @@ class ExternalMavenFetcher(
     }
 
     override fun fetchDocs(artifactIds: List<ArtifactId>): List<FunDocMap>? {
+        log.logTrace { "Fetching artifact documentations for $artifactIds" }
+
         return onFetchedArtifacts(artifactIds, classifier = "javadoc") {
             it.map { (_, path) ->
                 javadocParser.parseInput(path) ?: FunDocMap.empty()

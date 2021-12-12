@@ -3,15 +3,16 @@ package com.mktiti.fsearch.maven.repo
 import com.mktiti.fsearch.maven.util.IoUtil
 import com.mktiti.fsearch.maven.util.MockPomHandler
 import com.mktiti.fsearch.maven.util.parseDependencyTgfGraph
+import com.mktiti.fsearch.modules.ArtifactDependencyFetcher
 import com.mktiti.fsearch.modules.ArtifactId
-import com.mktiti.fsearch.modules.DependencyInfoFetcher
+import com.mktiti.fsearch.util.logger
 import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 
 class ExternalMavenDependencyFetcher(
         private val basePath: Path = IoUtil.tempDir("fsearch-external-maven-info-")
-) : DependencyInfoFetcher {
+) : ArtifactDependencyFetcher {
 
     companion object {
 
@@ -21,7 +22,13 @@ class ExternalMavenDependencyFetcher(
 
     }
 
-    override fun getDependencies(artifacts: Collection<ArtifactId>): Map<ArtifactId, Set<ArtifactId>>? {
+    private val log = logger()
+
+    override fun dependencies(artifact: ArtifactId): Set<ArtifactId>? {
+        return dependencies(listOf(artifact))?.get(artifact)
+    }
+
+    override fun dependencies(artifacts: Collection<ArtifactId>): Map<ArtifactId, Set<ArtifactId>>? {
         if (artifacts.isEmpty()) {
             return emptyMap()
         }
@@ -39,7 +46,7 @@ class ExternalMavenDependencyFetcher(
                 val treeCommand = depTreeCommand(treeOut)
 
                 IoUtil.runCommand(treeCommand, project, processOuts) {
-                    println(">>> External maven dependency tree process finished")
+                    log.debug("External maven dependency tree process finished")
                     parseDependencyTgfGraph(treeOut.toPath())
                 }?.filterKeys {
                     it != MockPomHandler.mockArtifactId
@@ -51,7 +58,7 @@ class ExternalMavenDependencyFetcher(
                 project.deleteRecursively()
             }
         } catch (ioe: IOException) {
-            ioe.printStackTrace()
+            log.error("IOException while fetching artifact dependency info", ioe)
             null
         }
     }

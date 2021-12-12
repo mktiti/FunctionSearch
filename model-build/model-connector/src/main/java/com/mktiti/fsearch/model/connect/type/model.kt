@@ -50,7 +50,7 @@ sealed class HasUpdated {
 
     abstract val hadUpdate: Boolean
 
-    fun update(): HasUpdated = Updated
+    private fun update(): HasUpdated = Updated
 
     operator fun plus(updated: Boolean): HasUpdated = if (updated) update() else this
 

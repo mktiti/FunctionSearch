@@ -28,11 +28,11 @@ class JsoupJarHtmlJavadocParserIntegrationTest {
         @JvmStatic
         @Suppress("unused")
         fun tests(): List<TestCase> = listOf(
-                TestCase("Apache Commons Lang", "/docs/apache-commons/", "commons-lang3-3.11-javadoc.jar", "expected.json"),
-                TestCase("Google Guava", "/docs/guava/", "guava-30.0-jre-javadoc.jar", "expected.json")
+                TestCase("Apache Commons Lang", "/docs/apache-commons/", "commons-lang3-3.11-javadoc.jar", "expected-docs.jsonl"),
+                TestCase("Google Guava", "/docs/guava/", "guava-30.0-jre-javadoc.jar", "expected-docs.jsonl")
         )
 
-        private fun loadExpected(path: Path): FunDocMap = ArtifactDocSerializer.readFromFile(path)
+        private fun loadExpected(dir: Path): FunDocMap = ArtifactDocSerializer.readFromDir(dir, "expected")
 
         private fun FunctionDoc.clean(): FunctionDoc = FunctionDoc(
                 link, paramNames, shortInfo,
@@ -50,10 +50,9 @@ class JsoupJarHtmlJavadocParserIntegrationTest {
     fun `test case`(case: TestCase) {
         val basePath = JsoupJarHtmlJavadocParserIntegrationTest::class.java.getResource(case.dir).path
         val jarPath = Paths.get(basePath, case.jar)
-        val expectedPath = Paths.get(basePath, case.expected)
 
         val resultDocs = assertNotNull(parser.parseJar(jarPath)).convertMap()
-        val expected = loadExpected(expectedPath).convertMap()
+        val expected = loadExpected(Paths.get(basePath)).convertMap()
 
         expected.forEach { (info, expectedDocs) ->
             val parsedDocs = assertNotNull(resultDocs[info], "Docs not found for fun $info")

@@ -9,6 +9,9 @@ import com.mktiti.fsearch.parser.asm.AsmUtil.isFlagged
 import com.mktiti.fsearch.parser.function.FunctionInfoUtil
 import com.mktiti.fsearch.parser.parse.DefaultFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaFunctionSignatureInfoBuilder
+import com.mktiti.fsearch.util.logError
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -23,7 +26,7 @@ object AsmFunctionInfoCollector {
         DefaultAsmCollectorView(visitor).load()
         return FunctionInfoResult(
                 staticFunctions = visitor.staticFuns,
-                instanceMethods = visitor.instanceFuns.map { (i, fs) -> i to fs }
+                instanceMethods = visitor.instanceFuns.map { (i, fs) -> IntInstanceFunEntry(i, fs) }
         )
     }
 
@@ -80,6 +83,8 @@ private class AsmFunctionInfoCollectorVisitor(
     }
 
     private val funParser: JavaFunctionSignatureInfoBuilder = DefaultFunctionSignatureInfoBuilder(infoRepo)
+
+    private val log = logger()
 
     private var context: ContextInfo? = null
 
@@ -140,14 +145,17 @@ private class AsmFunctionInfoCollectorVisitor(
                             collectedInstanceFuns.getOrPut(thisInfo) { LinkedList() } += RawFunInfo.of(funInfo, parsedSignature)
                         }
                     } catch (e: NotImplementedError) {
-                        System.err.println("Failed to parse $thisInfo $name :: ${signature ?: descriptor}")
-                        e.printStackTrace()
+                        log.logError(e) { "Error while parsing function $thisInfo.$name " }
                     }
                 }
             } else {
                 null
             }
         }
+    }
+
+    override fun visitEnd() {
+        log.logTrace { "Parsed functions in file ${context?.thisInfo}" }
     }
 
 }

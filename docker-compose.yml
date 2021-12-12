@@ -7,16 +7,20 @@ services:
     restart: unless-stopped
     environment:
       - BACKEND_MIN_HEAP
+      - BACKEND_MAX_HEAP
+      - SPRING_PROFILE
     volumes:
       - "${STORE_CACHE_PATH}:/usr/share/fsearch/store-cache/"
+      - "${JCL_DOCS_PATH}:/usr/share/fsearch/docs/"
     ports:
       - "8081:8080"
-    mem_limit: 750m
   frontend:
     build: frontend-vue
     image: mktiti/fsearch-frontend
     container_name: fsearch-frontend
     restart: unless-stopped
+    environment:
+      - API_PATH
     ports:
       - "8082:8080"
     mem_limit: 10m

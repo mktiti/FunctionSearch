@@ -15,17 +15,9 @@
     <packaging>pom</packaging>
 
     <properties>
-        <api.path>http://localhost:8080/api/v1/</api.path>
+        <!-- Placeholder: <<<API_PATH_PLACEHOLDER_STRING>>> -->
+        <api.path.placeholder>&lt;&lt;&lt;API_PATH_PLACEHOLDER_STRING&gt;&gt;&gt;</api.path.placeholder>
     </properties>
-
-    <profiles>
-        <profile>
-            <id>prod</id>
-            <properties>
-                <api.path>https://search.mktiti.com/api/v1/</api.path>
-            </properties>
-        </profile>
-    </profiles>
 
     <dependencies>
         <dependency>
@@ -173,9 +165,9 @@
                     <executable>${project.basedir}/fsearch-frontend/node/npm</executable>
                     <environmentVariables>
                         <PATH>${project.basedir}/fsearch-frontend/node/:${env.PATH}</PATH>
-                        <VUE_APP_API_BASE>${api.path}</VUE_APP_API_BASE>
-                        <APP_INFO>${project.version}</APP_INFO>
-                        <BUILD_TIMESTAMP>${maven.build.timestamp}</BUILD_TIMESTAMP>
+                        <VUE_APP_API_BASE>${api.path.placeholder}</VUE_APP_API_BASE>
+                        <VUE_APP_VERSION>${project.version}</VUE_APP_VERSION>
+                        <VUE_APP_BUILD_TIMESTAMP>${maven.build.timestamp}</VUE_APP_BUILD_TIMESTAMP>
                     </environmentVariables>
                     <arguments>
                         <argument>run</argument>

@@ -17,10 +17,7 @@ import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.zipIfSameLength
-import com.mktiti.fsearch.util.allPermutations
-import com.mktiti.fsearch.util.mapNotNull
-import com.mktiti.fsearch.util.roll
-import com.mktiti.fsearch.util.safeCutLast
+import com.mktiti.fsearch.util.*
 import java.util.*
 import java.util.stream.Stream
 
@@ -44,6 +41,8 @@ class JavaQueryFitter(
             return (inPairs + outPair)
         }
     }
+
+    private val log = logger()
 
     private val boundFitter = JavaTypeBoundFitter(this, typeResolver)
 
@@ -359,9 +358,13 @@ class JavaQueryFitter(
             return null
         }
 
-        return query.inputParameters.allPermutations().asSequence().mapNotNull { inputsOrdered ->
+        val result = query.inputParameters.allPermutations().asSequence().mapNotNull { inputsOrdered ->
             fitsOrderedQuery(query.copy(inputParameters = inputsOrdered), function)
-        }.firstOrNull()
+        }.firstOrNull() ?: return null
+
+        log.logTrace { "Function ${function.info} fits query '$query'" }
+
+        return result
     }
 
     override fun findFittings(

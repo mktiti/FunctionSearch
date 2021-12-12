@@ -9,9 +9,14 @@ import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 import com.mktiti.fsearch.model.build.service.*
+import com.mktiti.fsearch.modules.ArtifactDepsResolver.DependencyResult.AllFound
+import com.mktiti.fsearch.modules.ArtifactDepsResolver.DependencyResult.InfoMissing
+import com.mktiti.fsearch.modules.util.DependencyUtil
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import com.mktiti.fsearch.util.orElse
 import com.mktiti.fsearch.util.splitMapKeep
 import java.nio.file.Path
@@ -20,11 +25,14 @@ class SecondaryArtifactManager(
         private val typeInfoConnector: TypeInfoConnector,
         private val functionConnector: FunctionConnector,
         private val infoCache: ArtifactInfoStore,
-        private val depInfoFetcher: DependencyInfoFetcher,
-        private val artifactInfoFetcher: ArtifactInfoFetcher
+        private val depInfoStore: ArtifactDepsStore,
+        private val artifactInfoFetcher: ArtifactInfoFetcher,
+        private val artifactDepsFetcher: ArtifactDependencyFetcher
 ) : ArtifactManager {
 
     private val jclMap = mutableMapOf<String, Pair<DomainRepo, JavaRepo>>()
+
+    private val log = logger()
 
     override fun allStored(): Set<ArtifactId> = emptySet()
 
@@ -72,9 +80,24 @@ class SecondaryArtifactManager(
     override fun remove(artifact: ArtifactId): Boolean = false
 
     override fun getWithDependencies(artifacts: Collection<ArtifactId>): DomainRepo {
-        val artifactDepGraph = depInfoFetcher.getDependencies(artifacts) ?: error("Failed to fetch dependencies")
+        log.logTrace { "Loading domain for artifacts - $artifacts" }
 
-        val (artifactInfos, missingArtifacts) = artifactDepGraph.keys.splitMapKeep {
+        val artifactDeps = when (val depResult = depInfoStore.dependencies(artifacts)) {
+            is AllFound -> {
+                log.trace("Stored dependency info found for all artifacts")
+                depResult.dependencies
+            }
+            is InfoMissing -> {
+                log.logTrace { "Fetching missing dependency info - ${depResult.missingArtifacts}" }
+                val missingDeps = artifactDepsFetcher.dependencies(depResult.missingArtifacts) ?: error("Failed to fetch dependency info")
+                depInfoStore.store(missingDeps)
+                DependencyUtil.mergeDependencies(missingDeps.values + listOf(depResult.foundDependencies))
+            }
+        } + artifacts
+
+        log.logTrace { "Loaded ${artifactDeps.size} dependencies for artifacts" }
+
+        val (artifactInfos, missingArtifacts) = artifactDeps.splitMapKeep {
             infoCache[it]
         }
 
@@ -83,12 +106,14 @@ class SecondaryArtifactManager(
         }.let(::CombinedTypeParamResolver)
 
         val allArtifacts: List<ArtifactInfoResult> = artifactInfos + if (missingArtifacts.isNotEmpty()) {
+            log.logTrace { "Fetching missing artifacts - $missingArtifacts" }
             artifactInfoFetcher.fetchArtifacts(missingArtifacts, storedTpResolver)?.also {
                 missingArtifacts.zipIfSameLength(it)?.forEach { (id, artifact) ->
                     infoCache.store(id, artifact)
                 }
             } ?: error("Failed to fetch dependencies")
         } else {
+            log.trace("Stored info found for all artifacts")
             emptyList()
         }
 

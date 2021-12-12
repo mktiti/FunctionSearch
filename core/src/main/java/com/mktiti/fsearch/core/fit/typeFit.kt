@@ -17,11 +17,7 @@ import com.mktiti.fsearch.core.util.InfoMap
 import com.mktiti.fsearch.core.util.SuperUtil
 import com.mktiti.fsearch.core.util.genericString
 import com.mktiti.fsearch.core.util.zipIfSameLength
-import com.mktiti.fsearch.util.allPermutations
-import com.mktiti.fsearch.util.mapNotNull
-import com.mktiti.fsearch.util.roll
-import com.mktiti.fsearch.util.safeCutLast
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.*
 import java.util.*
 import java.util.stream.Stream
 
@@ -366,7 +362,7 @@ class JavaQueryFitter(
             fitsOrderedQuery(query.copy(inputParameters = inputsOrdered), function)
         }.firstOrNull() ?: return null
 
-        log.trace { "Function ${function.info} fits query '$query'" }
+        log.logTrace { "Function ${function.info} fits query '$query'" }
 
         return result
     }

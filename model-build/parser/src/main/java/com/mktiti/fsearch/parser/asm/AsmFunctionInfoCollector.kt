@@ -9,7 +9,9 @@ import com.mktiti.fsearch.parser.asm.AsmUtil.isFlagged
 import com.mktiti.fsearch.parser.function.FunctionInfoUtil
 import com.mktiti.fsearch.parser.parse.DefaultFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaFunctionSignatureInfoBuilder
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logError
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -143,7 +145,7 @@ private class AsmFunctionInfoCollectorVisitor(
                             collectedInstanceFuns.getOrPut(thisInfo) { LinkedList() } += RawFunInfo.of(funInfo, parsedSignature)
                         }
                     } catch (e: NotImplementedError) {
-                        log.error(e) { "Error while parsing function $thisInfo.$name " }
+                        log.logError(e) { "Error while parsing function $thisInfo.$name " }
                     }
                 }
             } else {
@@ -153,7 +155,7 @@ private class AsmFunctionInfoCollectorVisitor(
     }
 
     override fun visitEnd() {
-        log.trace { "Parsed functions in file ${context?.thisInfo}" }
+        log.logTrace { "Parsed functions in file ${context?.thisInfo}" }
     }
 
 }

@@ -26,7 +26,8 @@ import com.mktiti.fsearch.modules.store.ArtifactDepsStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactDocStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactInfoStoreWrapper
 import com.mktiti.fsearch.parser.docs.JsoupJarHtmlJavadocParser
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logInfo
+import com.mktiti.fsearch.util.logger
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -107,7 +108,7 @@ object ContextManagerStore {
             it.toFile().extension in listOf("jar", "jmod")
         }.toList()
 
-        log.info {
+        log.logInfo {
             "Loading JCL from ${jclJarPaths.joinToString(prefix = "[", postfix = "]") { it.fileName.toString() }}"
         }
 

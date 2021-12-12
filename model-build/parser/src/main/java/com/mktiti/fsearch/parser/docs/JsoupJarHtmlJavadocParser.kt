@@ -11,9 +11,7 @@ import com.mktiti.fsearch.core.type.MinimalInfo
 import com.mktiti.fsearch.core.util.zipIfSameLength
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.service.JarHtmlJavadocParser
-import com.mktiti.fsearch.util.cutLast
-import com.mktiti.fsearch.util.map
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -118,7 +116,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()?.selectFirst("table>tbody")
 
         if (methodSummary == null) {
-            log.debug { "No constructor summary table found ($file)" }
+            log.logDebug { "No constructor summary table found ($file)" }
             return emptyMap()
         }
 
@@ -154,7 +152,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()?.selectFirst("table>tbody")
 
         if (methodSummary == null) {
-            log.debug { "No method summary table found ($file)" }
+            log.logDebug { "No method summary table found ($file)" }
             return emptyMap()
         }
 
@@ -198,7 +196,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()
 
         if (constructorDetails == null) {
-            log.debug { "No constructor detail elem found ($file)" }
+            log.logDebug { "No constructor detail elem found ($file)" }
             return emptyMap()
         }
 
@@ -213,7 +211,7 @@ class JsoupJarHtmlJavadocParser(
         )?.parent()
 
         if (methodDetails == null) {
-            log.debug { "No method detail elem found ($file)" }
+            log.logDebug { "No method detail elem found ($file)" }
             return emptyMap()
         }
 
@@ -303,8 +301,8 @@ class JsoupJarHtmlJavadocParser(
         }
     }
 
-    override fun parseJar(jarPath: Path): FunDocMap? {
-        return ZipFile(jarPath.toFile()).use { jar ->
+    override fun parseJar(jarPath: Path): FunDocMap? = try {
+        ZipFile(jarPath.toFile()).use { jar ->
             (jar.getEntry("package-list") ?: jar.getEntry("element-list"))?.let { lister ->
                 jar.getInputStream(lister).use { inStream ->
                     inStream.bufferedReader().useLines { lines ->
@@ -332,7 +330,7 @@ class JsoupJarHtmlJavadocParser(
                                     parseFile(info, entryIn)
                                 }
                             } catch (e: Exception) {
-                                log.error("Failed to parse javadoc JAR", e)
+                                log.error("Failed to parse javadoc of class", e)
                                 emptyList()
                             }
                         }.flatten().toMap()
@@ -342,6 +340,9 @@ class JsoupJarHtmlJavadocParser(
                 }
             }
         }
+    } catch (e: Exception) {
+        log.error("Failed to parse javadoc JAR", e)
+        FunDocMap.empty()
     }
 
 }

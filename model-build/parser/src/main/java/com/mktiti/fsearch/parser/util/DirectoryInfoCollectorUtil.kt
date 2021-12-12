@@ -1,7 +1,7 @@
 package com.mktiti.fsearch.parser.util
 
 import com.mktiti.fsearch.parser.asm.AsmCollectorView
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logger
 import java.io.FileInputStream
 import java.nio.file.Path
 

@@ -11,7 +11,9 @@ server:
 
 api.base.path: "/"
 cross.origin: "*"
-jcl.javadoc.path: null
+
+jcl.javadoc.path: "/usr/share/fsearch/docs/jdk-8-partial.zip"
+data-store.path: "/usr/share/fsearch/store-cache/"
 
 cache:
   # Very rough approximations for limits on in-mem caches (in MB)

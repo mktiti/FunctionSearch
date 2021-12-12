@@ -15,9 +15,10 @@ import com.mktiti.fsearch.modules.util.DependencyUtil
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import com.mktiti.fsearch.util.orElse
 import com.mktiti.fsearch.util.splitMapKeep
-import org.apache.logging.log4j.kotlin.logger
 import java.nio.file.Path
 
 class SecondaryArtifactManager(
@@ -79,7 +80,7 @@ class SecondaryArtifactManager(
     override fun remove(artifact: ArtifactId): Boolean = false
 
     override fun getWithDependencies(artifacts: Collection<ArtifactId>): DomainRepo {
-        log.trace { "Loading domain for artifacts - $artifacts" }
+        log.logTrace { "Loading domain for artifacts - $artifacts" }
 
         val artifactDeps = when (val depResult = depInfoStore.dependencies(artifacts)) {
             is AllFound -> {
@@ -87,14 +88,14 @@ class SecondaryArtifactManager(
                 depResult.dependencies
             }
             is InfoMissing -> {
-                log.trace { "Fetching missing dependency info - ${depResult.missingArtifacts}" }
+                log.logTrace { "Fetching missing dependency info - ${depResult.missingArtifacts}" }
                 val missingDeps = artifactDepsFetcher.dependencies(depResult.missingArtifacts) ?: error("Failed to fetch dependency info")
                 depInfoStore.store(missingDeps)
                 DependencyUtil.mergeDependencies(missingDeps.values + listOf(depResult.foundDependencies))
             }
         } + artifacts
 
-        log.trace { "Loaded ${artifactDeps.size} dependencies for artifacts" }
+        log.logTrace { "Loaded ${artifactDeps.size} dependencies for artifacts" }
 
         val (artifactInfos, missingArtifacts) = artifactDeps.splitMapKeep {
             infoCache[it]
@@ -105,7 +106,7 @@ class SecondaryArtifactManager(
         }.let(::CombinedTypeParamResolver)
 
         val allArtifacts: List<ArtifactInfoResult> = artifactInfos + if (missingArtifacts.isNotEmpty()) {
-            log.trace { "Fetching missing artifacts - $missingArtifacts" }
+            log.logTrace { "Fetching missing artifacts - $missingArtifacts" }
             artifactInfoFetcher.fetchArtifacts(missingArtifacts, storedTpResolver)?.also {
                 missingArtifacts.zipIfSameLength(it)?.forEach { (id, artifact) ->
                     infoCache.store(id, artifact)

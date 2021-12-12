@@ -16,8 +16,9 @@ import com.mktiti.fsearch.core.util.liftNull
 import com.mktiti.fsearch.model.build.intermediate.*
 import com.mktiti.fsearch.model.build.service.FunctionCollection
 import com.mktiti.fsearch.model.build.service.FunctionConnector
+import com.mktiti.fsearch.util.logWarning
+import com.mktiti.fsearch.util.logger
 import com.mktiti.fsearch.util.splitMap
-import org.apache.logging.log4j.kotlin.logger
 
 class JavaFunctionConnector(
         private val internCache: InfoCache
@@ -120,13 +121,13 @@ class JavaFunctionConnector(
 
         val (convertedStatics, staticFails) = funInfo.staticFunctions.convertAll()
         staticFails.forEach {
-            log.warn { "Failed to convert static fun $it" }
+            log.logWarning { "Failed to convert static fun $it" }
         }
 
         val convertedInstances = funInfo.instanceMethods.map { (key, values) ->
             val (converted, failed) = values.convertAll()
             failed.forEach {
-                log.warn { "Failed to convert instance fun $it" }
+                log.logWarning { "Failed to convert instance fun $it" }
             }
             key.toMinimalInfo(internCache) to converted
         }.toMap()

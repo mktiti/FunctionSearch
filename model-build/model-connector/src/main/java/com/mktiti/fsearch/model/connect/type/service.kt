@@ -13,8 +13,9 @@ import com.mktiti.fsearch.model.build.intermediate.*
 import com.mktiti.fsearch.model.build.service.JclTypeResult
 import com.mktiti.fsearch.model.build.service.TypeInfoConnector
 import com.mktiti.fsearch.model.build.util.JavaTypeParseLog
+import com.mktiti.fsearch.util.logWarning
+import com.mktiti.fsearch.util.logger
 import com.mktiti.fsearch.util.orElse
-import org.apache.logging.log4j.kotlin.logger
 
 class JavaTypeInfoConnector(
         private val infoRepo: JavaInfoRepo,
@@ -411,7 +412,7 @@ private class OneshotConnector(
             iterationStat += moveDone(templateCreators, readyTemplates)
 
             if (!iterationStat.hadUpdate) {
-                log.warn {
+                log.logWarning {
                     allCreators.joinToString(
                             prefix = "Still present after direct connecting: [", separator = ", ", postfix = "]"
                     ) { it.unfinishedType.info.toString() }

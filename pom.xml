@@ -33,7 +33,6 @@
 
         <tests.skip>false</tests.skip>
         <container.skip>false</container.skip>
-        <container.image.env>local</container.image.env>
         <frontend.skip>false</frontend.skip>
     </properties>
 
@@ -60,7 +59,6 @@
             <properties>
                 <tests.skip>true</tests.skip>
                 <container.skip>true</container.skip>
-                <container.image.env>local</container.image.env>
                 <frontend.skip>true</frontend.skip>
             </properties>
         </profile>
@@ -72,7 +70,6 @@
             <properties>
                 <tests.skip>false</tests.skip>
                 <container.skip>true</container.skip>
-                <container.image.env>local</container.image.env>
                 <frontend.skip>false</frontend.skip>
             </properties>
         </profile>
@@ -81,7 +78,6 @@
             <properties>
                 <tests.skip>false</tests.skip>
                 <container.skip>false</container.skip>
-                <container.image.env>prod</container.image.env>
                 <frontend.skip>false</frontend.skip>
             </properties>
         </profile>
@@ -90,7 +86,7 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api-kotlin</artifactId>
+            <artifactId>log4j-api</artifactId>
         </dependency>
 
         <dependency>
@@ -213,13 +209,13 @@
 
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-api-kotlin</artifactId>
-                <version>1.1.0</version>
+                <artifactId>log4j-core</artifactId>
+                <version>${log4j2.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-core</artifactId>
+                <artifactId>log4j-api</artifactId>
                 <version>${log4j2.version}</version>
             </dependency>
 

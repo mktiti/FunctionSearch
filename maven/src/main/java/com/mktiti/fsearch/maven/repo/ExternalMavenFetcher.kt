@@ -12,7 +12,8 @@ import com.mktiti.fsearch.modules.ArtifactInfoFetcher
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -90,7 +91,7 @@ class ExternalMavenFetcher(
     }
 
     override fun fetchArtifacts(artifactIds: List<ArtifactId>, depTpResolver: TypeParamResolver): List<ArtifactInfoResult>? {
-        log.trace { "Fetching artifacts - $artifactIds" }
+        log.logTrace { "Fetching artifacts - $artifactIds" }
 
         return onFetchedArtifacts(artifactIds, classifier = null) { artMap ->
             val infos = artMap.map { (_, path) ->
@@ -113,7 +114,7 @@ class ExternalMavenFetcher(
     }
 
     override fun fetchDocs(artifactIds: List<ArtifactId>): List<FunDocMap>? {
-        log.trace { "Fetching artifact documentations for $artifactIds" }
+        log.logTrace { "Fetching artifact documentations for $artifactIds" }
 
         return onFetchedArtifacts(artifactIds, classifier = "javadoc") {
             it.map { (_, path) ->

@@ -7,7 +7,8 @@ import com.mktiti.fsearch.parser.parse.DefaultFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.DefaultTypeSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaFunctionSignatureInfoBuilder
 import com.mktiti.fsearch.parser.parse.JavaTypeSignatureInfoBuilder
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logTrace
+import com.mktiti.fsearch.util.logger
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
@@ -270,7 +271,7 @@ private class AsmTypeInfoCollectorVisitor(
             }
         }
 
-        log.trace { "Parsed info from type $info" }
+        log.logTrace { "Parsed info from type $info" }
     }
 
 }

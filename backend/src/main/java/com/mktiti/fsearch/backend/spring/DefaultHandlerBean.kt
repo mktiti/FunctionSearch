@@ -8,7 +8,8 @@ import com.mktiti.fsearch.backend.api.ArtifactHandler
 import com.mktiti.fsearch.backend.api.InfoHandler
 import com.mktiti.fsearch.backend.api.SearchHandler
 import com.mktiti.fsearch.core.repo.MapJavaInfoRepo
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logInfo
+import com.mktiti.fsearch.util.logger
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -38,7 +39,7 @@ class DefaultHandlerBean(
             Paths.get(storeBasePathConfig)
         }
 
-        log.info { "Initializing (Data store: $storeBase, JCL docs: $javadocPath)" }
+        log.logInfo { "Initializing (Data store: $storeBase, JCL docs: $javadocPath)" }
         ContextManagerStore.init(
                 storeRoot = storeBase,
                 jclDocLocation = javadocPath?.let(Paths::get),

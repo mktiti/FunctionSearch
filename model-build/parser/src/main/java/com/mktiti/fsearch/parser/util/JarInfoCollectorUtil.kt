@@ -2,7 +2,7 @@ package com.mktiti.fsearch.parser.util
 
 import com.mktiti.fsearch.parser.asm.AsmCollectorView
 import com.mktiti.fsearch.parser.parse.JarInfo
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logger
 import java.util.zip.ZipFile
 
 object JarInfoCollectorUtil {

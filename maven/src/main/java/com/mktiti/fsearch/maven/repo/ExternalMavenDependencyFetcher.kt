@@ -5,7 +5,7 @@ import com.mktiti.fsearch.maven.util.MockPomHandler
 import com.mktiti.fsearch.maven.util.parseDependencyTgfGraph
 import com.mktiti.fsearch.modules.ArtifactDependencyFetcher
 import com.mktiti.fsearch.modules.ArtifactId
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logger
 import java.io.File
 import java.io.IOException
 import java.nio.file.Path

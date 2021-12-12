@@ -1,6 +1,6 @@
 package com.mktiti.fsearch.maven.util
 
-import org.apache.logging.log4j.kotlin.logger
+import com.mktiti.fsearch.util.logger
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files.createTempDirectory

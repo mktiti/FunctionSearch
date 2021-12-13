@@ -1,9 +1,6 @@
 package com.mktiti.fsearch.client.rest.nop
 
-import com.mktiti.fsearch.client.rest.ArtifactApi
-import com.mktiti.fsearch.client.rest.InfoApi
-import com.mktiti.fsearch.client.rest.SearchApi
-import com.mktiti.fsearch.client.rest.Service
+import com.mktiti.fsearch.client.rest.*
 
 object NopService : Service {
 
@@ -12,6 +9,9 @@ object NopService : Service {
 
     override val searchApi: SearchApi
         get() = NopSearchApi
+
+    override val authApi: AuthApi
+        get() = NopAuthApi
 
     override val infoApi: InfoApi
         get() = NopInfoApi

@@ -74,7 +74,7 @@
             </properties>
         </profile>
         <profile>
-            <id>prod</id>
+            <id>full</id>
             <properties>
                 <tests.skip>false</tests.skip>
                 <container.skip>false</container.skip>

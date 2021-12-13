@@ -72,4 +72,6 @@ class CachingArtifactStore<T>(
         cache.invalidate(artifact)
     }
 
+    override fun allStored(): Set<ArtifactId> = backingStore.allStored()
+
 }

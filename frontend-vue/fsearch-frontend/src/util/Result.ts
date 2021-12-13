@@ -1,6 +1,6 @@
 import {QueryResult} from "fsearch_client";
 
-type ResType = {
+export type ResType = {
     type: string;
 }
 

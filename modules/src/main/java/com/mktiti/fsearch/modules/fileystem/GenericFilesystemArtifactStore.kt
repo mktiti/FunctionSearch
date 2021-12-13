@@ -63,8 +63,11 @@ class GenericFilesystemArtifactStore<T>(
         }
     }
 
+    override fun allStored(): Set<ArtifactId> = FilesystemStoreUtil.findStoredArtifacts(repoRoot)
+
     override fun remove(artifact: ArtifactId) {
         try {
+            // TODO will never work -> recursive delete needed
             Files.delete(filePath(artifact))
         } catch (ioe: IOException) {
             log.logError(ioe) { "IOException while removing cache data for artifact $artifact" }

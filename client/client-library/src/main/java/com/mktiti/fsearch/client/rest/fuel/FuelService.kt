@@ -1,10 +1,7 @@
 package com.mktiti.fsearch.client.rest.fuel
 
 import com.github.kittinunf.fuel.core.FuelManager
-import com.mktiti.fsearch.client.rest.ArtifactApi
-import com.mktiti.fsearch.client.rest.InfoApi
-import com.mktiti.fsearch.client.rest.SearchApi
-import com.mktiti.fsearch.client.rest.Service
+import com.mktiti.fsearch.client.rest.*
 
 internal class FuelService(
         basePath: String
@@ -18,6 +15,7 @@ internal class FuelService(
     }
 
     override val searchApi: SearchApi = FuelSearchApi(fuelInstance)
+    override val authApi: AuthApi = FuelAuthApi(fuelInstance)
     override val infoApi: InfoApi = FuelInfoApi(fuelInstance)
     override val artifactApi: ArtifactApi = FuelArtifactApi(fuelInstance)
 

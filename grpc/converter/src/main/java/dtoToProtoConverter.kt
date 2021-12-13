@@ -1,10 +1,8 @@
 package com.mktiti.fsearch.grpc.converter
 
+import com.google.protobuf.Empty
 import com.mktiti.fsearch.dto.*
-import com.mktiti.fsearch.grpc.Artifact
-import com.mktiti.fsearch.grpc.Common
-import com.mktiti.fsearch.grpc.Info
-import com.mktiti.fsearch.grpc.Search
+import com.mktiti.fsearch.grpc.*
 
 private fun TypeDto.toProto() = Common.Type.newBuilder()
         .setPackageName(packageName)
@@ -155,6 +153,32 @@ fun ResultList<ArtifactIdDto>.toProto(): Artifact.ArtifactListResult = Artifact.
 fun ArtifactIdDto?.protoGetResult(): Artifact.ArtifactGetResult = Artifact.ArtifactGetResult.newBuilder().let {
     if (this != null) {
         it.result = this.toProto()
+    }
+    it.build()
+}
+
+fun Credentials.toProto(): Auth.Credentials = Auth.Credentials.newBuilder()
+        .setUsername(username)
+        .setPassword(password)
+        .build()
+
+fun Role.toProto(): Auth.Role = when (this) {
+    Role.USER -> Auth.Role.USER
+    Role.ADMIN -> Auth.Role.ADMIN
+}
+
+fun LoginResult.toProto(): Auth.LoginResult = Auth.LoginResult.newBuilder().let {
+    when (this) {
+        is LoginResult.Success -> {
+            it.success = Auth.LoginSuccess.newBuilder()
+                    .setUsername(username)
+                    .setRole(role.toProto())
+                    .setJwt(jwt)
+                    .build()
+        }
+        LoginResult.Invalid -> {
+            it.invalid = Empty.getDefaultInstance()
+        }
     }
     it.build()
 }

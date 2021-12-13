@@ -7,6 +7,7 @@ interface Service {
     val address: String?
 
     val searchApi: SearchApi
+    val authApi: AuthApi
     val infoApi: InfoApi
     val artifactApi: ArtifactApi
 
@@ -17,6 +18,14 @@ interface SearchApi {
     fun healthCheck(): ApiCallResult<HealthInfo>
 
     fun search(context: QueryRequestDto): ApiCallResult<QueryResult>
+
+}
+
+interface AuthApi {
+
+    fun login(credentials: Credentials): ApiCallResult<LoginResult>
+
+    fun login(username: String, password: String) = login(Credentials(username, password))
 
 }
 

@@ -8,6 +8,8 @@ interface GenericArtifactStore<T> {
 
     fun getData(artifact: ArtifactId): T?
 
+    fun allStored(): Set<ArtifactId>
+
     fun remove(artifact: ArtifactId)
 
 }

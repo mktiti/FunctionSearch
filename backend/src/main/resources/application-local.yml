@@ -1,1 +1,12 @@
 api.base.path: "/api/v1/"
+
+auth:
+  admin:
+    password: "admin"
+  testUsers:
+    -
+      username: test
+      password: test
+    -
+      username: asd
+      password: dsa

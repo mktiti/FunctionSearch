@@ -8,22 +8,22 @@ import javax.servlet.http.HttpServletResponse
 
 interface ArtifactController {
 
-    @RequestMapping("/artifacts", method = [RequestMethod.GET])
+    @GetMapping("/artifacts")
     @ResponseBody
     fun artifacts(): ResultList<ArtifactIdDto>
 
-    @RequestMapping("/artifacts/{group}", method = [RequestMethod.GET])
+    @GetMapping("/artifacts/{group}")
     @ResponseBody
     fun byGroup(@PathVariable("group") group: String): ResultList<ArtifactIdDto>
 
-    @RequestMapping("/artifacts/{group}/{name}", method = [RequestMethod.GET])
+    @GetMapping("/artifacts/{group}/{name}")
     @ResponseBody
     fun byName(
             @PathVariable("group") group: String,
             @PathVariable("name") name: String
     ): ResultList<ArtifactIdDto>
 
-    @RequestMapping("/artifacts/{group}/{name}/{version}", method = [RequestMethod.GET])
+    @GetMapping("/artifacts/{group}/{name}/{version}")
     @ResponseBody
     fun get(
             @PathVariable("group") group: String,
@@ -31,7 +31,7 @@ interface ArtifactController {
             @PathVariable("version") version: String
     ): ArtifactIdDto?
 
-    @RequestMapping("/artifacts/{group}/{name}/{version}", method = [RequestMethod.DELETE])
+    @DeleteMapping("/artifacts/{group}/{name}/{version}")
     @ResponseBody
     fun remove(
             @PathVariable("group") group: String,
@@ -40,7 +40,7 @@ interface ArtifactController {
             response: HttpServletResponse
     ): MessageDto
 
-    @RequestMapping("/artifacts",  method = [RequestMethod.POST])
+    @PostMapping("/artifacts")
     @ResponseBody
     fun load(@RequestBody artifactIdDto: ArtifactIdDto)
 

@@ -1,10 +1,7 @@
 package com.mktiti.fsearch.grpc.converter
 
 import com.mktiti.fsearch.dto.*
-import com.mktiti.fsearch.grpc.Artifact
-import com.mktiti.fsearch.grpc.Common
-import com.mktiti.fsearch.grpc.Info
-import com.mktiti.fsearch.grpc.Search
+import com.mktiti.fsearch.grpc.*
 
 private fun Common.Type.toDto() = TypeDto(
         packageName = packageName,
@@ -109,3 +106,14 @@ fun Search.HealthInfo.toDto() = HealthInfo(
         buildTimestamp = buildTimestamp,
         ok = ok
 )
+
+fun Auth.Credentials.toDto() = Credentials(username, password)
+
+fun Auth.Role.toDto(): Role = when (this) {
+    Auth.Role.USER -> Role.USER
+    Auth.Role.ADMIN -> Role.ADMIN
+}
+
+fun Auth.LoginResult.toDto(): LoginResult = success?.run {
+    LoginResult.Success(username, role.toDto(), jwt)
+} ?: LoginResult.Invalid

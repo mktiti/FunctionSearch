@@ -4,18 +4,17 @@ import com.mktiti.fsearch.dto.ContextInfoQueryParam
 import com.mktiti.fsearch.dto.FunId
 import com.mktiti.fsearch.dto.ResultList
 import com.mktiti.fsearch.dto.TypeInfoDto
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseBody
 
 interface InfoController {
 
-    @RequestMapping("/types", method = [RequestMethod.POST])
+    @PostMapping("/types")
     @ResponseBody
     fun types(@RequestBody info: ContextInfoQueryParam): ResultList<TypeInfoDto>
 
-    @RequestMapping("/functions", method = [RequestMethod.POST])
+    @PostMapping("/functions")
     @ResponseBody
     fun functions(@RequestBody info: ContextInfoQueryParam): ResultList<FunId>
 

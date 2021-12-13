@@ -16,10 +16,15 @@ jcl.javadoc.path: "/usr/share/fsearch/docs/jdk-8-partial.zip"
 data-store.path: "/usr/share/fsearch/store-cache/"
 
 cache:
-  # Very rough approximations for limits on in-mem caches (in MB)
-  approxlimit:
-    docs: 100
-    info: 100
-    deps: 10
+  # Very rough approximations for limits on in-mem caches
+  approxLimit:
+    docs: 100MB
+    info: 100MB
+    deps: 10MB
+
+auth:
+  admin:
+    enabled: true
+    password: "" # Overwrite in command line args
 
 springdoc.api-docs.path: /${api.base.path}api-docs

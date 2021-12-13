@@ -23,19 +23,29 @@
       "description": "Path of the JCL documentation to use."
     },
     {
-      "name": "cache.approxlimit.info",
-      "type": "int",
-      "description": "Rough limit (MB) of in-mem artifact info cache"
+      "name": "cache.approxLimit.info",
+      "type": "org.springframework.util.unit.DataSize",
+      "description": "Rough limit of in-mem artifact info cache"
     },
     {
-      "name": "cache.approxlimit.docs",
-      "type": "int",
-      "description": "Rough limit (MB) of in-mem artifact documentation cache"
+      "name": "cache.approxLimit.docs",
+      "type": "org.springframework.util.unit.DataSize",
+      "description": "Rough limit of in-mem artifact documentation cache"
     },
     {
-      "name": "cache.approxlimit.deps",
-      "type": "int",
-      "description": "Rough limit (MB) of in-mem artifact dependency information cache"
+      "name": "cache.approxLimit.deps",
+      "type": "org.springframework.util.unit.DataSize",
+      "description": "Rough limit of in-mem artifact dependency information cache"
+    },
+    {
+      "name": "auth.admin.password",
+      "type": "java.lang.String",
+      "description": "Temporary admin password, empty results in error if admin access is enabled"
+    },
+    {
+      "name": "auth.admin.enabled",
+      "type": "boolean",
+      "description": "Whether admin access is enabled or not"
     }
   ]
 }

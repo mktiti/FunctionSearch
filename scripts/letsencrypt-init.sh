@@ -5,11 +5,11 @@ if ! [ -x "$(command -v docker-compose)" ]; then
   exit 1
 fi
 
-domains=(search.mktiti.com www.search.mktiti.com jvmsearch.com www.jvmsearch.com)
-rsa_key_size=4096
-data_path="/data/fsearch/certbot"
-email="markuskrisztian1@gmail.com" # Adding a valid address is strongly recommended
-staging=0                          # Set to 1 if you're testing your setup to avoid hitting request limits
+readonly domains=(search.mktiti.com www.search.mktiti.com jvmsearch.com www.jvmsearch.com)
+readonly rsa_key_size=4096
+readonly data_path="/data/fsearch/certbot"
+readonly email="markuskrisztian1@gmail.com" # Adding a valid address is strongly recommended
+readonly staging=0                          # Set to 1 if you're testing your setup to avoid hitting request limits
 
 if [ -d "$data_path" ]; then
   read -rp "Existing data found for domains. Continue and replace existing certificate? (y/N) " decision

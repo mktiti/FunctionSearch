@@ -2,7 +2,9 @@
   <div id="app">
     <ul id="nav">
       <li><router-link to="/">JvmSearch</router-link></li>
-      <li class="right"><router-link to="/login">Login</router-link></li>
+      <li class="right" v-bind:class="$store.getters.adminLogged ? '' : 'hidden'"><router-link to="/admin">Admin</router-link></li>
+      <li class="right" v-bind:class="$store.getters.loggedIn ? '' : 'hidden'"><router-link to="/profile">Profile</router-link></li>
+      <li class="right" v-bind:class="$store.getters.loggedIn ? 'hidden' : ''"><router-link to="/login">Login</router-link></li>
       <li class="right"><router-link to="/demos">Demos</router-link></li>
     </ul>
     <div id="content">
@@ -24,6 +26,10 @@
 </template>
 
 <style>
+.hidden {
+  display: none;
+}
+
 body {
   background: #2a2a2e;
   padding: 0;

@@ -34,7 +34,7 @@ class SpringMain {
 
     @Bean
     fun openApi(): OpenAPI = OpenAPI().components(Components()).info(Info().apply {
-        title = "FunctionSearch"
+        title = "JvmSearch"
         version = ProjectInfo.version.removeSuffix("-SNAPSHOT")
     })
 

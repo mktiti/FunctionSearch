@@ -20,6 +20,7 @@ import Component from "vue-class-component"
 import {clientConfig} from "@/main";
 import {AuthApi, Credentials} from "fsearch_client";
 import {isLoginSuccess} from "@/util/LoginResult";
+import {userFromDto} from "@/converter/Login";
 
 @Component({})
 export default class LoginComponent extends Vue {
@@ -40,6 +41,7 @@ export default class LoginComponent extends Vue {
     this.client.login(credentials).then(res => {
       if (isLoginSuccess(res)) {
         console.log("Logged in as " + res.username)
+        this.$store.commit('login', userFromDto(res))
         this.$router.push('/')
       } else {
         this.message = 'Invalid credentials!'

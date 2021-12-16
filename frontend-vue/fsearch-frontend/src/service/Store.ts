@@ -26,7 +26,7 @@ export const store = new Vuex.Store<State>({
             localStorage.setItem('user', JSON.stringify(user))
         }
     }, getters: {
-        loggedIn: state => state.loggedInUser !== null,
+        loggedIn: state => { return state.loggedInUser !== null },
         loggedUsername: state => { return state.loggedInUser?.username },
         userLogged: state => { return state.loggedInUser?.role == Role.User },
         adminLogged: state => { return state.loggedInUser?.role == Role.Admin },

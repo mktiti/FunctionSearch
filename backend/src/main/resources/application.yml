@@ -26,5 +26,8 @@ auth:
   admin:
     enabled: true
     password: "" # Overwrite in command line args
+  jwt:
+    secret: "" # Overwrite in command line args
+    expiry: 30D
 
 springdoc.api-docs.path: /${api.base.path}api-docs

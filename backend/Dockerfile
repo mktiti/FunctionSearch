@@ -4,9 +4,13 @@ COPY target/backend-spring.jar /usr/share/fsearch/backend/backend.jar
 
 ENV BACKEND_MIN_HEAP 1024m
 ENV BACKEND_MAX_HEAP 4096m
+ENV JWT_SECRET ""
+ENV ADMIN_PASS ""
 
 CMD java \
     -Xms${BACKEND_MIN_HEAP} \
     -Xmx${BACKEND_MAX_HEAP} \
     -jar /usr/share/fsearch/backend/backend.jar \
-    --spring.profiles.active=${SPRING_PROFILE}
+    --spring.profiles.active=${SPRING_PROFILE} \
+    --auth.jwt.secret=${JWT_SECRET} \
+    --auth.admin.password=${ADMIN_PASS}

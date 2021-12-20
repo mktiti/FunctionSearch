@@ -3,7 +3,7 @@
     <ul id="nav">
       <li><router-link to="/">JvmSearch</router-link></li>
       <li class="right" v-bind:class="$store.getters.adminLogged ? '' : 'hidden'"><router-link to="/admin">Admin</router-link></li>
-      <li class="right" v-bind:class="$store.getters.loggedIn ? '' : 'hidden'"><router-link to="/profile">Profile</router-link></li>
+      <li class="right" v-bind:class="$store.getters.userLogged ? '' : 'hidden'"><router-link to="/profile">Profile</router-link></li>
       <li class="right" v-bind:class="$store.getters.loggedIn ? 'hidden' : ''"><router-link to="/login">Login</router-link></li>
       <li class="right"><router-link to="/demos">Demos</router-link></li>
     </ul>

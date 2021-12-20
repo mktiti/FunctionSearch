@@ -49,7 +49,7 @@ const routes: Array<RouteConfig> = [
     name: 'Profile',
     component: Profile,
     meta: {
-      loginReq: LoginReq.AnyLoginRequired
+      loginReq: LoginReq.UserLoginRequired
     }
   },
   {

@@ -3,25 +3,32 @@ package com.mktiti.fsearch.rest.api.controller
 import com.mktiti.fsearch.dto.ArtifactIdDto
 import com.mktiti.fsearch.dto.MessageDto
 import com.mktiti.fsearch.dto.ResultList
+import com.mktiti.fsearch.rest.api.AnyLoginRequired
+import com.mktiti.fsearch.rest.api.handler.ArtifactHandler
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.*
 import javax.servlet.http.HttpServletResponse
 
-interface ArtifactController {
+@RestController
+@RequestMapping("\${api.base.path}")
+@CrossOrigin("\${cross.origin}")
+@Tag(name = "artifact")
+class ArtifactController(private val handler: ArtifactHandler) {
 
     @GetMapping("/artifacts")
     @ResponseBody
-    fun artifacts(): ResultList<ArtifactIdDto>
+    fun artifacts(): ResultList<ArtifactIdDto> = handler.all()
 
     @GetMapping("/artifacts/{group}")
     @ResponseBody
-    fun byGroup(@PathVariable("group") group: String): ResultList<ArtifactIdDto>
+    fun byGroup(@PathVariable("group") group: String): ResultList<ArtifactIdDto> = handler.byGroup(group)
 
     @GetMapping("/artifacts/{group}/{name}")
     @ResponseBody
     fun byName(
             @PathVariable("group") group: String,
             @PathVariable("name") name: String
-    ): ResultList<ArtifactIdDto>
+    ): ResultList<ArtifactIdDto> = handler.byName(group, name)
 
     @GetMapping("/artifacts/{group}/{name}/{version}")
     @ResponseBody
@@ -29,7 +36,7 @@ interface ArtifactController {
             @PathVariable("group") group: String,
             @PathVariable("name") name: String,
             @PathVariable("version") version: String
-    ): ArtifactIdDto?
+    ): ArtifactIdDto? = handler.get(group, name, version)
 
     @DeleteMapping("/artifacts/{group}/{name}/{version}")
     @ResponseBody
@@ -38,10 +45,18 @@ interface ArtifactController {
             @PathVariable("name") name: String,
             @PathVariable("version") version: String,
             response: HttpServletResponse
-    ): MessageDto
+    ): MessageDto {
+        return MessageDto(if (handler.remove(group, name, version)) {
+            "OK"
+        } else {
+            response.status = HttpServletResponse.SC_NOT_FOUND
+            "NOT FOUND"
+        })
+    }
 
     @PostMapping("/artifacts")
     @ResponseBody
-    fun load(@RequestBody artifactIdDto: ArtifactIdDto)
+    @AnyLoginRequired
+    fun load(@RequestBody id: ArtifactIdDto) = handler.create(id)
 
 }

@@ -1,11 +1,11 @@
 package com.mktiti.fsearch.backend.api.grpc
 
 import com.google.protobuf.Empty
-import com.mktiti.fsearch.backend.handler.ArtifactHandler
 import com.mktiti.fsearch.grpc.Artifact
 import com.mktiti.fsearch.grpc.ArtifactServiceGrpc
 import com.mktiti.fsearch.grpc.Common
 import com.mktiti.fsearch.grpc.converter.*
+import com.mktiti.fsearch.rest.api.handler.ArtifactHandler
 import io.grpc.stub.StreamObserver
 import net.devh.boot.grpc.server.service.GrpcService
 import org.springframework.beans.factory.annotation.Autowired

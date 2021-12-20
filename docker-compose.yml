@@ -9,6 +9,8 @@ services:
       - BACKEND_MIN_HEAP
       - BACKEND_MAX_HEAP
       - SPRING_PROFILE
+      - JWT_SECRET
+      - ADMIN_PASS
     volumes:
       - "${STORE_CACHE_PATH}:/usr/share/fsearch/store-cache/"
       - "${JCL_DOCS_PATH}:/usr/share/fsearch/docs/"

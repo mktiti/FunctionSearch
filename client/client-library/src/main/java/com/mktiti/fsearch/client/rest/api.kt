@@ -9,6 +9,8 @@ interface Service {
     val searchApi: SearchApi
     val authApi: AuthApi
     val infoApi: InfoApi
+    val userApi: UserApi
+    val adminApi: AdminApi
     val artifactApi: ArtifactApi
 
 }
@@ -26,6 +28,18 @@ interface AuthApi {
     fun login(credentials: Credentials): ApiCallResult<LoginResult>
 
     fun login(username: String, password: String) = login(Credentials(username, password))
+
+}
+
+interface UserApi {
+
+    fun selfData(): ApiCallResult<UserInfo>
+
+}
+
+interface AdminApi {
+
+    fun searchStats(): ApiCallResult<SearchStatistics>
 
 }
 

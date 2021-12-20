@@ -16,5 +16,7 @@ internal class GrpcService(
     override val authApi: AuthApi = GrpcAuthApi(channel)
     override val infoApi: InfoApi = GrpcInfoApi(channel)
     override val artifactApi: ArtifactApi = GrpcArtifactApi(channel)
+    override val userApi: UserApi = GrpcUserApi(channel)
+    override val adminApi: AdminApi = GrpcAdminApi(channel)
 
 }

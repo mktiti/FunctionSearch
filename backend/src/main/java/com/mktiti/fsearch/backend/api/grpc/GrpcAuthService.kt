@@ -1,10 +1,10 @@
 package com.mktiti.fsearch.backend.api.grpc
 
-import com.mktiti.fsearch.backend.handler.AuthHandler
 import com.mktiti.fsearch.grpc.Auth
 import com.mktiti.fsearch.grpc.AuthServiceGrpc
 import com.mktiti.fsearch.grpc.converter.toDto
 import com.mktiti.fsearch.grpc.converter.toProto
+import com.mktiti.fsearch.rest.api.handler.AuthHandler
 import io.grpc.stub.StreamObserver
 import net.devh.boot.grpc.server.service.GrpcService
 import org.springframework.beans.factory.annotation.Autowired

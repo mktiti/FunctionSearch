@@ -1,6 +1,7 @@
 package com.mktiti.fsearch.backend.auth
 
-import java.time.LocalDateTime
+import com.mktiti.fsearch.rest.api.Role
+import com.mktiti.fsearch.rest.api.User
 
 class TestAuthService(
         private val authConfig: AuthConfig
@@ -10,9 +11,9 @@ class TestAuthService(
         private val adminUser = User("admin", Role.ADMIN)
     }
 
-    private val userPasswordMap: Map<String, String> = authConfig.testUsers?.map {
+    private val userPasswordMap: Map<String, String> = authConfig.testUsers?.associate {
         it.username to it.password
-    }?.toMap() ?: emptyMap()
+    } ?: emptyMap()
 
     override fun checkCredentials(username: String, password: String): User? {
         return if (username == adminUser.username) {
@@ -20,10 +21,6 @@ class TestAuthService(
         } else {
             if (password == userPasswordMap[username]) User(username, Role.USER) else null
         }
-    }
-
-    override fun issueJwt(user: User, expiry: LocalDateTime): String {
-        return "TODO-ISSUE-JWT"
     }
 
 }

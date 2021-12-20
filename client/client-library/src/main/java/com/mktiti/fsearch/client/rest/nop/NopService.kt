@@ -19,4 +19,10 @@ object NopService : Service {
     override val artifactApi: ArtifactApi
         get() = NopArtifactApi
 
+    override val userApi: UserApi
+        get() = NopUserApi
+
+    override val adminApi: AdminApi
+        get() = NopAdminApi
+
 }

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.core.env.StandardEnvironment
 import org.springframework.http.HttpHeaders
@@ -18,6 +19,7 @@ import org.springframework.http.HttpHeaders
 private const val jwtBearerName = "bearer-jwt"
 
 @SpringBootApplication
+@ComponentScan("com.mktiti.fsearch.rest.api")
 class SpringMain {
 
     @Bean

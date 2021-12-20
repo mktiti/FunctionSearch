@@ -3,33 +3,34 @@
 package com.mktiti.fsearch.backend.spring
 
 import com.mktiti.fsearch.backend.ProjectInfo
-import com.mktiti.fsearch.backend.api.grpc.GrpcArtifactService
-import com.mktiti.fsearch.backend.api.grpc.GrpcAuthService
-import com.mktiti.fsearch.backend.api.grpc.GrpcInfoService
-import com.mktiti.fsearch.backend.api.grpc.GrpcSearchService
-import com.mktiti.fsearch.backend.api.rest.SpringArtifactController
-import com.mktiti.fsearch.backend.api.rest.SpringAuthController
-import com.mktiti.fsearch.backend.api.rest.SpringInfoController
-import com.mktiti.fsearch.backend.api.rest.SpringSearchController
+import com.mktiti.fsearch.backend.api.grpc.*
 import com.mktiti.fsearch.backend.auth.AuthConfig
 import com.mktiti.fsearch.backend.cache.CacheConfig
+import com.mktiti.fsearch.backend.user.UserConfig
 import com.mktiti.fsearch.core.cache.CentralInfoCache
 import com.mktiti.fsearch.core.cache.CleaningInternCache
+import com.mktiti.fsearch.rest.api.controller.*
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Import
 
-@SpringBootApplication
+@SpringBootApplication(exclude = [UserDetailsServiceAutoConfiguration::class])
 @Import(
-        GrpcSearchService::class, GrpcInfoService::class, GrpcArtifactService::class, GrpcAuthService::class,
-        SpringSearchController::class, SpringInfoController::class, SpringArtifactController::class, SpringAuthController::class
+        GrpcSearchService::class, GrpcInfoService::class, GrpcArtifactService::class,
+        GrpcAuthService::class, GrpcUserService::class, GrpcAdminService::class,
+
+        SearchController::class, InfoController::class, ArtifactController::class,
+        AuthController::class, UserController::class, AdminController::class
 )
-@EnableConfigurationProperties(AuthConfig::class, CacheConfig::class)
+@EnableConfigurationProperties(AuthConfig::class, CacheConfig::class, UserConfig::class)
+@ComponentScan("com.mktiti.fsearch.backend")
 class SpringMain {
 
     @Bean

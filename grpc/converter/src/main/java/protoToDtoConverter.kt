@@ -24,6 +24,11 @@ private fun Info.FunInfo.toDto() = FunId(
         }
 )
 
+internal fun Search.QueryRequest.toDto() = QueryRequestDto(
+        context = context.toDto(),
+        query = query
+)
+
 private fun Search.QueryFitResult.toDto() = QueryFitResult(
         file = file,
         funName = funName,

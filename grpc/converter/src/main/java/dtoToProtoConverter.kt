@@ -15,7 +15,7 @@ fun ArtifactIdDto.toProto(): Common.ArtifactId = Common.ArtifactId.newBuilder()
         .setVersion(version)
         .build()
 
-private fun QueryCtxDto.toProto(): Common.QueryContext {
+internal fun QueryCtxDto.toProto(): Common.QueryContext {
     return Common.QueryContext.newBuilder()
             .addAllImports(imports.map { it.toProto() })
             .addAllArtifactsIds(artifacts.map { it.toProto() })
@@ -110,7 +110,7 @@ fun ResultList<FunId>.toProto(): Info.FunInfoResult = Info.FunInfoResult.newBuil
         .build()
 
 
-private fun HealthInfo.toProto() = Search.HealthInfo.newBuilder()
+fun HealthInfo.toProto() = Search.HealthInfo.newBuilder()
         .setVersion(version)
         .setBuildTimestamp(buildTimestamp)
         .setOk(ok)

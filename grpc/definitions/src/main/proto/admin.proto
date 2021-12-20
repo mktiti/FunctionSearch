@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+package fsearch;
+
+import "common.proto";
+import "search.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.mktiti.fsearch.grpc";
+
+service AdminService {
+
+  rpc SearchStats (google.protobuf.Empty) returns (SearchStatistics) {}
+
+}
+
+message SearchLog {
+  required QueryRequest request = 1;
+  required string result = 2;
+}
+
+message SearchStatistics {
+  required int64 numberOfUsers = 1;
+  repeated SearchLog lastSearches = 2;
+}

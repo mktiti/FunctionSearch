@@ -18,5 +18,7 @@ internal class FuelService(
     override val authApi: AuthApi = FuelAuthApi(fuelInstance)
     override val infoApi: InfoApi = FuelInfoApi(fuelInstance)
     override val artifactApi: ArtifactApi = FuelArtifactApi(fuelInstance)
+    override val userApi: UserApi = FuelUserApi(fuelInstance)
+    override val adminApi: AdminApi = FuelAdminApi(fuelInstance)
 
 }

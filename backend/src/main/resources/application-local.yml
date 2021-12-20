@@ -10,3 +10,14 @@ auth:
     -
       username: asd
       password: dsa
+
+users:
+  testUsers:
+    -
+      username: test
+      level: NORMAL
+      registerDate: 2011-02-03
+    -
+      username: asd
+      level: PREMIUM
+      registerDate: 2020-01-02

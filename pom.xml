@@ -20,16 +20,16 @@
         <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
 
         <jackson.version>2.13.0</jackson.version>
-        <spring.version>2.3.12.RELEASE</spring.version>
-        <spring.openapi.version>1.5.2</spring.openapi.version>
+        <spring.version>2.6.1</spring.version>
+        <spring.openapi.version>1.6.1</spring.openapi.version>
         <arrow.version>0.13.2</arrow.version>
         <antlr.version>4.8-1</antlr.version>
 
         <maven.libs.version>3.6.3</maven.libs.version>
 
-        <junit.version>5.3.1</junit.version>
+        <junit.version>5.8.2</junit.version>
 
-        <log4j2.version>2.15.0</log4j2.version>
+        <log4j2.version>2.17.0</log4j2.version>
 
         <tests.skip>false</tests.skip>
         <container.skip>false</container.skip>
@@ -247,6 +247,12 @@
                 <groupId>com.fasterxml.jackson.module</groupId>
                 <artifactId>jackson-module-kotlin</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>java-jwt</artifactId>
+                <version>3.18.2</version>
             </dependency>
 
             <dependency>

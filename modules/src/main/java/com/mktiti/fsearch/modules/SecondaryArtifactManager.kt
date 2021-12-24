@@ -15,10 +15,7 @@ import com.mktiti.fsearch.modules.util.DependencyUtil
 import com.mktiti.fsearch.parser.function.JarFileFunctionInfoCollector
 import com.mktiti.fsearch.parser.parse.JarInfo
 import com.mktiti.fsearch.parser.type.JarFileInfoCollector
-import com.mktiti.fsearch.util.logTrace
-import com.mktiti.fsearch.util.logger
-import com.mktiti.fsearch.util.orElse
-import com.mktiti.fsearch.util.splitMapKeep
+import com.mktiti.fsearch.util.*
 import java.nio.file.Path
 
 class SecondaryArtifactManager(
@@ -30,6 +27,11 @@ class SecondaryArtifactManager(
         private val artifactDepsFetcher: ArtifactDependencyFetcher
 ) : ArtifactManager {
 
+    companion object {
+        private val jarTypeLoader = JarFileInfoCollector(MapJavaInfoRepo)
+        private val jarFunLoader = JarFileFunctionInfoCollector(MapJavaInfoRepo)
+    }
+
     private val jclMap = mutableMapOf<String, Pair<DomainRepo, JavaRepo>>()
 
     private val log = logger()
@@ -40,23 +42,28 @@ class SecondaryArtifactManager(
 
     override fun getOrLoadJcl(version: String, paths: Collection<Path>): Pair<DomainRepo, JavaRepo> {
         return jclMap.getOrPut(version) {
-            val (typeInfo, funInfo) = infoCache.getOrStore(ArtifactId.jcl(version)) {
+
+            // Only get, no reason to store in secondary cache
+            val (typeInfo, funInfo) = infoCache[ArtifactId.jcl(version)].orElse {
                 val jclJarInfo = JarInfo("JCL", paths)
-
-                val jarTypeLoader = JarFileInfoCollector(MapJavaInfoRepo)
-                val jarFunLoader = JarFileFunctionInfoCollector(MapJavaInfoRepo)
-
+                log.logDebug { "Parsing JCL info from $paths" }
 
                 val rawTypeInfo = jarTypeLoader.collectTypeInfo(jclJarInfo)
                 val typeParamResolver = TypeInfoTypeParamResolver(rawTypeInfo.templateInfos)
 
                 val rawFunInfo = jarFunLoader.collectFunctions(jclJarInfo, typeParamResolver)
 
+                log.logDebug { "Intermediate JCL info parsed $paths" }
+
                 ArtifactInfoResult(rawTypeInfo, rawFunInfo)
             }
 
+            log.debug("Assembling JCL type info")
             val (javaRepo, jclRepo) = typeInfoConnector.connectJcl(typeInfo)
+            log.debug("JCL type info assembled")
+            log.debug("Assembling JCL function info")
             val funs = functionConnector.connect(funInfo)
+            log.debug("JCL function info assembled")
 
             val jclResolver = SingleRepoTypeResolver(jclRepo)
 

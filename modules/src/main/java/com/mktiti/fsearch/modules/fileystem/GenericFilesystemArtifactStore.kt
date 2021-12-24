@@ -1,8 +1,10 @@
 package com.mktiti.fsearch.modules.fileystem
 
+import ArtifactInfoSeqResult
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 import com.mktiti.fsearch.model.build.intermediate.FunDocMap
 import com.mktiti.fsearch.model.build.serialize.ArtifactDocSerializer
+import com.mktiti.fsearch.model.build.serialize.ArtifactInfoSeqSerializer
 import com.mktiti.fsearch.model.build.serialize.ArtifactInfoSerializer
 import com.mktiti.fsearch.model.build.service.ArtifactSerializerService
 import com.mktiti.fsearch.model.build.service.SerializationException
@@ -27,6 +29,10 @@ class GenericFilesystemArtifactStore<T>(
 
         fun fsInfoStore(repoRoot: Path): GenericArtifactStore<ArtifactInfoResult> {
             return GenericFilesystemArtifactStore(repoRoot, ArtifactInfoSerializer)
+        }
+
+        fun fsInfoSeqStore(repoRoot: Path): GenericArtifactStore<ArtifactInfoSeqResult> {
+            return GenericFilesystemArtifactStore(repoRoot, ArtifactInfoSeqSerializer)
         }
 
         fun fsDepsStore(repoRoot: Path): GenericArtifactStore<List<ArtifactId>> {

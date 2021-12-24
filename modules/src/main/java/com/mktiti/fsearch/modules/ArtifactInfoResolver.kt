@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.modules
 
+import ArtifactInfoSeqResult
 import com.mktiti.fsearch.model.build.intermediate.ArtifactInfoResult
 
 interface ArtifactInfoResolver {
@@ -10,6 +11,8 @@ interface ArtifactInfoResolver {
     }
 
     operator fun get(id: ArtifactId): ArtifactInfoResult?
+
+    fun getSeq(id: ArtifactId): ArtifactInfoSeqResult? = get(id)?.toSeq()
 
 }
 

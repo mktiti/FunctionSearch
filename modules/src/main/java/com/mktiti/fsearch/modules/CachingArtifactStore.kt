@@ -1,5 +1,6 @@
 package com.mktiti.fsearch.modules
 
+import ArtifactInfoSeqResult
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.google.common.cache.LoadingCache

@@ -20,9 +20,11 @@ import com.mktiti.fsearch.modules.docs.DefaultDocManager
 import com.mktiti.fsearch.modules.docs.DocManager
 import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsDepsStore
 import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsDocsStore
+import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsInfoSeqStore
 import com.mktiti.fsearch.modules.fileystem.GenericFilesystemArtifactStore.Companion.fsInfoStore
 import com.mktiti.fsearch.modules.store.ArtifactDepsStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactDocStoreWrapper
+import com.mktiti.fsearch.modules.store.ArtifactInfoSeqStoreWrapper
 import com.mktiti.fsearch.modules.store.ArtifactInfoStoreWrapper
 import com.mktiti.fsearch.parser.docs.JsoupJarHtmlJavadocParser
 import com.mktiti.fsearch.util.logInfo
@@ -94,7 +96,7 @@ object ContextManagerStore {
         val artifactManager: ArtifactManager = SecondaryArtifactManager(
                 typeInfoConnector = typeConnector,
                 functionConnector = funConnector,
-                infoCache = ArtifactInfoStoreWrapper(cachedInfoStore(fsInfoStore(infoStorePath), approxLimits.info.toKilobytes())),
+                infoCache = ArtifactInfoSeqStoreWrapper(fsInfoSeqStore(infoStorePath)),
                 depInfoStore = ArtifactDepsStoreWrapper(cachedDepsStore(fsDepsStore(depsStorePath), approxLimits.deps.toKilobytes())),
                 artifactInfoFetcher = artifactFetcher,
                 artifactDepsFetcher = artifactDepsFetcher
